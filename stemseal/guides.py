@@ -117,5 +117,6 @@ def call(name, inp, model=None, caller="unknown"):
     inp2, fx = repair(name, inp, g)
     r = hub.call(name, inp2, caller=caller)
     r["guide"] = g["id"]; r["repairs"] = fx
+    if r.get("status") == "ok": r["input_used"] = inp2   # echo the values, so a copying slip (1003 for 10030) is visible
     if fx: hub._log({"type": "repair", "cell": name, "model": model, "guide": g["id"], "fixes": fx, "status": r["status"]})
     return r
