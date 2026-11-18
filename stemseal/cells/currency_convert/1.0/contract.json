@@ -6,7 +6,11 @@
   "환전",
   "원화 환산",
   "달러",
-  "외화"
+  "외화",
+  "exchange rate",
+  "currency conversion",
+  "convert to won",
+  "usd to krw"
  ],
  "input_schema": {
   "required": [
@@ -20,5 +24,7 @@
  },
  "output_keys": [
   "krw"
- ]
+ ],
+ "description_en": "Convert a foreign currency amount to Korean won at a given rate (won per unit), truncating below 1 won.",
+ "when_to_use_en": "When converting dollars, yen, euros or other currencies to won."
 }

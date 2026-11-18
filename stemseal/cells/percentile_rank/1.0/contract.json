@@ -6,7 +6,11 @@
   "퍼센타일",
   "percentile",
   "순위 비율",
-  "몇 퍼센트 위치"
+  "몇 퍼센트 위치",
+  "percentile rank",
+  "rank percent",
+  "top percent",
+  "position in list"
  ],
  "input_schema": {
   "required": [
@@ -20,5 +24,7 @@
  },
  "output_keys": [
   "percentile_rank"
- ]
+ ],
+ "description_en": "Percentile rank of a value in a list (share of values below it, %).",
+ "when_to_use_en": "When finding what percentile a value is at, or top/bottom what percent."
 }

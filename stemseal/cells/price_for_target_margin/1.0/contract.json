@@ -5,7 +5,11 @@
   "판매가 정하기",
   "목표 마진",
   "가격 책정",
-  "역산"
+  "역산",
+  "selling price",
+  "target margin",
+  "pricing",
+  "markup from margin"
  ],
  "input_schema": {
   "required": [
@@ -19,5 +23,7 @@
  },
  "output_keys": [
   "price"
- ]
+ ],
+ "description_en": "Selling price that gives a target margin (% of selling price) on a cost.",
+ "when_to_use_en": "When setting a selling price backwards from a target margin."
 }

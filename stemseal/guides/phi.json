@@ -33,5 +33,12 @@
  "sources": [
   "https://insiderllm.com/guides/function-calling-local-llms/"
  ],
- "style_note": "설득형 문구(water-channel 원칙): 금지·강요 대신 이점과 다음 길을 알려 준다. 2026-11-17"
+ "style_note": "설득형 문구(water-channel 원칙): 금지·강요 대신 이점과 다음 길을 알려 준다. 2026-11-17",
+ "prompt_rules_en": [
+  "When a candidate cell's output key is the value the request asks for, using that cell works better. You get a verified answer right away, far more accurate than computing it yourself.",
+  "If a cell computes a different value from what the request asks, it is better not to pick it. Answer none; the need is recorded so a new cell can be made, and it may be ready next time.",
+  "Writing, translation, summaries and guesses suit you better than a cell. Do those yourself.",
+  "Copy the values from the data into the same shape as the input example; the cell accepts that best.",
+  "Answer with a single JSON object so the hub can read it directly."
+ ]
 }

@@ -98,6 +98,7 @@ def list_cells():
     for name in sorted(os.listdir(CELLS)) if os.path.isdir(CELLS) else []:
         c = load(name)
         if c: out.append({"cell": name, "version": c["lock"]["version"], "description": c["contract"]["description"], "when_to_use": c["contract"].get("when_to_use", ""),
+                          "description_en": c["contract"].get("description_en", ""), "when_to_use_en": c["contract"].get("when_to_use_en", ""),
                           "required_inputs": c["contract"]["input_schema"].get("required", []), "gt_cases": c["lock"]["gt_total"], "locked_at": c["lock"]["locked_at"]})
     return out
 
@@ -156,7 +157,7 @@ def _rank(need, min_score):
     if not q: return scored
     for c in list_cells():
         con = load(c["cell"])["contract"]
-        doc = _grams(" ".join([c["cell"].replace("_", " "), con["description"], con.get("when_to_use", ""), " ".join(con.get("keywords", []))]))
+        doc = _grams(" ".join([c["cell"].replace("_", " "), con["description"], con.get("when_to_use", ""), con.get("description_en", ""), con.get("when_to_use_en", ""), " ".join(con.get("keywords", []))]))
         s = len(q & doc) / max(1, len(q))
         if s >= min_score: scored.append((round(s, 3), c))
     scored.sort(key=lambda x: -x[0]); return scored

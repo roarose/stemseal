@@ -5,7 +5,10 @@
   "열량",
   "칼로리",
   "kcal",
-  "100g당"
+  "100g당",
+  "calories",
+  "per 100g",
+  "portion calories"
  ],
  "input_schema": {
   "required": [
@@ -19,5 +22,7 @@
  },
  "output_keys": [
   "kcal"
- ]
+ ],
+ "description_en": "Calories eaten (kcal) from kcal per 100 g and grams eaten.",
+ "when_to_use_en": "When computing the calories of a portion of food."
 }

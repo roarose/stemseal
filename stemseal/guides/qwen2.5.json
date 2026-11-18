@@ -43,5 +43,13 @@
  "style_note": "설득형 문구(water-channel 원칙): 금지·강요 대신 이점과 다음 길을 알려 준다. 2026-11-17",
  "measured_notes": [
   "exp10 (qwen2.5:3b, 처음 보는 업무 52개 x3): 혼자 5/44, 이 가이드(후보 목록에서 고르기) 88/156. 하나씩 예/아니오 확인(confirm) 방식은 42~53/156 으로 나쁨"
+ ],
+ "prompt_rules_en": [
+  "Picking directly saves time. The hub does the checking for you.",
+  "When a candidate cell's output key is the value the request asks for, using that cell works better. You get a verified answer right away, far more accurate than computing it yourself.",
+  "If a cell computes a different value from what the request asks, it is better not to pick it. Answer none; the need is recorded so a new cell can be made, and it may be ready next time.",
+  "Writing, translation, summaries and guesses suit you better than a cell. Do those yourself.",
+  "Copy the values from the data into the same shape as the input example; the cell accepts that best.",
+  "Answer with a single JSON object so the hub can read it directly."
  ]
 }

@@ -5,7 +5,11 @@
   "월급 환산",
   "209시간",
   "시급 월급",
-  "최저임금 월급"
+  "최저임금 월급",
+  "monthly wage",
+  "hourly to monthly",
+  "minimum wage monthly",
+  "salary"
  ],
  "input_schema": {
   "required": [
@@ -18,5 +22,7 @@
  },
  "output_keys": [
   "monthly_wage"
- ]
+ ],
+ "description_en": "Monthly wage (won) from an hourly wage at 209 hours a month (Korean standard, paid weekly rest included).",
+ "when_to_use_en": "When converting an hourly wage, or the minimum wage, to a monthly wage."
 }

@@ -6,7 +6,7 @@
   stemseal verify                    re-check every lock (sha256) and ground-truth case
   stemseal request <need words...>   record a cell you needed; prints a link you can open to ask for it
   stemseal demand                    your recorded unmet needs (kept only on this machine)
-  stemseal guide <model>             the selection guide used for a model name"""
+  stemseal guide <model> [ko|en]     the selection guide used for a model name"""
 import json, sys
 from . import hub, guides
 
@@ -27,7 +27,7 @@ def main(argv=None):
         print("all %d cells verified" % len(r) if not bad else "FAILED: %s" % bad); return 1 if bad else 0
     elif cmd == "request": _p(hub.request_cell(" ".join(rest), caller="cli"))
     elif cmd == "demand": _p(hub.stats()["unmet_demand"])
-    elif cmd == "guide": _p(guides.brief(guides.guide_for(rest[0] if rest else "")))
+    elif cmd == "guide": _p(guides.brief(guides.guide_for(rest[0] if rest else ""), (rest[1] if len(rest) > 1 else "ko")))
     else: print(__doc__); return 2
     return 0
 

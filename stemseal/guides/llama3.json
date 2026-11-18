@@ -91,5 +91,50 @@
  "style_note": "설득형 문구(water-channel 원칙): 금지·강요 대신 이점과 다음 길을 알려 준다. 2026-11-17",
  "measured_notes": [
   "exp10: 허브 1순위부터 예/아니오 확인(confirm)은 64~65/156 로 지금 방식(v3, 78/156)보다 나쁨"
- ]
+ ],
+ "prompt_rules_en": [
+  "Pick the cell whose output key is the value the question asks for, and the exact answer comes right back.",
+  "Copy the input values exactly as they are in the data; the cell accepts them well.",
+  "If no cell fits, pick none. The need is recorded so a new cell can be made."
+ ],
+ "teaching_en": {
+  "style": "stepwise",
+  "steps": [
+   "Step 1: answer only true/false: is this a numeric calculation request?",
+   "Step 2: pick exactly one candidate name or none (constrained by the hub's pick_schema)",
+   "Step 3: fill only the chosen cell's inputs (constrained by the hub's input_json_schema)"
+  ],
+  "gate_examples": [
+   [
+    "Give me this month's total and average sales",
+    true
+   ],
+   [
+    "Write a reply to a customer review",
+    false
+   ],
+   [
+    "How much is left after the delivery fee?",
+    true
+   ],
+   [
+    "Suggest a name for a new menu item",
+    false
+   ]
+  ],
+  "pick_example": {
+   "request": "What is the difference between the two prices?",
+   "candidates": [
+    [
+     "sum_cell",
+     "output key: total"
+    ],
+    [
+     "difference_cell",
+     "output key: difference"
+    ]
+   ],
+   "answer": "difference_cell"
+  }
+ }
 }

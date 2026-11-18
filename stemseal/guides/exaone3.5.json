@@ -54,5 +54,14 @@
  "search_words_prompt": "아래 요청을 처리하려면 어떤 계산이 필요한지, 그 계산을 부르는 표준 용어를 한국어로 3~6개 적어 주세요. 가게 장부나 교과서에서 쓰는 이름이면 검색이 잘 됩니다. 숫자와 날짜는 빼 주세요. 계산이 아니라 글쓰기라면 그 일을 부르는 말을 적으면 됩니다.",
  "measured_notes": [
   "exp8: 요청 검색과 모델이 쓴 계산 이름 검색을 번갈아 합치면 세포 찾기 처음 보는 문장 29→35/36, 새 문장 32→34/36 (낱말 0.9초, 37토큰)"
- ]
+ ],
+ "prompt_rules_en": [
+  "In past measurements, using a candidate with the right output key was 3 times as accurate as computing alone. When you see a matching candidate, let that cell do it.",
+  "When a candidate cell's output key is the value the request asks for, using that cell works better. You get a verified answer right away, far more accurate than computing it yourself.",
+  "If a cell computes a different value from what the request asks, it is better not to pick it. Answer none; the need is recorded so a new cell can be made, and it may be ready next time.",
+  "Writing, translation, summaries and guesses suit you better than a cell. Do those yourself.",
+  "Copy the values from the data into the same shape as the input example; the cell accepts that best.",
+  "Answer with a single JSON object so the hub can read it directly."
+ ],
+ "search_words_prompt_en": "List 3-6 standard names (in English) for the calculation this request needs, the words a bookkeeping guide or textbook would use. Leave out numbers and dates. If it is writing rather than calculation, name that task."
 }

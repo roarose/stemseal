@@ -53,6 +53,9 @@ Any MCP client (LM Studio, Claude Desktop, Ollama front-ends that speak MCP, ...
 
 Tools: `find_cell`, `call_cell`, `list_cells`, `request_cell`.
 
+Language: guides answer in Korean when the request contains Hangul and in English otherwise. Set `STEMSEAL_LANG=ko` or `en` to fix it. The numbers above were measured with the Korean wording; the English wording is a translation and has not been re-measured yet.
+안내 문구는 요청에 한글이 있으면 한국어, 없으면 영어로 나갑니다. 위 수치는 한국어 문구로 잰 것이고, 영어 문구는 아직 따로 재지 않았습니다.
+
 ## Command line
 
 ```

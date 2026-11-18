@@ -28,9 +28,20 @@ def guide_for(model):
         g["weaknesses"] = g["weaknesses"] + t["weaknesses"]; g["id"] += "+tiny"
     return g
 
-def brief(g):
-    return {"id": g["id"], "version": g["version"], "source": g["source"], "rules": g["prompt_rules"], "teaching": g.get("teaching"),
-            "max_candidates": g["selection"]["max_candidates"], "search_words": g["selection"].get("search_words", False), "search_words_prompt": g.get("search_words_prompt"), "output_format": g["selection"]["output_format"], "disable_thinking": g["selection"]["disable_thinking"]}
+def lang_of(text):
+    """Guide language: STEMSEAL_LANG (ko|en) if set, else Korean when the request has Hangul, otherwise English.
+    The measured results were with the Korean wording; the English wording is a translation, not yet re-measured."""
+    v = (os.environ.get("STEMSEAL_LANG") or "").lower()
+    if v in ("ko", "en"): return v
+    return "ko" if any("\uac00" <= ch <= "\ud7a3" for ch in (text or "")) else "en"
+
+def brief(g, lang="ko"):
+    en = lang == "en"
+    return {"id": g["id"], "version": g["version"], "source": g["source"], "lang": lang,
+            "rules": g.get("prompt_rules_en") if en and g.get("prompt_rules_en") else g["prompt_rules"],
+            "teaching": g.get("teaching_en") if en and g.get("teaching_en") else g.get("teaching"),
+            "max_candidates": g["selection"]["max_candidates"], "search_words": g["selection"].get("search_words", False),
+            "search_words_prompt": g.get("search_words_prompt_en") if en and g.get("search_words_prompt_en") else g.get("search_words_prompt"), "output_format": g["selection"]["output_format"], "disable_thinking": g["selection"]["disable_thinking"]}
 
 def _short(v):
     if isinstance(v, list): return v[:3] + (["..."] if len(v) > 3 else [])
@@ -52,7 +63,7 @@ def find(need, model=None, caller="unknown", request=None, k=None, min_score=Non
         if s.get("show_input_example"):
             try: h["input_example"] = _short(json.load(open(os.path.join(c["dir"], "gt_cases.json"), encoding="utf-8"))[0]["input"])
             except Exception: pass
-    out = {"guide": brief(g), "cells": hits}
+    out = {"guide": brief(g, lang_of(need + " " + (request or ""))), "cells": hits}
     if not hits: out["no_cell"] = hub.request_cell(need + (" | " + request if request else ""), caller=caller)
     if s.get("output_format") == "schema":
         # constrained decoding: the model can only answer with a candidate's name or "none", and only with the cell's input keys

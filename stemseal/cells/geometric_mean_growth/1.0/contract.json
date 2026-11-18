@@ -5,7 +5,11 @@
   "기하평균",
   "평균 성장률",
   "geometric mean",
-  "분기 성장률"
+  "분기 성장률",
+  "average growth rate",
+  "compound growth",
+  "cagr",
+  "growth rate"
  ],
  "input_schema": {
   "required": [
@@ -17,5 +21,7 @@
  },
  "output_keys": [
   "geo_mean_pct"
- ]
+ ],
+ "description_en": "Geometric mean growth rate (%) of a list of period growth rates (decimals).",
+ "when_to_use_en": "When combining several periods' growth rates into one average growth rate."
 }

@@ -5,7 +5,11 @@
   "연차",
   "연차 일수",
   "근속",
-  "휴가 일수"
+  "휴가 일수",
+  "annual leave",
+  "paid leave days",
+  "vacation days",
+  "years of service"
  ],
  "input_schema": {
   "required": [
@@ -17,5 +21,7 @@
  },
  "output_keys": [
   "leave_days"
- ]
+ ],
+ "description_en": "Annual paid leave days from years of service (Korean labor law: 15 days after 1 year, +1 every 2 years, max 25).",
+ "when_to_use_en": "When deciding an employee's annual leave days."
 }

@@ -5,7 +5,11 @@
   "퍼센트포인트",
   "%p",
   "비율 차이",
-  "포인트 차이"
+  "포인트 차이",
+  "percentage point",
+  "pp difference",
+  "rate difference",
+  "points"
  ],
  "input_schema": {
   "required": [
@@ -19,5 +23,7 @@
  },
  "output_keys": [
   "pp_diff"
- ]
+ ],
+ "description_en": "Difference between two rates (%) in percentage points.",
+ "when_to_use_en": "When comparing two rates such as conversion or return rates, in points rather than percent growth."
 }
