@@ -96,6 +96,11 @@ def repair(name, inp, g):
                 is_obj = "object" in str(props.get(k, ""))
                 if (not is_obj and isinstance(iv, (list, int, float)) and not isinstance(iv, bool)) or (is_obj and isinstance(iv, dict) and iv):
                     inp[k] = iv; fx.append("unwrap:%s" % k)
+    for k, rule in (c["contract"].get("input_sanity") or {}).items():
+        # a cell can name an optional input that small models commonly fill with the wrong unit; drop it and say so
+        v = inp.get(k)
+        if rule.get("action") == "drop" and isinstance(v, (int, float)) and not isinstance(v, bool) and v < rule.get("min", float("-inf")):
+            inp.pop(k); fx.append("dropped:%s=%s (%s)" % (k, v, rule.get("why", "out of range")))
     if "rename_single" in g["selection"].get("repair_input", []):
         miss = [k for k in rq if k not in inp]; extra = [k for k in inp if k not in rq and k not in props]
         if len(miss) == 1 and len(extra) == 1: inp[miss[0]] = inp.pop(extra[0]); fx.append("rename:%s->%s" % (extra[0], miss[0]))

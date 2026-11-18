@@ -24,5 +24,12 @@
   "monthly_wage"
  ],
  "description_en": "Monthly wage (won) from an hourly wage at 209 hours a month (Korean standard, paid weekly rest included).",
- "when_to_use_en": "When converting an hourly wage, or the minimum wage, to a monthly wage."
+ "when_to_use_en": "When converting an hourly wage, or the minimum wage, to a monthly wage.",
+ "input_sanity": {
+  "hours": {
+   "min": 100,
+   "action": "drop",
+   "why": "hours is paid hours per month; a value under 100 is almost always hours per week, so the standard 209 is used"
+  }
+ }
 }
