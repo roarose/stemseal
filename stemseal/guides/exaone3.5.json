@@ -1,0 +1,58 @@
+{
+ "id": "exaone3.5",
+ "version": "2026-11-17",
+ "match": [
+  "exaone3.5*",
+  "exaone-3.5*",
+  "exaone*"
+ ],
+ "source": "measured on this hub (exp3, exp4: 53 tasks, 34~37 cells)",
+ "weaknesses": [
+  "맞는 세포가 후보에 있어도 '없음'을 고르고 혼자 풀다 틀림 (exp4 세포 있는 업무 실패 7건 전부)",
+  "목록이 길면 비슷한 세포를 억지로 고름 (exp3 전체 목록 방식, 비슷한 업무 0/10)",
+  "데이터를 세포 입력 키 안에 한 겹 더 감쌈 (exp3 4건)",
+  "검색어를 좁게 써서 맞는 세포가 후보에서 빠짐 (exp3 6건)",
+  "혼자 계산하면 거의 틀림 (세포 있는 업무 7/33)"
+ ],
+ "selection": {
+  "max_candidates": 5,
+  "min_score": 0.15,
+  "show_output_keys": true,
+  "show_input_example": true,
+  "decide_by": "output_check",
+  "output_format": "json",
+  "disable_thinking": false,
+  "repair_input": [
+   "unwrap",
+   "rename_single"
+  ],
+  "retry_on_invalid_input": 1,
+  "search_with_request": true,
+  "search_words": true
+ },
+ "prompt_rules": [
+  "지난 측정에서 출력 키가 맞는 후보를 쓴 경우 정답률이 혼자 계산할 때의 3배였습니다. 맞는 후보가 보이면 그 세포에 맡기세요.",
+  "후보 세포의 출력 키가 요청이 묻는 값과 같으면 그 세포를 쓰는 편이 낫습니다. 검증된 답이 바로 나오고, 혼자 계산할 때보다 훨씬 정확합니다.",
+  "출력이 요청과 다른 값을 계산하는 세포라면 고르지 않는 편이 낫습니다. 그때는 none 으로 답하면 허브가 그 계산을 새 세포로 만들도록 접수하고, 다음에 다시 찾으면 준비되어 있습니다.",
+  "글쓰기, 번역, 요약, 추측은 세포보다 당신이 직접 하는 편이 잘 맞습니다.",
+  "입력은 입력 예시와 같은 모양으로 data.json 값을 옮기면 세포가 가장 잘 받아들입니다.",
+  "JSON 한 개로 답하면 허브가 바로 읽고 처리합니다."
+ ],
+ "sources": [
+  "experiments/exp3/summary.md",
+  "experiments/exp4/summary4.md"
+ ],
+ "measured": {
+  "exp3_full_list": "35/53",
+  "exp3_search": "37/53",
+  "exp4_guide": "41/53",
+  "alone_has_tasks": "7/33",
+  "exp5_hub_guide": "44/53",
+  "exp5_sharpened_descriptions": "46/53 (descriptions tuned on the same tasks; overstated)"
+ },
+ "style_note": "설득형 문구(water-channel 원칙): 금지·강요 대신 이점과 다음 길을 알려 준다. 2026-11-17",
+ "search_words_prompt": "아래 요청을 처리하려면 어떤 계산이 필요한지, 그 계산을 부르는 표준 용어를 한국어로 3~6개 적어 주세요. 가게 장부나 교과서에서 쓰는 이름이면 검색이 잘 됩니다. 숫자와 날짜는 빼 주세요. 계산이 아니라 글쓰기라면 그 일을 부르는 말을 적으면 됩니다.",
+ "measured_notes": [
+  "exp8: 요청 검색과 모델이 쓴 계산 이름 검색을 번갈아 합치면 세포 찾기 처음 보는 문장 29→35/36, 새 문장 32→34/36 (낱말 0.9초, 37토큰)"
+ ]
+}

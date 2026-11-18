@@ -1,0 +1,10 @@
+{
+ "cell": "annual_leave_days",
+ "version": "1.0",
+ "sha256": "2cf7029ba701c8fb927fd724b57a547e897fca9adb06e66979a5faa5d95d0f46",
+ "gt_total": 24,
+ "gt_passed": 24,
+ "deterministic": true,
+ "locked_at": "2026-11-18T06:59:09+00:00",
+ "locked_by": "exp11-demand (boss 2026-11-18)"
+}

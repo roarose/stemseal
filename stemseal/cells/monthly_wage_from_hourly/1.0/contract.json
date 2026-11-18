@@ -1,0 +1,22 @@
+{
+ "description": "시급을 월 209시간(주휴 포함) 기준 월급(원)으로 환산.",
+ "when_to_use": "시급을 월급으로, 최저임금 월 환산액을 볼 때.",
+ "keywords": [
+  "월급 환산",
+  "209시간",
+  "시급 월급",
+  "최저임금 월급"
+ ],
+ "input_schema": {
+  "required": [
+   "hourly_wage"
+  ],
+  "properties": {
+   "hourly_wage": "number > 0 (won)",
+   "hours": "number > 0, default 209"
+  }
+ },
+ "output_keys": [
+  "monthly_wage"
+ ]
+}

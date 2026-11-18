@@ -1,0 +1,24 @@
+{
+ "description": "값이 목록에서 몇 퍼센트 위치인지(값보다 작은 것의 비율, %).",
+ "when_to_use": "어떤 값의 백분위 순위, 상위·하위 몇 %인지 볼 때.",
+ "keywords": [
+  "백분위",
+  "퍼센타일",
+  "percentile",
+  "순위 비율",
+  "몇 퍼센트 위치"
+ ],
+ "input_schema": {
+  "required": [
+   "values",
+   "value"
+  ],
+  "properties": {
+   "values": "list of number",
+   "value": "number"
+  }
+ },
+ "output_keys": [
+  "percentile_rank"
+ ]
+}

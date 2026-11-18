@@ -1,0 +1,41 @@
+{
+ "id": "tiny",
+ "version": "2026-11-17",
+ "match": [
+  "*:1b*",
+  "*:1.5b*",
+  "*:2b*",
+  "*:3b*",
+  "*:4b*"
+ ],
+ "source": "general guidance for models of 4B or smaller (unmeasured on this hub)",
+ "weaknesses": [
+  "도구 선택 F1 이 0.7 안팎으로 낮음",
+  "후보가 많을수록 잘못 고름"
+ ],
+ "selection": {
+  "max_candidates": 3,
+  "min_score": 0.15,
+  "show_output_keys": true,
+  "show_input_example": true,
+  "decide_by": "output_check",
+  "output_format": "json",
+  "disable_thinking": false,
+  "repair_input": [
+   "unwrap",
+   "rename_single"
+  ],
+  "retry_on_invalid_input": 1
+ },
+ "prompt_rules": [
+  "후보 세포의 출력 키가 요청이 묻는 값과 같으면 그 세포를 쓰는 편이 낫습니다. 검증된 답이 바로 나오고, 혼자 계산할 때보다 훨씬 정확합니다.",
+  "출력이 요청과 다른 값을 계산하는 세포라면 고르지 않는 편이 낫습니다. 그때는 none 으로 답하면 허브가 그 계산을 새 세포로 만들도록 접수하고, 다음에 다시 찾으면 준비되어 있습니다.",
+  "글쓰기, 번역, 요약, 추측은 세포보다 당신이 직접 하는 편이 잘 맞습니다.",
+  "입력은 입력 예시와 같은 모양으로 data.json 값을 옮기면 세포가 가장 잘 받아들입니다.",
+  "JSON 한 개로 답하면 허브가 바로 읽고 처리합니다."
+ ],
+ "sources": [
+  "https://www.docker.com/blog/local-llm-tool-calling-a-practical-evaluation/"
+ ],
+ "style_note": "설득형 문구(water-channel 원칙): 금지·강요 대신 이점과 다음 길을 알려 준다. 2026-11-17"
+}

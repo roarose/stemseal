@@ -1,0 +1,23 @@
+{
+ "description": "두 비율(%)의 차이를 퍼센트포인트(%p)로.",
+ "when_to_use": "재방문율·전환율처럼 비율끼리의 차이를 %p 로 볼 때(증가율 % 가 아니라).",
+ "keywords": [
+  "퍼센트포인트",
+  "%p",
+  "비율 차이",
+  "포인트 차이"
+ ],
+ "input_schema": {
+  "required": [
+   "before_pct",
+   "after_pct"
+  ],
+  "properties": {
+   "before_pct": "number (%)",
+   "after_pct": "number (%)"
+  }
+ },
+ "output_keys": [
+  "pp_diff"
+ ]
+}

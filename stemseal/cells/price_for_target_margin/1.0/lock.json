@@ -1,0 +1,10 @@
+{
+ "cell": "price_for_target_margin",
+ "version": "1.0",
+ "sha256": "02d858af1b792c37ceb7b932764a327f6719dd9aa26b230461b40330a2d909d8",
+ "gt_total": 24,
+ "gt_passed": 24,
+ "deterministic": true,
+ "locked_at": "2026-11-18T06:59:09+00:00",
+ "locked_by": "exp11-demand (boss 2026-11-18)"
+}

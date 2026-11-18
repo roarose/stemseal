@@ -1,0 +1,10 @@
+{
+ "cell": "currency_convert",
+ "version": "1.0",
+ "sha256": "8b9085b6ea582216759bbad400fa4d45b88210a36785dd365dc279580b440bd5",
+ "gt_total": 24,
+ "gt_passed": 24,
+ "deterministic": true,
+ "locked_at": "2026-11-18T06:59:08+00:00",
+ "locked_by": "exp11-demand (boss 2026-11-18)"
+}

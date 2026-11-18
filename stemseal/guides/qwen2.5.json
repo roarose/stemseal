@@ -1,0 +1,47 @@
+{
+ "id": "qwen2.5",
+ "version": "2026-11-17",
+ "match": [
+  "qwen2.5*",
+  "qwen2*"
+ ],
+ "source": "known traits from public reports (unmeasured on this hub) | measured on qwen2.5:3b (exp10, 2026-11-18)",
+ "weaknesses": [
+  "도구를 부르지 않고 호출 JSON 을 글로 출력함(코드 블록 안)",
+  "행동 대신 사용자에게 허락을 물음",
+  "7B 도구 선택 F1 약 0.75",
+  "예/아니오 확인 질문에는 맞는 세포에도 거의 항상 '아니오'로 답함(3B, exp10). 후보 목록에서 고르게 하는 편이 낫다",
+  "검색어를 직접 쓰면 숫자·중국어 글자·하이픈 묶음이 섞여 검색을 흐림(exp10: 맞는 세포가 후보에 69/108). 요청 문장 검색과 따로 돌리게 함"
+ ],
+ "selection": {
+  "max_candidates": 5,
+  "min_score": 0.15,
+  "show_output_keys": true,
+  "show_input_example": true,
+  "decide_by": "output_check",
+  "output_format": "json",
+  "disable_thinking": false,
+  "repair_input": [
+   "unwrap",
+   "rename_single"
+  ],
+  "retry_on_invalid_input": 1,
+  "search_words": true
+ },
+ "prompt_rules": [
+  "바로 고르면 시간이 절약됩니다. 확인은 허브가 대신 합니다.",
+  "후보 세포의 출력 키가 요청이 묻는 값과 같으면 그 세포를 쓰는 편이 낫습니다. 검증된 답이 바로 나오고, 혼자 계산할 때보다 훨씬 정확합니다.",
+  "출력이 요청과 다른 값을 계산하는 세포라면 고르지 않는 편이 낫습니다. 그때는 none 으로 답하면 허브가 그 계산을 새 세포로 만들도록 접수하고, 다음에 다시 찾으면 준비되어 있습니다.",
+  "글쓰기, 번역, 요약, 추측은 세포보다 당신이 직접 하는 편이 잘 맞습니다.",
+  "입력은 입력 예시와 같은 모양으로 data.json 값을 옮기면 세포가 가장 잘 받아들입니다.",
+  "JSON 한 개로 답하면 허브가 바로 읽고 처리합니다."
+ ],
+ "sources": [
+  "https://www.docker.com/blog/local-llm-tool-calling-a-practical-evaluation/",
+  "https://dev.to/kuroko1t/what-happens-when-local-llms-fail-at-tool-calling-testing-7-models-with-a-rust-coding-agent-cep"
+ ],
+ "style_note": "설득형 문구(water-channel 원칙): 금지·강요 대신 이점과 다음 길을 알려 준다. 2026-11-17",
+ "measured_notes": [
+  "exp10 (qwen2.5:3b, 처음 보는 업무 52개 x3): 혼자 5/44, 이 가이드(후보 목록에서 고르기) 88/156. 하나씩 예/아니오 확인(confirm) 방식은 42~53/156 으로 나쁨"
+ ]
+}

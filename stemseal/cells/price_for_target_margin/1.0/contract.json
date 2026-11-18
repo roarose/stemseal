@@ -1,0 +1,23 @@
+{
+ "description": "원가와 목표 마진율(판매가 기준 %)로 맞춰야 할 판매가.",
+ "when_to_use": "마진율을 정해 놓고 판매가를 거꾸로 정할 때.",
+ "keywords": [
+  "판매가 정하기",
+  "목표 마진",
+  "가격 책정",
+  "역산"
+ ],
+ "input_schema": {
+  "required": [
+   "cost",
+   "margin_pct"
+  ],
+  "properties": {
+   "cost": "number > 0",
+   "margin_pct": "0 <= number < 100"
+  }
+ },
+ "output_keys": [
+  "price"
+ ]
+}

@@ -1,0 +1,10 @@
+{
+ "cell": "geometric_mean_growth",
+ "version": "1.0",
+ "sha256": "6cab69e643547e7606ace91786dc1c1dc832e8b99565ccabc2fe03c121c1105a",
+ "gt_total": 24,
+ "gt_passed": 24,
+ "deterministic": true,
+ "locked_at": "2026-11-18T06:59:07+00:00",
+ "locked_by": "exp11-demand (boss 2026-11-18)"
+}

@@ -1,0 +1,95 @@
+{
+ "id": "llama3",
+ "version": "2026-11-17c",
+ "match": [
+  "llama3*",
+  "llama-3*"
+ ],
+ "source": "llama3.2:3b measured on this hub (exp5, 53 tasks, 2026-11-17); llama3.1:8b unmeasured",
+ "weaknesses": [
+  "맞는 세포를 고르고도 입력 값을 잘못 넣어 틀림 (llama3.2:3b 5건)",
+  "글쓰기·요약 요청에도 세포를 부름 (llama3.2:3b 3/10)",
+  "비슷한 세포를 억지로 고름 (원금균등→원리금균등, kg당 단가→객단가)",
+  "혼자 계산하면 거의 다 틀림 (llama3.2:3b 3/43)",
+  "인사나 잡담에도 도구를 부름",
+  "실패 뒤 나쁜 상태 고리에 빠짐",
+  "3B 는 도구 선택 F1 약 0.73, 8B 는 약 0.79~0.84",
+  "3B 급은 긴 규칙 목록과 '하지 마라' 식 부정 지시를 잘 못 따른다(공개 보고). exp6 에서 '글쓰기는 반드시 null' 규칙 뒤 맞는 후보 거절이 62/108 로 늘었다",
+  "예시(few-shot)와 단계 나누기, 고를 수 있는 값만 허용하는 구조화 출력(JSON schema)에서 정확도가 오른다(공개 보고)"
+ ],
+ "selection": {
+  "max_candidates": 3,
+  "min_score": 0.15,
+  "show_output_keys": true,
+  "show_input_example": true,
+  "decide_by": "output_check",
+  "output_format": "schema",
+  "disable_thinking": false,
+  "repair_input": [
+   "unwrap",
+   "rename_single"
+  ],
+  "retry_on_invalid_input": 1
+ },
+ "prompt_rules": [
+  "질문이 묻는 값과 출력 키가 같은 세포를 고르면 정확한 답이 바로 나옵니다.",
+  "입력 값은 data.json 에서 그대로 옮기면 세포가 잘 받아들입니다.",
+  "맞는 세포가 없으면 none 을 고르세요. 허브가 그 계산을 곧 새 세포로 만듭니다."
+ ],
+ "sources": [
+  "https://www.docker.com/blog/local-llm-tool-calling-a-practical-evaluation/",
+  "https://insiderllm.com/guides/function-calling-local-llms/"
+ ],
+ "measured": {
+  "llama3.2:3b": {
+   "alone": "3/43",
+   "with_guide": "35/53",
+   "has_tasks": "24/33",
+   "none_tasks_kept_off_cells": "7/10"
+  }
+ },
+ "teaching": {
+  "style": "stepwise",
+  "steps": [
+   "1단계: 숫자 계산 요청인지 true/false 로만 답한다",
+   "2단계: 후보 이름 중 하나 또는 none 만 고른다(허브가 준 pick_schema 로 강제)",
+   "3단계: 고른 세포의 입력만 채운다(허브가 준 input_json_schema 로 강제)"
+  ],
+  "gate_examples": [
+   [
+    "이번 달 매출 합계와 평균을 알려 줘",
+    true
+   ],
+   [
+    "손님 리뷰에 답글 써 줘",
+    false
+   ],
+   [
+    "배달비 빼면 얼마 남아?",
+    true
+   ],
+   [
+    "신메뉴 이름 추천해 줘",
+    false
+   ]
+  ],
+  "pick_example": {
+   "request": "두 가격의 차이가 얼마야?",
+   "candidates": [
+    [
+     "sum_cell",
+     "출력 키: total"
+    ],
+    [
+     "difference_cell",
+     "출력 키: difference"
+    ]
+   ],
+   "answer": "difference_cell"
+  }
+ },
+ "style_note": "설득형 문구(water-channel 원칙): 금지·강요 대신 이점과 다음 길을 알려 준다. 2026-11-17",
+ "measured_notes": [
+  "exp10: 허브 1순위부터 예/아니오 확인(confirm)은 64~65/156 로 지금 방식(v3, 78/156)보다 나쁨"
+ ]
+}

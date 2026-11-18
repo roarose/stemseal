@@ -1,0 +1,10 @@
+{
+ "cell": "percentage_point_diff",
+ "version": "1.0",
+ "sha256": "5322a96a6f9fa33244762fc957dac9d87e51ba1a426b7ed6968e580949ceb158",
+ "gt_total": 24,
+ "gt_passed": 24,
+ "deterministic": true,
+ "locked_at": "2026-11-18T06:59:10+00:00",
+ "locked_by": "exp11-demand (boss 2026-11-18)"
+}

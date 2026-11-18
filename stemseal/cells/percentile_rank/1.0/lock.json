@@ -1,0 +1,10 @@
+{
+ "cell": "percentile_rank",
+ "version": "1.0",
+ "sha256": "3c31d5bb01c692cde384798d6cffef7d8136ea6cfe1d11dd9f9d1d0343109368",
+ "gt_total": 24,
+ "gt_passed": 24,
+ "deterministic": true,
+ "locked_at": "2026-11-18T06:59:08+00:00",
+ "locked_by": "exp11-demand (boss 2026-11-18)"
+}

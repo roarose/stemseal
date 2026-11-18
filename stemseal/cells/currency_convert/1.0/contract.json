@@ -1,0 +1,24 @@
+{
+ "description": "외화 금액을 환율(1단위당 원)로 원화 환산, 원 미만 버림.",
+ "when_to_use": "달러·엔·유로 등 외화를 원화로 바꿀 때.",
+ "keywords": [
+  "환율",
+  "환전",
+  "원화 환산",
+  "달러",
+  "외화"
+ ],
+ "input_schema": {
+  "required": [
+   "amount",
+   "rate"
+  ],
+  "properties": {
+   "amount": "number >= 0",
+   "rate": "number > 0 (won per unit)"
+  }
+ },
+ "output_keys": [
+  "krw"
+ ]
+}

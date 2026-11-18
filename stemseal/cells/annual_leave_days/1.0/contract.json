@@ -1,0 +1,21 @@
+{
+ "description": "근속 연수로 연차 일수(1년 이상 15일, 이후 2년마다 1일, 최대 25일).",
+ "when_to_use": "직원 연차 휴가 일수를 정할 때.",
+ "keywords": [
+  "연차",
+  "연차 일수",
+  "근속",
+  "휴가 일수"
+ ],
+ "input_schema": {
+  "required": [
+   "years"
+  ],
+  "properties": {
+   "years": "int >= 0"
+  }
+ },
+ "output_keys": [
+  "leave_days"
+ ]
+}

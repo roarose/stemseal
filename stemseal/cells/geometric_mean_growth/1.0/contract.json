@@ -1,0 +1,21 @@
+{
+ "description": "성장률 목록(소수)의 기하평균 성장률(%).",
+ "when_to_use": "여러 기간 성장률을 하나의 평균 성장률로 합칠 때(기하평균).",
+ "keywords": [
+  "기하평균",
+  "평균 성장률",
+  "geometric mean",
+  "분기 성장률"
+ ],
+ "input_schema": {
+  "required": [
+   "rates"
+  ],
+  "properties": {
+   "rates": "list of number (0.05 = 5%)"
+  }
+ },
+ "output_keys": [
+  "geo_mean_pct"
+ ]
+}

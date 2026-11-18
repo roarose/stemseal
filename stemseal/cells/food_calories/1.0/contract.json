@@ -1,0 +1,23 @@
+{
+ "description": "100g당 열량과 먹은 양(g)으로 섭취 열량(kcal).",
+ "when_to_use": "음식 칼로리, 먹은 양의 열량을 계산할 때.",
+ "keywords": [
+  "열량",
+  "칼로리",
+  "kcal",
+  "100g당"
+ ],
+ "input_schema": {
+  "required": [
+   "kcal_per_100g",
+   "grams"
+  ],
+  "properties": {
+   "kcal_per_100g": "number >= 0",
+   "grams": "number >= 0"
+  }
+ },
+ "output_keys": [
+  "kcal"
+ ]
+}

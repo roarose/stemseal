@@ -1,0 +1,10 @@
+{
+ "cell": "food_calories",
+ "version": "1.0",
+ "sha256": "f6303f34c4f034a531fa71aa2f75076158e0b0d095c8abbb1586d9bce961c805",
+ "gt_total": 24,
+ "gt_passed": 24,
+ "deterministic": true,
+ "locked_at": "2026-11-18T06:59:09+00:00",
+ "locked_by": "exp11-demand (boss 2026-11-18)"
+}
