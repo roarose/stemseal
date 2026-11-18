@@ -31,8 +31,14 @@ def handle(name, a):
             if isinstance(f, dict): data = {**f, **data}
         return guides.call(a.get("cell", ""), data, model=MODEL, caller=CALLER)
     raise ValueError("unknown tool")
-def send(o): sys.stdout.write(json.dumps(o, ensure_ascii=False) + "\n"); sys.stdout.flush()
+def send(o):
+    # ASCII-only JSON (\uXXXX escapes): on Windows a pipe defaults to the locale code page (cp949 on Korean Windows),
+    # which garbles Korean text for an MCP client that reads UTF-8.
+    sys.stdout.write(json.dumps(o, ensure_ascii=True) + "\n"); sys.stdout.flush()
 def main():
+    for st in (sys.stdin, sys.stdout):
+        try: st.reconfigure(encoding="utf-8", errors="replace")
+        except Exception: pass
     for line in sys.stdin:
         line = line.strip()
         if not line: continue

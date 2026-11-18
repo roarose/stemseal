@@ -14,7 +14,16 @@ import ast, hashlib, json, os, re, subprocess, sys, time
 from datetime import datetime, timezone
 
 PKG = os.path.dirname(os.path.abspath(__file__))
-HOME = os.environ.get("STEMSEAL_HOME") or os.path.join(os.path.expanduser("~"), ".stemseal")   # your own log; nothing is sent anywhere
+def _home():
+    """Where your own log lives; nothing is sent anywhere. MCP apps sometimes start servers without HOME/USERPROFILE,
+    so fall back to the app-data folder, then the temp folder, rather than a path relative to wherever the app runs."""
+    if os.environ.get("STEMSEAL_HOME"): return os.environ["STEMSEAL_HOME"]
+    h = os.path.expanduser("~")
+    if h and not h.startswith("~") and os.path.isdir(h): return os.path.join(h, ".stemseal")
+    for k in ("LOCALAPPDATA", "APPDATA"):
+        if os.environ.get(k): return os.path.join(os.environ[k], "stemseal")
+    import tempfile; return os.path.join(tempfile.gettempdir(), "stemseal")
+HOME = _home()
 CELLS = os.environ.get("STEMSEAL_CELLS") or os.path.join(PKG, "cells")
 LEDGER = os.path.join(HOME, "ledger.jsonl")
 REPO = "https://github.com/roarose/stemseal"
@@ -27,9 +36,12 @@ RUNNER = os.path.join(os.path.dirname(os.path.abspath(__file__)), "_runner.py")
 def now(): return datetime.now(timezone.utc).isoformat(timespec="seconds")
 def sha(b): return hashlib.sha256(b if isinstance(b, bytes) else b.encode("utf-8")).hexdigest()
 def _log(rec):
-    os.makedirs(os.path.dirname(LEDGER), exist_ok=True)
-    rec = {"ts": now(), **rec}
-    with open(LEDGER, "a", encoding="utf-8") as f: f.write(json.dumps(rec, ensure_ascii=False) + "\n")
+    """Logging must never break a call: if the log folder cannot be written, the answer still goes back."""
+    try:
+        os.makedirs(os.path.dirname(LEDGER), exist_ok=True)
+        rec = {"ts": now(), **rec}
+        with open(LEDGER, "a", encoding="utf-8") as f: f.write(json.dumps(rec, ensure_ascii=False) + "\n")
+    except Exception: pass
 
 # ---------------------------------------------------------------- gate 1: purity
 def purity_check(src):
@@ -193,7 +205,8 @@ PROMISE = ("이 계산을 하는 검증된 세포가 아직 없습니다. 지금
 def _ticket(need):
     return "D-" + sha(re.sub(r"\s+", " ", (need or "").strip().lower()))[:8]
 def _rows():
-    return [json.loads(l) for l in open(LEDGER, encoding="utf-8") if l.strip()] if os.path.exists(LEDGER) else []
+    try: return [json.loads(l) for l in open(LEDGER, encoding="utf-8") if l.strip()] if os.path.exists(LEDGER) else []
+    except Exception: return []
 def request_cell(need, caller="unknown"):
     """An AI says: I needed this and nothing fit. Recorded as demand; this is what gets differentiated next.
     Returns a ticket (same need -> same ticket) and a promise, so the caller knows the channel is being built and comes back."""
