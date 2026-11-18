@@ -29,7 +29,7 @@ Caveats, honestly / 솔직한 한계:
 ## Install / 설치
 
 ```
-pip install git+https://github.com/roarose/stemseal
+pip install stemseal
 stemseal verify          # re-checks every lock and ground-truth case
 ```
 
