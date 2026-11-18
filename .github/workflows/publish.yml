@@ -1,0 +1,48 @@
+# Publish to PyPI when a GitHub Release is published.
+# Uses PyPI Trusted Publishing (OIDC): no API token is stored anywhere.
+# PyPI side: project "stemseal" -> publisher roarose/stemseal, workflow publish.yml, environment pypi.
+name: publish
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Check tag matches package version
+        run: |
+          pkg=$(python -c "import re;print(re.search(r'__version__\s*=\s*\"([^\"]+)\"',open('stemseal/__init__.py').read()).group(1))")
+          tag="${GITHUB_REF_NAME#v}"
+          echo "package=$pkg tag=$tag"
+          test "$pkg" = "$tag"
+      - name: Verify locked cells
+        run: |
+          pip install .
+          stemseal verify
+      - name: Build
+        run: |
+          pip install build
+          python -m build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+      - uses: pypa/gh-action-pypi-publish@release/v1
