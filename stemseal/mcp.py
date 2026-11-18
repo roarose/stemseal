@@ -50,6 +50,19 @@ def handle(name, a):
         if r.get("status") == "not_available" and not (hub.re.fullmatch(r"[a-z][a-z0-9_]{2,63}", cell) and hub.load(cell)):
             # small models often guess a cell name ("wages") instead of calling find_cell first: show the real ones
             f = find_for_mcp(cell.replace("_", " ") + " " + " ".join(str(k) for k in data))
+            g = guides.guide_for(MODEL)
+            # strict: only spelling fixes count here (not rename_single), so an unrelated input never gets run
+            g["selection"]["repair_input"] = [x for x in g["selection"].get("repair_input", []) if x != "rename_single"]
+            for cand in f["cells"]:
+                # the guessed name plus the input it came with point at one real cell: when that cell's required inputs are
+                # all there (after the usual repairs), run it rather than stop at a choice a small model often abandons
+                fixed, _ = guides.repair(cand["cell"], data, g)
+                if data and all(k in fixed for k in cand["required_inputs"]):
+                    r2 = guides.call(cand["cell"], data, model=MODEL, caller=CALLER)
+                    if r2.get("status") == "ok":
+                        r2["resolved_from"] = cell
+                        r2["note"] = "No cell is named %r; ran %s, the cell that matches this request and input. This result is verified." % (cell, cand["cell"])
+                        return r2
             if f["cells"]:
                 r["did_you_mean"] = f["cells"]; r["next_step"] = f["next_step"]
                 r["reason"] = "no cell is named %r. Use one of did_you_mean, with its exact name." % cell

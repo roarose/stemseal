@@ -96,6 +96,12 @@ def repair(name, inp, g):
                 is_obj = "object" in str(props.get(k, ""))
                 if (not is_obj and isinstance(iv, (list, int, float)) and not isinstance(iv, bool)) or (is_obj and isinstance(iv, dict) and iv):
                     inp[k] = iv; fx.append("unwrap:%s" % k)
+    norm = lambda x: "".join(ch for ch in str(x).lower() if ch.isalnum())
+    for k in list(inp):
+        # hourlyWage / Hourly-Wage -> hourly_wage: same key in another spelling (small models write camelCase often)
+        if k not in props and k not in rq:
+            m = [t for t in dict.fromkeys(list(rq) + list(props)) if norm(t) == norm(k) and t not in inp]
+            if len(m) == 1: inp[m[0]] = inp.pop(k); fx.append("rename:%s->%s" % (k, m[0]))
     for k, rule in (c["contract"].get("input_sanity") or {}).items():
         # a cell can name an optional input that small models commonly fill with the wrong unit; drop it and say so
         v = inp.get(k)
