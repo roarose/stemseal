@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>stemseal — verified cells for small LLMs</title>
+<meta name="description" content="Small LLMs guess at calculations. stemseal gives them verified, sha256-locked cells to call instead. Local, no server, no dependencies.">
+<meta property="og:title" content="stemseal">
+<meta property="og:description" content="Verified, sha256-locked calculation cells that small local LLMs call instead of guessing.">
+<meta property="og:url" content="https://stemseal.dev/">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect x='5' y='13' width='22' height='16' rx='3' fill='%23c2410c'/%3E%3Cpath d='M10 13V9a6 6 0 0 1 12 0v4' fill='none' stroke='%23c2410c' stroke-width='3'/%3E%3C/svg%3E">
+<style>
+  :root{
+    --bg:#faf8f4; --fg:#1c1917; --muted:#6b645c; --line:#e5e0d8;
+    --accent:#c2410c; --code:#f1ede6; --good:#15803d;
+    --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+    --sans:-apple-system,BlinkMacSystemFont,"Segoe UI","Apple SD Gothic Neo","Noto Sans KR",sans-serif;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{--bg:#141210;--fg:#ede9e3;--muted:#a39b91;--line:#2c2824;--code:#1f1c19;--accent:#fb923c;--good:#4ade80}
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.65 var(--sans)}
+  main{max-width:760px;margin:0 auto;padding:64px 24px 80px}
+  header .mark{font:600 15px var(--mono);color:var(--accent);letter-spacing:.02em}
+  h1{font-size:clamp(30px,5vw,44px);line-height:1.15;margin:12px 0 12px;letter-spacing:-.02em}
+  .ko{color:var(--muted)}
+  h2{font-size:13px;font-family:var(--mono);text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin:56px 0 16px;font-weight:600}
+  p{margin:0 0 12px}
+  a{color:var(--accent)}
+  .links{display:flex;gap:12px;flex-wrap:wrap;margin:28px 0 0}
+  .links a{font:500 14px var(--mono);text-decoration:none;border:1px solid var(--line);padding:8px 14px;border-radius:6px;color:var(--fg)}
+  .links a:hover{border-color:var(--accent)}
+  pre{background:var(--code);border:1px solid var(--line);border-radius:8px;padding:16px 18px;overflow-x:auto;font:14px/1.6 var(--mono);margin:0 0 12px}
+  code{font-family:var(--mono);font-size:.92em}
+  table{width:100%;border-collapse:collapse;font-size:15px}
+  th,td{text-align:left;padding:10px 8px;border-bottom:1px solid var(--line)}
+  th{font-weight:600;color:var(--muted);font-size:13px}
+  td.n{font-family:var(--mono);text-align:right;white-space:nowrap}
+  th.n{text-align:right}
+  td.up{color:var(--good);font-weight:600}
+  .steps{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}
+  .step{border:1px solid var(--line);border-radius:8px;padding:16px}
+  .step b{display:block;font-family:var(--mono);font-size:13px;color:var(--accent);margin-bottom:6px}
+  .step p{font-size:14px;margin:0}
+  ul{padding-left:20px;margin:0}
+  li{margin:0 0 8px}
+  .cells td:first-child{font-family:var(--mono);font-size:14px}
+  footer{margin-top:64px;padding-top:20px;border-top:1px solid var(--line);font-size:13px;color:var(--muted)}
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <div class="mark">stemseal</div>
+    <h1>Small LLMs guess at calculations.<br>stemseal gives them verified cells to call instead.</h1>
+    <p class="ko">작은 LLM은 계산을 어림짐작합니다. stemseal은 그 대신 부를 수 있는 검증된 세포를 줍니다.</p>
+    <div class="links">
+      <a href="https://github.com/roarose/stemseal">GitHub</a>
+      <a href="https://pypi.org/project/stemseal/">PyPI</a>
+      <a href="#install">pip install stemseal</a>
+    </div>
+  </header>
+
+  <h2>How a cell works</h2>
+  <div class="steps">
+    <div class="step"><b>1 · pure</b><p>One small deterministic function. No I/O, no clock, no randomness.<br><span class="ko">작고 결정적인 함수 하나.</span></p></div>
+    <div class="step"><b>2 · proven</b><p>Passes 20+ ground-truth cases before it enters the bank.<br><span class="ko">정답 사례 20개 이상 통과.</span></p></div>
+    <div class="step"><b>3 · sealed</b><p>Locked by sha256. A locked cell never changes; a fix is a new version.<br><span class="ko">sha256으로 잠기고 바뀌지 않음.</span></p></div>
+  </div>
+  <p style="margin-top:16px">If no cell fits, the model gets an honest “not available” instead of an invented answer. <span class="ko">맞는 세포가 없으면 지어낸 답 대신 “없음”을 돌려줍니다.</span></p>
+
+  <h2>What we measured</h2>
+  <p>52 held-out tasks, 3 runs each (156), local models through Ollama.</p>
+  <table>
+    <thead><tr><th>Model</th><th class="n">Alone</th><th class="n">With stemseal</th></tr></thead>
+    <tbody>
+      <tr><td>EXAONE 3.5 7.8B</td><td class="n">23%</td><td class="n up">78%</td></tr>
+      <tr><td>qwen2.5:3b</td><td class="n">11%</td><td class="n up">66%</td></tr>
+      <tr><td>llama3.2:3b</td><td class="n">7%</td><td class="n up">50%</td></tr>
+    </tbody>
+  </table>
+  <p style="margin-top:16px"><b>Honest limits.</b> One test set, written by us, mostly Korean business arithmetic — your tasks will differ. Cells help only where a cell exists; writing, translation and judgment stay with the model.</p>
+  <p class="ko">우리가 만든 시험 하나, 주로 한국어 업무 계산입니다. 세포가 있는 계산에서만 돕습니다.</p>
+
+  <h2 id="install">Install</h2>
+<pre>pip install stemseal
+stemseal verify     # re-checks every lock and ground-truth case</pre>
+  <p>Runs entirely on your machine. No server, no account, no dependencies, no telemetry.</p>
+
+  <h2>Connect to your model (MCP)</h2>
+<pre>{
+  "mcpServers": {
+    "stemseal": {
+      "command": "stemseal-mcp",
+      "env": { "STEMSEAL_MODEL": "qwen2.5:3b" }
+    }
+  }
+}</pre>
+  <p>Tools: <code>find_cell</code> · <code>call_cell</code> · <code>list_cells</code> · <code>request_cell</code>. Works with any MCP client — LM Studio, Claude Desktop, Ollama front-ends.</p>
+
+  <h2>Cells in 0.1</h2>
+  <table class="cells">
+    <tbody>
+      <tr><td>annual_leave_days</td><td>근속 연수로 연차 일수</td></tr>
+      <tr><td>currency_convert</td><td>외화를 원화로 환산</td></tr>
+      <tr><td>food_calories</td><td>100g당 열량과 먹은 양으로 섭취 열량</td></tr>
+      <tr><td>geometric_mean_growth</td><td>기간별 성장률의 기하평균</td></tr>
+      <tr><td>monthly_wage_from_hourly</td><td>시급을 월 209시간 기준 월급으로</td></tr>
+      <tr><td>percentage_point_diff</td><td>두 비율의 차이 (%p)</td></tr>
+      <tr><td>percentile_rank</td><td>값이 목록에서 몇 % 위치인지</td></tr>
+      <tr><td>price_for_target_margin</td><td>원가와 목표 마진율로 판매가</td></tr>
+    </tbody>
+  </table>
+  <p style="margin-top:16px">Need one that isn't here? <code>request_cell</code> records the need on your machine only and gives you a link to open an issue. Nothing is sent unless you open it.</p>
+
+  <footer>MIT licensed · <a href="https://github.com/roarose/stemseal">github.com/roarose/stemseal</a></footer>
+</main>
+</body>
+</html>
