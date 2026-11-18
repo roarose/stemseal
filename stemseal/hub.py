@@ -127,6 +127,14 @@ def register(name, src, contract, gt_cases, locked_by="unknown"):
     _log({"type": "lock", "cell": name, "version": version, "sha256": lock["sha256"], "gt": rep["total"], "by": locked_by})
     return {"locked": True, "cell": name, "version": version, "sha256": lock["sha256"], "report": rep}
 
+def input_help(c):
+    """What a caller needs to retry a refused call: the exact input keys, what each means, and one input that works."""
+    sch = c["contract"]["input_schema"]; h = {"required_inputs": sch.get("required", []), "inputs": sch.get("properties", {}),
+        "note": "Call call_cell again with exactly these keys in `input`. Optional inputs can be left out."}
+    try: h["input_example"] = json.load(open(os.path.join(c["dir"], "gt_cases.json"), encoding="utf-8"))[0]["input"]
+    except Exception: pass
+    return h
+
 # ---------------------------------------------------------------- the membrane: call
 def call(name, input_data, caller="unknown", version=None):
     """status = ok | not_available | invalid_input. A result only ever comes from a locked, untampered cell."""
@@ -135,7 +143,9 @@ def call(name, input_data, caller="unknown", version=None):
         rec = {"type": "call", "cell": name, "version": ver, "status": status, "caller": caller, "ms": round((time.time() - t0) * 1000, 1),
                "input_sha": sha(json.dumps(input_data, sort_keys=True, ensure_ascii=False))[:16] if isinstance(input_data, dict) else None, "reason": reason}
         _log(rec)
-        return {"status": status, "cell": name, "version": ver, "verified": status == "ok", "result": result, "reason": reason}
+        out = {"status": status, "cell": name, "version": ver, "verified": status == "ok", "result": result, "reason": reason}
+        if status == "invalid_input" and c: out["how_to_fix"] = input_help(c)
+        return out
     c = load(name, version) if isinstance(name, str) and re.fullmatch(r"[a-z][a-z0-9_]{2,63}", name or "") else None
     if not c: return env("not_available", reason="no locked cell with this name")
     ver = c["lock"]["version"]; cp = os.path.join(c["dir"], "cell.py")
@@ -149,8 +159,10 @@ def call(name, input_data, caller="unknown", version=None):
 
 # ---------------------------------------------------------------- find (how an AI picks)
 def _grams(s):
-    s = re.sub(r"[^0-9a-z가-힣]+", " ", (s or "").lower()); toks = s.split(); g = set(toks)
-    for t in toks: g.update(t[i:i + 2] for i in range(len(t) - 1))
+    """Words and their 2-letter pieces. Pieces with a digit are dropped: numbers in a request are data (10030, 3.2),
+    and their pieces only dilute the score of the words that name the calculation."""
+    s = re.sub(r"[^0-9a-z가-힣]+", " ", (s or "").lower()); toks = [t for t in s.split() if not t.isdigit()]; g = set(toks)
+    for t in toks: g.update(p for p in (t[i:i + 2] for i in range(len(t) - 1)) if not any(ch.isdigit() for ch in p))
     return g
 def _rank(need, min_score):
     q = _grams(need); scored = []

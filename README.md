@@ -66,7 +66,7 @@ stemseal request 대출 원리금 균등상환 월 납입액
 stemseal demand
 ```
 
-## Cells in 0.1.0
+## Cells
 
 | cell | computes | inputs |
 |---|---|---|

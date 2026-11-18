@@ -17,7 +17,7 @@
   ],
   "properties": {
    "hourly_wage": "number > 0 (won)",
-   "hours": "number > 0, default 209"
+   "hours": "optional: paid hours per MONTH (default 209 = 40 h/week incl. paid weekly rest). Leave it out for a standard full-time job; it is not hours per week."
   }
  },
  "output_keys": [
