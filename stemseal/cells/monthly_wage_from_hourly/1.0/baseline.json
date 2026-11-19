@@ -5,18 +5,18 @@
  "models": {
   "exaone3.5:7.8b": {
    "kind": "measured",
-   "tokens": 187.6,
-   "alone_out": 209.6,
+   "tokens": 68.6,
+   "alone_out": 90.6,
    "answer_out": 22.0,
    "n": 5,
-   "alone_correct": 0.2,
+   "alone_correct": 0.0,
    "with_cell_correct": 1.0,
    "retry_included": false,
    "cost_est_mean": 54.2,
    "cost_real_mean": 133.2,
    "cost_ratio": 2.458,
-   "measured_at": "2026-11-19T22:15:32+00:00",
-   "method": "ollama eval_count, temperature 0, num_ctx 4096, question built from the cell card (savings.question v1: asked for a worked solution)",
+   "measured_at": "2026-11-19T22:19:40+00:00",
+   "method": "ollama eval_count, temperature 0, num_ctx 4096, question built from the cell card, no worked solution asked (savings.question v2)",
    "where": "local Ollama, 8GB VRAM PC"
   }
  }
