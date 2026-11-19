@@ -36,13 +36,21 @@ def find_for_mcp(need, words=None):
     if out["cells"]: out["next_step"] = NEXT[lang]
     else: out["no_cell"] = r.get("no_cell")
     return out
+CORE = {"status", "cell", "version", "verified", "result", "reason", "how_to_fix", "guide", "repairs", "input_used", "answer_text", "say"}
 def handle(name, a):
-    if name == "find_cell":
-        out = find_for_mcp(a.get("need", ""), a.get("words") if isinstance(a.get("words"), list) else None)
-        # finding a cell costs tokens too (the request and the cards read back); the savings report subtracts it
-        hub._log({"type": "meter", "tool": "find_cell", "caller": CALLER, "model": MODEL,
-                  "tokens": {"meter": savings.METER, "method": savings.METHOD, "cost": savings.est_tokens(json.dumps(a, ensure_ascii=False, sort_keys=True)) + savings.est_tokens(json.dumps(out, ensure_ascii=False, sort_keys=True))}})
-        return out
+    """Every tool's tokens are counted. call_cell's core reply is metered on its call row (hub.call); what this server adds to it
+    (did_you_mean, call_this, no_cell, notes) and every other tool's request and reply go on a type=meter row the report subtracts."""
+    out = _handle(name, a)
+    try:
+        if name == "call_cell":
+            extra = {k: v for k, v in out.items() if k not in CORE} if isinstance(out, dict) else {}
+            texts = [json.dumps(extra, ensure_ascii=False, sort_keys=True)] if extra else []
+        else: texts = [json.dumps(a, ensure_ascii=False, sort_keys=True), json.dumps(out, ensure_ascii=False, sort_keys=True)]
+        if texts: hub._log({"type": "meter", "tool": name, "caller": CALLER, "model": MODEL, "tokens": savings.text_cost(texts, MODEL)})
+    except Exception: pass   # the meter must never break a tool
+    return out
+def _handle(name, a):
+    if name == "find_cell": return find_for_mcp(a.get("need", ""), a.get("words") if isinstance(a.get("words"), list) else None)
     if name == "list_cells": return {"cells": [{k: c[k] for k in ("cell", "version", "description", "description_en", "required_inputs")} for c in hub.list_cells()]}
     if name == "request_cell": return hub.request_cell(a.get("need", ""), caller=CALLER)
     if name == "call_cell":

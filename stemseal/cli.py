@@ -45,7 +45,8 @@ def main(argv=None):
     elif cmd == "mcp":
         from . import mcp as _m; _m.main(); return 0
     elif cmd == "savings":
-        days = int(rest[rest.index("--days") + 1]) if "--days" in rest else None
+        try: days = int(rest[rest.index("--days") + 1]) if "--days" in rest else None
+        except (ValueError, IndexError): print("--days needs a whole number of days"); return 2
         _p(savings.summarize(savings.read_ledger(), days=days))
     elif cmd == "measure":
         if len(rest) < 2: print(__doc__); return 2

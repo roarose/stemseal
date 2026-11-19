@@ -5,7 +5,9 @@ Kept only on this machine, in the same ledger as every other record (~/.stemseal
 
 Per call (the `tokens` object on a type="call" row, format "meter/1"):
   cost      tokens this call put through the model: the call it wrote (cell name + input) plus the reply it read.
-            Estimated from the text (method "chars_v1"): stemseal never sees the model's tokenizer.
+            stemseal never sees the model's tokenizer, so the text is estimated (method "chars_v1") and then scaled up by
+            the real/estimate ratio `stemseal measure` found for that model (cost_ratio; the largest known, or 3.0 if none).
+            On EXAONE 3.5 the plain estimate was 2.5x too low; scaling keeps cost from being undercounted.
   baseline  tokens the model spends doing the same job without the cell, from the cell's baseline file.
   saved     baseline - cost. Negative is written as negative. A refused call saved nothing: baseline 0, saved = -cost.
   kind      measured  = a baseline measured on this exact model and cell version
@@ -24,6 +26,10 @@ METER = "meter/1"
 BASELINE = "baseline/1"
 METHOD = "chars_v1"
 
+def counts(text):
+    """The raw material of the estimate, kept in the ledger so it can be recomputed later with a real tokenizer or a new ratio."""
+    if not isinstance(text, str): text = json.dumps(text, ensure_ascii=False, sort_keys=True)
+    a = sum(1 for ch in text if ord(ch) < 128); return a, len(text) - a
 def est_tokens(text):
     """A plain, stable estimate: 1 token per 4 ASCII characters, 1 per other character (Hangul and most non-Latin
     scripts take about one token per character in small-model tokenizers). Same text, same number, on every machine."""
@@ -66,10 +72,38 @@ def baseline_for(cell, version, model):
         t, src = min(others); return t, "estimate", src
     return None, "none", None
 
+DEFAULT_RATIO = 3.0   # real tokens per estimated token when nothing is measured; EXAONE 3.5 measured 2.46-2.58 (11-19)
+def _all_baselines():
+    hub = _hub(); names = {n for b in hub._dirs() if os.path.isdir(b) for n in os.listdir(b) if os.path.isdir(os.path.join(b, n))}
+    ud = os.path.join(hub.HOME, "baselines")
+    if os.path.isdir(ud): names |= set(os.listdir(ud))
+    return [e for n in names for ms in baselines(n).values() for e in ms.items()]
+def cost_ratio(model):
+    """How many real tokens one estimated token is, so the estimate never undercounts cost.
+    This model's measured ratio (largest over its cells), else the largest measured on any model, else DEFAULT_RATIO."""
+    try: rs = [(m, e["cost_ratio"]) for m, e in _all_baselines() if isinstance(e.get("cost_ratio"), (int, float)) and e["cost_ratio"] > 0]
+    except Exception: rs = []
+    mine = [r for m, r in rs if model and m == model]
+    if mine: return round(max(mine), 3), "measured"
+    if rs: return round(max(r for m, r in rs), 3), "other_model"
+    return DEFAULT_RATIO, "default"
+
+def scaled(text_tokens, model):
+    r, how = cost_ratio(model); return int(math.ceil(text_tokens * r)), r, how
+
+def text_cost(texts, model):
+    """A tokens object for some text the model wrote or read: the scaled cost plus the raw counts behind it."""
+    asc = oth = 0
+    for t in texts:
+        a, o = counts(t); asc += a; oth += o
+    est = int(math.ceil(asc / 4.0)) + oth
+    cost, ratio, how = scaled(est, model)
+    return {"meter": METER, "method": METHOD, "cost": cost, "chars_ascii": asc, "chars_other": oth, "cost_text_est": est, "cost_ratio": ratio, "cost_ratio_from": how}
+
 def meter(cell, version, model, sent, returned, ok):
-    """The tokens object for one call row."""
-    cost = est_tokens(json.dumps(sent, ensure_ascii=False, sort_keys=True)) + est_tokens(json.dumps(returned, ensure_ascii=False, sort_keys=True))
-    rec = {"meter": METER, "method": METHOD, "cost": cost}
+    """The tokens object for one call row. cost is the text estimate scaled by the measured real/estimate ratio."""
+    rec = text_cost([json.dumps(sent, ensure_ascii=False, sort_keys=True), json.dumps(returned, ensure_ascii=False, sort_keys=True)], model)
+    cost = rec["cost"]
     if not ok: rec.update(baseline=0, kind="refused", saved=-cost); return rec
     try: b, kind, src = baseline_for(cell, version, model)
     except Exception: b, kind, src = None, "none", None
@@ -96,10 +130,11 @@ def summarize(rows, days=None):
     rows = [r for r in rows if not since or ((_ts(r) or since) >= since)]
     kinds = {k: _blank() for k in ("measured", "estimate", "none", "refused")}
     by = {"cell": {}, "model": {}, "day": {}}
-    unmetered = overhead = overhead_n = 0
+    unmetered = overhead = overhead_n = 0; tools = {}
     for r in rows:
         if r.get("type") == "meter":
-            overhead += (r.get("tokens") or {}).get("cost", 0); overhead_n += 1; continue
+            c = (r.get("tokens") or {}).get("cost", 0); overhead += c; overhead_n += 1
+            bt = tools.setdefault(r.get("tool") or "?", {"rows": 0, "cost": 0}); bt["rows"] += 1; bt["cost"] += c; continue
         if r.get("type") != "call": continue
         t = r.get("tokens")
         if not isinstance(t, dict) or t.get("meter") != METER: unmetered += 1; continue
@@ -114,11 +149,11 @@ def summarize(rows, days=None):
         b.pop("baseline", None); b.pop("saved", None)   # nothing measured: no number, not zero
     return {"format": "savings/1", "days": days, "unit": "tokens (estimated from text, %s)" % METHOD,
             "measured": kinds["measured"], "estimate": kinds["estimate"], "no_baseline": kinds["none"], "refused": kinds["refused"],
-            "find_overhead": {"finds": overhead_n, "cost": overhead},
+            "tool_overhead": {"rows": overhead_n, "cost": overhead, "by_tool": tools},
             "net_measured": round(kinds["measured"]["saved"] + kinds["refused"]["saved"] - overhead, 1),
             "unmetered_calls": unmetered,
             "by_cell": by["cell"], "by_model": by["model"], "by_day": dict(sorted(by["day"].items())),
-            "note": "net_measured = measured savings - refused calls - find overhead. Estimates are shown apart and are not in it."}
+            "note": "net_measured = measured savings - refused calls - tool overhead (find_cell, list_cells, request_cell, extra reply text). Estimates are shown apart and are not in it. Not counted: a reply re-read in later turns of a long conversation."}
 
 # ---------------------------------------------------------------- measuring a baseline (local Ollama)
 OLLAMA = os.environ.get("OLLAMA_HOST", "http://127.0.0.1:11434")
@@ -129,8 +164,9 @@ def _chat(url, model, messages, num_ctx=4096, timeout=300):
     with urllib.request.urlopen(req, timeout=timeout) as r: d = json.loads(r.read().decode("utf-8"))
     return {"text": (d.get("message") or {}).get("content", ""), "in": d.get("prompt_eval_count", 0), "out": d.get("eval_count", 0), "sec": round(time.time() - t0, 2)}
 def question(contract, inp):
-    """The task as a plain question built from the cell's own card, so every cell is measured the same way."""
-    return ("%s\n입력: %s\n풀이를 보이고, 마지막 줄에 결과를 JSON 하나로 쓰세요. 키: %s"
+    """The task as a plain question built from the cell's own card, so every cell is measured the same way.
+    It does not ask for a worked solution (that made the model write more than it would, and inflated the baseline, 11-19 review)."""
+    return ("%s\n입력: %s\n마지막 줄에 결과를 JSON 하나로 쓰세요. 키: %s"
             % (contract["description"], json.dumps(inp, ensure_ascii=False), ", ".join(contract.get("output_keys", []))))
 def _last_json(text):
     for m in reversed(list(re.finditer(r"\{[^{}]*\}", text or ""))):
@@ -182,7 +218,8 @@ def measure(cell, model, n=5, url=None, ship=False, chat=None):
              "n": len(runs), "alone_correct": round(sum(x["alone_correct"] for x in runs) / len(runs), 3),
              "with_cell_correct": round(sum(x["with_correct"] for x in runs) / len(runs), 3), "retry_included": False,
              "cost_est_mean": mean("cost_est"), "cost_real_mean": round(sum(real_added) / len(runs), 1),
-             "measured_at": hub.now(), "method": "ollama eval_count, temperature 0, num_ctx 4096, question built from the cell card (savings.question)"}
+             "cost_ratio": round((sum(real_added) / len(runs)) / max(1e-9, mean("cost_est")), 3),
+             "measured_at": hub.now(), "method": "ollama eval_count, temperature 0, num_ctx 4096, question built from the cell card, no worked solution asked (savings.question v2)"}
     p = os.path.join(c["dir"], "baseline.json") if ship else user_baseline_path(cell, version)
     b = _read(p) or {"format": BASELINE, "cell": cell, "version": version, "models": {}}
     b["models"][model] = entry
