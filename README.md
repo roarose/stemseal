@@ -79,6 +79,7 @@ stemseal update           # get cells made since you installed
 | percentage_point_diff | 두 비율의 차이 (%p) | before_pct, after_pct |
 | percentile_rank | 값이 목록에서 몇 % 위치인지 | values, value |
 | price_for_target_margin | 원가와 목표 마진율로 판매가 | cost, margin_pct |
+| vat_supply_price | 부가세 포함 금액을 공급가액과 부가세로 (부가세 원 미만 절사) · first cell built from a request (#4) | total, vat_pct |
 
 ## Need a cell that isn't here? / 필요한 세포가 없나요?
 

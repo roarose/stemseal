@@ -80,6 +80,18 @@
     "description_en": "Selling price that gives a target margin (% of selling price) on a cost.",
     "answers": []
    }
+  },
+  "vat_supply_price": {
+   "1.0": {
+    "sha256": "d3c2e17aa32657a06909df63bdb4773a556892f8d371912f492665848f6b08e3",
+    "gt": 25,
+    "locked_at": "2026-11-19T03:03:52+00:00",
+    "description": "부가세 포함 금액을 공급가액과 부가세로 나눔(부가세 원 미만 절사, 공급가액 = 합계 − 부가세).",
+    "description_en": "Split a VAT-included amount into supply price and VAT (Korean practice: VAT truncated below 1 won, supply = total - VAT).",
+    "answers": [
+     "D-ff5b6894"
+    ]
+   }
   }
  }
 }

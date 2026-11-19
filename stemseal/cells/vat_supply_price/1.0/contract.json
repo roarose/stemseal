@@ -1,0 +1,67 @@
+{
+ "description": "부가세 포함 금액을 공급가액과 부가세로 나눔(부가세 원 미만 절사, 공급가액 = 합계 − 부가세).",
+ "when_to_use": "부가세 포함 가격·합계금액에서 공급가액(부가세 별도 금액)이나 부가세를 구할 때. 부가세를 더하는 계산(공급가액 → 합계)이 아님.",
+ "keywords": [
+  "부가세",
+  "부가가치세",
+  "공급가액",
+  "부가세 포함",
+  "부가세 별도",
+  "VAT",
+  "합계금액",
+  "세금계산서",
+  "VAT included",
+  "supply price",
+  "net of VAT",
+  "tax included price"
+ ],
+ "input_schema": {
+  "required": [
+   "total"
+  ],
+  "properties": {
+   "total": "number >= 0 (VAT-included amount, won)",
+   "vat_pct": "optional number, VAT rate in percent (default 10)"
+  }
+ },
+ "output_keys": [
+  "supply_price",
+  "vat"
+ ],
+ "description_en": "Split a VAT-included amount into supply price and VAT (Korean practice: VAT truncated below 1 won, supply = total - VAT).",
+ "when_to_use_en": "When you have a price or total that includes VAT and need the supply price (net of VAT) or the VAT. Not for adding VAT to a net price.",
+ "input_aliases": {
+  "total": [
+   "input",
+   "price",
+   "total_price",
+   "tax_included_price",
+   "price_with_vat",
+   "price_including_vat",
+   "vat_included_price",
+   "gross",
+   "gross_price",
+   "amount",
+   "total_amount",
+   "including_vat"
+  ],
+  "vat_pct": [
+   "vat_percentage",
+   "vat_percent",
+   "vat_rate",
+   "tax_rate",
+   "tax_pct",
+   "vat",
+   "rate"
+  ]
+ },
+ "input_sanity": {
+  "vat_pct": {
+   "action": "fraction_to_pct",
+   "why": "vat_pct is in percent (10 = 10%); 0.1 was a fraction"
+  }
+ },
+ "answers": [
+  "D-ff5b6894"
+ ]
+}

@@ -1,0 +1,10 @@
+{
+ "cell": "vat_supply_price",
+ "version": "1.0",
+ "sha256": "d3c2e17aa32657a06909df63bdb4773a556892f8d371912f492665848f6b08e3",
+ "gt_total": 25,
+ "gt_passed": 25,
+ "deterministic": true,
+ "locked_at": "2026-11-19T03:03:52+00:00",
+ "locked_by": "demand (boss's Cherry Studio test with qwen2.5:3b, 2026-11-19), built by Claude"
+}

@@ -135,7 +135,7 @@ def register(name, src, contract, gt_cases, locked_by="unknown", base=None):
     problems = purity_check(src)
     if problems: return {"locked": False, "reason": "purity gate", "problems": problems}
     vs = _versions(name); version = "%d.0" % (int(vs[-1].split(".")[0]) + 1) if vs else "1.0"
-    d = os.path.join(base or CELLS, name, version); os.makedirs(d, exist_ok=True)
+    d = os.path.join(os.path.abspath(base or CELLS), name, version); os.makedirs(d, exist_ok=True)
     cp = os.path.join(d, "cell.py"); open(cp, "w", encoding="utf-8", newline="\n").write(src)
     rep = gt_check(cp, gt_cases)
     if rep["passed"] != rep["total"] or not rep["deterministic"]:
