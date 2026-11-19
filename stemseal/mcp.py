@@ -53,7 +53,12 @@ def handle(name, a):
             g = guides.guide_for(MODEL)
             # strict: only spelling fixes count here (not rename_single), so an unrelated input never gets run
             g["selection"]["repair_input"] = [x for x in g["selection"].get("repair_input", []) if x != "rename_single"]
+            # the guessed name alone must point at the candidate too (top of a name-only search), so an input key
+            # shared by chance ("years") can never run an unrelated cell
+            nr = hub._rank(cell.replace("_", " "), 0.0); top = nr[0][0] if nr else 0
+            near = {c["cell"] for sc, c in nr if sc >= 0.5 and sc >= top - 0.05}
             for cand in f["cells"]:
+                if cand["cell"] not in near: continue
                 # the guessed name plus the input it came with point at one real cell: when that cell's required inputs are
                 # all there (after the usual repairs), run it rather than stop at a choice a small model often abandons
                 fixed, _ = guides.repair(cand["cell"], data, g)

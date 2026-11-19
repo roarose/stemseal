@@ -31,5 +31,15 @@
    "action": "drop",
    "why": "hours is paid hours per month; a value under 100 is almost always hours per week, so the standard 209 is used"
   }
+ },
+ "input_aliases": {
+  "hourly_wage": [
+   "hourly_rate",
+   "hourly_pay",
+   "wage",
+   "pay_per_hour",
+   "wage_per_hour",
+   "hourly"
+  ]
  }
 }

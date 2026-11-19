@@ -154,6 +154,7 @@ def call(name, input_data, caller="unknown", version=None):
     def env(status, result=None, reason=None, ver=None):
         rec = {"type": "call", "cell": name, "version": ver, "status": status, "caller": caller, "ms": round((time.time() - t0) * 1000, 1),
                "input_sha": sha(json.dumps(input_data, sort_keys=True, ensure_ascii=False))[:16] if isinstance(input_data, dict) else None, "reason": reason}
+        if status != "ok" and isinstance(input_data, dict): rec["input_keys"] = sorted(str(k) for k in input_data)[:12]   # names only, never values
         _log(rec)
         out = {"status": status, "cell": name, "version": ver, "verified": status == "ok", "result": result, "reason": reason}
         if status == "invalid_input" and c: out["how_to_fix"] = input_help(c)

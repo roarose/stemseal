@@ -102,11 +102,21 @@ def repair(name, inp, g):
         if k not in props and k not in rq:
             m = [t for t in dict.fromkeys(list(rq) + list(props)) if norm(t) == norm(k) and t not in inp]
             if len(m) == 1: inp[m[0]] = inp.pop(k); fx.append("rename:%s->%s" % (k, m[0]))
+    al = {norm(a): t for t, lst in (c["contract"].get("input_aliases") or {}).items() for a in lst}
+    for t in dict.fromkeys(al.values()):
+        # a cell can list the other names small models use for an input (portion -> grams); only when exactly one is there
+        if t in inp: continue
+        m = [k for k in inp if k not in props and k not in rq and al.get(norm(k)) == t]
+        if len(m) == 1: inp[t] = inp.pop(m[0]); fx.append("alias:%s->%s" % (m[0], t))
     for k, rule in (c["contract"].get("input_sanity") or {}).items():
         # a cell can name an optional input that small models commonly fill with the wrong unit; drop it and say so
         v = inp.get(k)
         if rule.get("action") == "drop" and isinstance(v, (int, float)) and not isinstance(v, bool) and v < rule.get("min", float("-inf")):
             inp.pop(k); fx.append("dropped:%s=%s (%s)" % (k, v, rule.get("why", "out of range")))
+        if rule.get("action") == "percent_list" and isinstance(v, list) and v and all(isinstance(x, (int, float)) and not isinstance(x, bool) for x in v) \
+                and any(abs(x) >= rule.get("if_any_abs_at_least", 1) for x in v):
+            # 5, 3, -2 written as percent where the cell takes 0.05, 0.03, -0.02
+            inp[k] = [x / 100 for x in v]; fx.append("percent:%s/100 (%s)" % (k, rule.get("why", "percent given")))
     if "rename_single" in g["selection"].get("repair_input", []):
         miss = [k for k in rq if k not in inp]; extra = [k for k in inp if k not in rq and k not in props]
         if len(miss) == 1 and len(extra) == 1: inp[miss[0]] = inp.pop(extra[0]); fx.append("rename:%s->%s" % (extra[0], miss[0]))

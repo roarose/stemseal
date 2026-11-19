@@ -23,5 +23,25 @@
   "geo_mean_pct"
  ],
  "description_en": "Geometric mean growth rate (%) of a list of period growth rates (decimals).",
- "when_to_use_en": "When combining several periods' growth rates into one average growth rate."
+ "when_to_use_en": "When combining several periods' growth rates into one average growth rate.",
+ "input_aliases": {
+  "rates": [
+   "growth_rates",
+   "growths",
+   "yearly_growths",
+   "annual_growths",
+   "quarterly_growths",
+   "rates_pct",
+   "growth",
+   "period_rates",
+   "returns"
+  ]
+ },
+ "input_sanity": {
+  "rates": {
+   "action": "percent_list",
+   "if_any_abs_at_least": 1,
+   "why": "rates are fractions (0.05 = 5%); a list with 5 or -2 in it was given in percent"
+  }
+ }
 }

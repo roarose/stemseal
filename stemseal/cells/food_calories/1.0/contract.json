@@ -24,5 +24,30 @@
   "kcal"
  ],
  "description_en": "Calories eaten (kcal) from kcal per 100 g and grams eaten.",
- "when_to_use_en": "When computing the calories of a portion of food."
+ "when_to_use_en": "When computing the calories of a portion of food.",
+ "input_aliases": {
+  "kcal_per_100g": [
+   "kcal",
+   "kcal_per_100",
+   "calories_per_100g",
+   "calories_per_100",
+   "calorie_per_100g",
+   "energy_per_100g",
+   "kcal100g"
+  ],
+  "grams": [
+   "portion",
+   "portion_weight",
+   "weight",
+   "grams_eaten",
+   "eaten",
+   "amount",
+   "gram",
+   "g",
+   "amount_g",
+   "serving",
+   "serving_size",
+   "intake"
+  ]
+ }
 }
