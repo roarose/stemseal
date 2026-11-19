@@ -1,0 +1,22 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.roarose/stemseal",
+  "title": "stemseal",
+  "description": "Verified, sha256-locked calculation cells that small local LLMs call instead of guessing.",
+  "repository": {"url": "https://github.com/roarose/stemseal", "source": "github"},
+  "version": "0.2.3",
+  "packages": [
+    {
+      "registryType": "pypi",
+      "identifier": "stemseal",
+      "version": "0.2.3",
+      "runtimeHint": "uvx",
+      "transport": {"type": "stdio"},
+      "packageArguments": [{"type": "positional", "value": "mcp"}],
+      "environmentVariables": [
+        {"name": "STEMSEAL_MODEL", "description": "Optional. Your model's name (e.g. qwen2.5:3b) for a selection guide fitted to it.", "isRequired": false},
+        {"name": "STEMSEAL_LANG", "description": "Optional. ko or en; otherwise guides follow the request's language.", "isRequired": false}
+      ]
+    }
+  ]
+}

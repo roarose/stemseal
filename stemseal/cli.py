@@ -7,7 +7,8 @@
   stemseal request <need words...>   record a cell you needed; prints a link you can open to ask for it
   stemseal demand [--share]          your recorded unmet needs (kept only on this machine); --share prints a link per need to ask for it
   stemseal update [--check]          bring cells made since this install (each is re-verified here before use)
-  stemseal guide <model> [ko|en]     the selection guide used for a model name"""
+  stemseal guide <model> [ko|en]     the selection guide used for a model name
+  stemseal mcp                       run the MCP server on stdio (same as stemseal-mcp)"""
 import json, sys
 from . import hub, guides, update as upd
 
@@ -38,6 +39,8 @@ def main(argv=None):
     elif cmd == "update":
         r = upd.update(check_only="--check" in rest); _p(r); return 0 if r.get("ok") else 1
     elif cmd == "index": _p({k: list(v) for k, v in upd.build_index()["cells"].items()})
+    elif cmd == "mcp":
+        from . import mcp as _m; _m.main(); return 0
     elif cmd == "guide": _p(guides.brief(guides.guide_for(rest[0] if rest else ""), (rest[1] if len(rest) > 1 else "ko")))
     else: print(__doc__); return 2
     return 0

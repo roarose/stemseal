@@ -1,5 +1,7 @@
 # stemseal (lite)
 
+<!-- mcp-name: io.github.roarose/stemseal -->
+
 **Small LLMs guess at calculations. stemseal gives them verified cells to call instead.**
 작은 LLM은 계산을 어림짐작합니다. stemseal은 그 대신 부를 수 있는 검증된 세포를 줍니다.
 
