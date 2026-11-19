@@ -24,7 +24,9 @@ def _home():
         if os.environ.get(k): return os.path.join(os.environ[k], "stemseal")
     import tempfile; return os.path.join(tempfile.gettempdir(), "stemseal")
 HOME = _home()
-CELLS = os.environ.get("STEMSEAL_CELLS") or os.path.join(PKG, "cells")
+CELLS = os.environ.get("STEMSEAL_CELLS") or os.path.join(PKG, "cells")   # cells shipped with this version
+USER_CELLS = os.path.join(HOME, "cells")                                    # cells added later by `stemseal update`
+def _dirs(): return [CELLS] + ([USER_CELLS] if os.path.abspath(USER_CELLS) != os.path.abspath(CELLS) else [])
 LEDGER = os.path.join(HOME, "ledger.jsonl")
 REPO = "https://github.com/roarose/stemseal"
 MIN_GT = 20                      # a cell needs at least this many ground-truth cases to be locked
@@ -93,28 +95,37 @@ def gt_check(cell_path, gt_cases):
     return {"total": len(gt_cases), "passed": len(gt_cases) - len(fails), "deterministic": deterministic, "failures": fails[:5]}
 
 # ---------------------------------------------------------------- registry
-def _versions(name):
-    d = os.path.join(CELLS, name)
-    return sorted((v for v in os.listdir(d) if os.path.exists(os.path.join(d, v, "lock.json"))), key=lambda v: [int(x) for x in v.split(".")]) if os.path.isdir(d) else []
+def _vkey(v): return [int(x) for x in v.split(".")]
+def _found(name):
+    """{version: dir} over the shipped cells and the ones `stemseal update` added; the shipped copy wins a tie."""
+    out = {}
+    for base in reversed(_dirs()):
+        d = os.path.join(base, name)
+        if os.path.isdir(d):
+            for v in os.listdir(d):
+                if os.path.exists(os.path.join(d, v, "lock.json")): out[v] = os.path.join(d, v)
+    return out
+def _versions(name): return sorted(_found(name), key=_vkey)
 def cell_dir(name, version=None):
-    vs = _versions(name)
-    if not vs: return None
-    v = version or vs[-1]
-    return os.path.join(CELLS, name, v) if v in vs else None
+    f = _found(name)
+    if not f: return None
+    v = version or sorted(f, key=_vkey)[-1]
+    return f.get(v)
 def load(name, version=None):
     d = cell_dir(name, version)
     if not d: return None
     return {"dir": d, "contract": json.load(open(os.path.join(d, "contract.json"), encoding="utf-8")), "lock": json.load(open(os.path.join(d, "lock.json"), encoding="utf-8"))}
 def list_cells():
     out = []
-    for name in sorted(os.listdir(CELLS)) if os.path.isdir(CELLS) else []:
+    names = sorted({n for b in _dirs() if os.path.isdir(b) for n in os.listdir(b) if os.path.isdir(os.path.join(b, n))})
+    for name in names:
         c = load(name)
         if c: out.append({"cell": name, "version": c["lock"]["version"], "description": c["contract"]["description"], "when_to_use": c["contract"].get("when_to_use", ""),
                           "description_en": c["contract"].get("description_en", ""), "when_to_use_en": c["contract"].get("when_to_use_en", ""),
                           "required_inputs": c["contract"]["input_schema"].get("required", []), "gt_cases": c["lock"]["gt_total"], "locked_at": c["lock"]["locked_at"]})
     return out
 
-def register(name, src, contract, gt_cases, locked_by="unknown"):
+def register(name, src, contract, gt_cases, locked_by="unknown", base=None):
     """The only way a cell enters the hub: purity gate, then ground-truth gate, then lock. Returns a report; report['locked'] says if it got in.
     A locked version is never overwritten. A change is a new version."""
     if not re.fullmatch(r"[a-z][a-z0-9_]{2,63}", name): return {"locked": False, "reason": "bad name"}
@@ -124,7 +135,7 @@ def register(name, src, contract, gt_cases, locked_by="unknown"):
     problems = purity_check(src)
     if problems: return {"locked": False, "reason": "purity gate", "problems": problems}
     vs = _versions(name); version = "%d.0" % (int(vs[-1].split(".")[0]) + 1) if vs else "1.0"
-    d = os.path.join(CELLS, name, version); os.makedirs(d, exist_ok=True)
+    d = os.path.join(base or CELLS, name, version); os.makedirs(d, exist_ok=True)
     cp = os.path.join(d, "cell.py"); open(cp, "w", encoding="utf-8", newline="\n").write(src)
     rep = gt_check(cp, gt_cases)
     if rep["passed"] != rep["total"] or not rep["deterministic"]:
@@ -200,22 +211,26 @@ def find(need, caller="unknown", k=3, min_score=0.3, words=None):
     if not hits: _log({"type": "demand", "need": need[:300], "caller": caller})
     return hits
 PROMISE = ("이 계산을 하는 검증된 세포가 아직 없습니다. 지금은 직접 처리하시고, 필요한 계산은 이 기기에 기록했습니다. "
-           "share 링크로 요청하면 수요가 모이는 순서대로 새 세포를 만들고, 다음 버전에서 바로 쓸 수 있습니다. / "
+           "share 링크로 요청하면 수요가 모이는 순서대로 새 세포를 만들고, 사용자가 `stemseal update` 를 하면 바로 쓸 수 있습니다. / "
            "No verified cell does this yet. Handle it yourself for now; the need is saved on this machine. "
-           "Requests sent through the share link are built as demand gathers and ship in the next version.")
+           "Requests sent through the share link are built as demand gathers; `stemseal update` then brings the new cell here.")
 def _ticket(need):
     return "D-" + sha(re.sub(r"\s+", " ", (need or "").strip().lower()))[:8]
 def _rows():
     try: return [json.loads(l) for l in open(LEDGER, encoding="utf-8") if l.strip()] if os.path.exists(LEDGER) else []
     except Exception: return []
+def share_link(t, need):
+    """A prefilled GitHub issue. Opening it is the user's choice; stemseal never sends it."""
+    from urllib.parse import quote
+    body = "ticket: %s\nneed: %s\n\n(Optional) an example input and the answer you expect:\n" % (t, need)
+    return "%s/issues/new?labels=cell-request&title=%s&body=%s" % (REPO, quote(("cell request " + t + ": " + need)[:120]), quote(body[:1500]))
 def request_cell(need, caller="unknown"):
     """An AI says: I needed this and nothing fit. Recorded as demand; this is what gets differentiated next.
     Returns a ticket (same need -> same ticket) and a promise, so the caller knows the channel is being built and comes back."""
     t = _ticket(need)
     _log({"type": "demand", "need": need[:300], "caller": caller, "explicit": True, "ticket": t})
     n = sum(1 for r in _rows() if r.get("type") == "demand" and r.get("ticket") == t)
-    from urllib.parse import quote
-    link = "%s/issues/new?labels=cell-request&title=%s" % (REPO, quote(("cell request " + t + ": " + need)[:120]))
+    link = share_link(t, need)
     return {"recorded": True, "ticket": t, "times_requested": n, "message": PROMISE,
             "share": {"note": "This request is saved only on this machine. To ask for the cell, the user can open this link (nothing is sent automatically).", "link": link}}
 def fulfill(ticket, cell):

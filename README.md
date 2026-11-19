@@ -7,7 +7,7 @@ A *cell* is one small, deterministic function. It enters the bank only after it 
 
 세포는 작고 결정적인 함수 하나입니다. 순수성 검사와 정답 사례 20개 이상을 통과해야 들어오고, sha256으로 잠깁니다. 잠긴 세포는 바뀌지 않으며, 고치면 새 버전이 됩니다. 맞는 세포가 없으면 지어낸 답 대신 "없음"을 정직하게 돌려줍니다.
 
-This lite version runs entirely on your machine. There is no server, no account, no dependencies, and no telemetry.
+This lite version runs entirely on your machine. There is no server, no account, no dependencies, and no telemetry. Only `stemseal update`, when you run it, downloads new cells.
 이 판은 전부 내 컴퓨터에서 돕니다. 서버, 계정, 의존성, 원격 수집이 없습니다.
 
 ## What we measured / 측정 결과
@@ -63,7 +63,8 @@ stemseal list
 stemseal find 연평균 성장률
 stemseal call currency_convert '{"amount": 100, "rate": 1385.5}'
 stemseal request 대출 원리금 균등상환 월 납입액
-stemseal demand
+stemseal demand --share   # one GitHub-issue link per unmet need
+stemseal update           # get cells made since you installed
 ```
 
 ## Cells
@@ -81,9 +82,9 @@ stemseal demand
 
 ## Need a cell that isn't here? / 필요한 세포가 없나요?
 
-When `find_cell` comes back empty, the model can call `request_cell`. The need is saved only on your machine (`~/.stemseal/ledger.jsonl`), and the reply carries a link to open a GitHub issue. Nothing is sent unless you open it. Requested cells are built as demand gathers and ship in the next version.
+When `find_cell` comes back empty, the model can call `request_cell`. The need is saved only on your machine (`~/.stemseal/ledger.jsonl`), and the reply carries a link to open a GitHub issue. Nothing is sent unless you open it (`stemseal demand --share` lists a link for every unmet need). Requested cells are built as demand gathers. Run `stemseal update` to get them: it downloads only new locked cells and re-checks each one on your machine (sha256, purity gate, every ground-truth case) before it can be used. Update is the only command that uses the network, and it only downloads.
 
-`request_cell`은 필요를 내 컴퓨터에만 기록하고, GitHub 이슈를 여는 링크를 돌려줍니다. 링크를 직접 열기 전에는 아무것도 보내지 않습니다. 요청이 모이는 순서대로 세포를 만들어 다음 버전에 담습니다.
+`request_cell`은 필요를 내 컴퓨터에만 기록하고, GitHub 이슈를 여는 링크를 돌려줍니다. 링크를 직접 열기 전에는 아무것도 보내지 않습니다(`stemseal demand --share`가 못 채운 필요마다 링크를 보여 줍니다). 요청이 모이는 순서대로 세포를 만들고, `stemseal update`로 받습니다. 새 잠금 세포만 내려받아 내 컴퓨터에서 sha256, 순수성, 정답 사례를 모두 다시 확인한 뒤에 씁니다. 네트워크를 쓰는 명령은 update 하나뿐이고, 내려받기만 합니다.
 
 ## Safety
 

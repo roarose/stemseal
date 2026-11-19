@@ -1,0 +1,85 @@
+{
+ "format": 1,
+ "cells": {
+  "annual_leave_days": {
+   "1.0": {
+    "sha256": "2cf7029ba701c8fb927fd724b57a547e897fca9adb06e66979a5faa5d95d0f46",
+    "gt": 24,
+    "locked_at": "2026-11-18T06:59:09+00:00",
+    "description": "근속 연수로 연차 일수(1년 이상 15일, 이후 2년마다 1일, 최대 25일).",
+    "description_en": "Annual paid leave days from years of service (Korean labor law: 15 days after 1 year, +1 every 2 years, max 25).",
+    "answers": []
+   }
+  },
+  "currency_convert": {
+   "1.0": {
+    "sha256": "8b9085b6ea582216759bbad400fa4d45b88210a36785dd365dc279580b440bd5",
+    "gt": 24,
+    "locked_at": "2026-11-18T06:59:08+00:00",
+    "description": "외화 금액을 환율(1단위당 원)로 원화 환산, 원 미만 버림.",
+    "description_en": "Convert a foreign currency amount to Korean won at a given rate (won per unit), truncating below 1 won.",
+    "answers": []
+   }
+  },
+  "food_calories": {
+   "1.0": {
+    "sha256": "f6303f34c4f034a531fa71aa2f75076158e0b0d095c8abbb1586d9bce961c805",
+    "gt": 24,
+    "locked_at": "2026-11-18T06:59:09+00:00",
+    "description": "100g당 열량과 먹은 양(g)으로 섭취 열량(kcal).",
+    "description_en": "Calories eaten (kcal) from kcal per 100 g and grams eaten.",
+    "answers": []
+   }
+  },
+  "geometric_mean_growth": {
+   "1.0": {
+    "sha256": "6cab69e643547e7606ace91786dc1c1dc832e8b99565ccabc2fe03c121c1105a",
+    "gt": 24,
+    "locked_at": "2026-11-18T06:59:07+00:00",
+    "description": "성장률 목록(소수)의 기하평균 성장률(%).",
+    "description_en": "Geometric mean growth rate (%) of a list of period growth rates (decimals).",
+    "answers": []
+   }
+  },
+  "monthly_wage_from_hourly": {
+   "1.0": {
+    "sha256": "a9f14c93b48a6f243b9730fdaa1d2efde7d51f82537dd3ea5459aaac97c89ac3",
+    "gt": 24,
+    "locked_at": "2026-11-18T06:59:08+00:00",
+    "description": "시급을 월 209시간(주휴 포함) 기준 월급(원)으로 환산.",
+    "description_en": "Monthly wage (won) from an hourly wage at 209 hours a month (Korean standard, paid weekly rest included).",
+    "answers": []
+   }
+  },
+  "percentage_point_diff": {
+   "1.0": {
+    "sha256": "5322a96a6f9fa33244762fc957dac9d87e51ba1a426b7ed6968e580949ceb158",
+    "gt": 24,
+    "locked_at": "2026-11-18T06:59:10+00:00",
+    "description": "두 비율(%)의 차이를 퍼센트포인트(%p)로.",
+    "description_en": "Difference between two rates (%) in percentage points.",
+    "answers": []
+   }
+  },
+  "percentile_rank": {
+   "1.0": {
+    "sha256": "3c31d5bb01c692cde384798d6cffef7d8136ea6cfe1d11dd9f9d1d0343109368",
+    "gt": 24,
+    "locked_at": "2026-11-18T06:59:08+00:00",
+    "description": "값이 목록에서 몇 퍼센트 위치인지(값보다 작은 것의 비율, %).",
+    "description_en": "Percentile rank of a value in a list (share of values below it, %).",
+    "answers": []
+   }
+  },
+  "price_for_target_margin": {
+   "1.0": {
+    "sha256": "02d858af1b792c37ceb7b932764a327f6719dd9aa26b230461b40330a2d909d8",
+    "gt": 24,
+    "locked_at": "2026-11-18T06:59:09+00:00",
+    "description": "원가와 목표 마진율(판매가 기준 %)로 맞춰야 할 판매가.",
+    "description_en": "Selling price that gives a target margin (% of selling price) on a cost.",
+    "answers": []
+   }
+  }
+ }
+}
