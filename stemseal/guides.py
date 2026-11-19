@@ -113,6 +113,10 @@ def repair(name, inp, g):
         v = inp.get(k)
         if rule.get("action") == "drop" and isinstance(v, (int, float)) and not isinstance(v, bool) and v < rule.get("min", float("-inf")):
             inp.pop(k); fx.append("dropped:%s=%s (%s)" % (k, v, rule.get("why", "out of range")))
+        if rule.get("action") == "per100_currency" and isinstance(v, (int, float)) and not isinstance(v, bool) and v >= rule.get("min", 100):
+            cur = " ".join(str(x).lower() for kk, x in inp.items() if "currency" in str(kk).lower() or "unit" in str(kk).lower())
+            if any(w in cur for w in rule.get("currencies", [])):
+                inp[k] = v / 100; fx.append("per100:%s=%s/100 (%s)" % (k, v, rule.get("why", "quoted per 100")))
         if rule.get("action") == "percent_list" and isinstance(v, list) and v and all(isinstance(x, (int, float)) and not isinstance(x, bool) for x in v) \
                 and any(abs(x) >= rule.get("if_any_abs_at_least", 1) for x in v):
             # 5, 3, -2 written as percent where the cell takes 0.05, 0.03, -0.02
@@ -127,6 +131,12 @@ def call(name, inp, model=None, caller="unknown"):
     inp2, fx = repair(name, inp, g)
     r = hub.call(name, inp2, caller=caller)
     r["guide"] = g["id"]; r["repairs"] = fx
-    if r.get("status") == "ok": r["input_used"] = inp2   # echo the values, so a copying slip (1003 for 10030) is visible
+    if r.get("status") == "ok":
+        r["input_used"] = inp2
+        # small models drop or move a digit when they copy 2060740 into a sentence; hand them the number already written out
+        if isinstance(r.get("result"), dict):
+            r["answer_text"] = ", ".join("%s = %s" % (k, ("{:,}".format(v) if isinstance(v, int) else "{:,.2f}".format(v).rstrip("0").rstrip("."))
+                                         if isinstance(v, (int, float)) and not isinstance(v, bool) else v) for k, v in r["result"].items())
+            r["say"] = "Copy the numbers from answer_text exactly."
     if fx: hub._log({"type": "repair", "cell": name, "model": model, "guide": g["id"], "fixes": fx, "status": r["status"]})
     return r

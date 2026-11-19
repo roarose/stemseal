@@ -23,5 +23,18 @@
   "leave_days"
  ],
  "description_en": "Annual paid leave days from years of service (Korean labor law: 15 days after 1 year, +1 every 2 years, max 25).",
- "when_to_use_en": "When deciding an employee's annual leave days."
+ "when_to_use_en": "When deciding an employee's annual leave days.",
+ "input_aliases": {
+  "years": [
+   "years_of_service",
+   "service_years",
+   "tenure",
+   "tenure_years",
+   "years_worked",
+   "years_employed",
+   "work_years",
+   "employment_years",
+   "year"
+  ]
+ }
 }

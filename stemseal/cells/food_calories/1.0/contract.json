@@ -33,7 +33,10 @@
    "calories_per_100",
    "calorie_per_100g",
    "energy_per_100g",
-   "kcal100g"
+   "kcal100g",
+   "calories_kcal",
+   "kcal_per_100_g",
+   "calories_per_100_g"
   ],
   "grams": [
    "portion",
@@ -47,7 +50,13 @@
    "amount_g",
    "serving",
    "serving_size",
-   "intake"
+   "intake",
+   "consumed_weight_g",
+   "consumed_g",
+   "eaten_g",
+   "weight_eaten",
+   "grams_consumed",
+   "consumed"
   ]
  }
 }

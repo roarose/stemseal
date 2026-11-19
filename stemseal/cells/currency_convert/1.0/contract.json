@@ -36,7 +36,10 @@
    "rate_krw",
    "won_per_unit",
    "conversion_rate",
-   "fx_rate"
+   "fx_rate",
+   "rate_per_unit",
+   "krw_per_unit",
+   "won_per"
   ],
   "amount": [
    "foreign_amount",
@@ -48,7 +51,29 @@
    "eur",
    "dollars",
    "yen",
-   "source_amount"
+   "source_amount",
+   "from_amount",
+   "amount_from",
+   "original_amount",
+   "foreign",
+   "amount_jpy",
+   "amount_usd"
   ]
+ },
+ "input_sanity": {
+  "rate": {
+   "action": "per100_currency",
+   "currencies": [
+    "jpy",
+    "yen",
+    "엔",
+    "円",
+    "vnd",
+    "동",
+    "idr"
+   ],
+   "min": 100,
+   "why": "yen is quoted per 100 yen in Korea (905 won per 100 yen = 9.05 per yen)"
+  }
  }
 }
