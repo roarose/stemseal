@@ -68,9 +68,18 @@ def handle(name, a):
                         r2["resolved_from"] = cell
                         r2["note"] = "No cell is named %r; ran %s, the cell that matches this request and input. This result is verified." % (cell, cand["cell"])
                         return r2
-            if f["cells"]:
-                r["did_you_mean"] = f["cells"]; r["next_step"] = f["next_step"]
-                r["reason"] = "no cell is named %r. Use one of did_you_mean, with its exact name." % cell
+            if top < 0.5:
+                # the guessed name matches no cell: say so plainly and record it as demand, rather than offer unrelated cells
+                r["no_cell"] = hub.request_cell(cell.replace("_", " ") + (" | inputs: " + ", ".join(str(k) for k in data) if data else ""), caller=CALLER)
+                r["reason"] = "no cell does this yet. It is recorded as a request; answer the user without a cell and say it is not verified."
+            elif f["cells"]:
+                close = [c for c in f["cells"] if c["cell"] in near] or f["cells"]
+                r["did_you_mean"] = close; r["next_step"] = f["next_step"]
+                if len(close) == 1 and close[0].get("input_example") is not None:
+                    # one clear match: hand back the exact call to make, so a small model only has to fill in the numbers
+                    r["call_this"] = {"cell": close[0]["cell"], "input": close[0]["input_example"],
+                                      "note": "Same cell, same keys; replace the example numbers with the user's numbers."}
+                r["reason"] = "no cell is named %r. Call %s instead, with its exact input keys." % (cell, " or ".join(c["cell"] for c in close))
         return r
     raise ValueError("unknown tool")
 def send(o):

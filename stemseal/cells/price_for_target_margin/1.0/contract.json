@@ -25,5 +25,32 @@
   "price"
  ],
  "description_en": "Selling price that gives a target margin (% of selling price) on a cost.",
- "when_to_use_en": "When setting a selling price backwards from a target margin."
+ "when_to_use_en": "When setting a selling price backwards from a target margin.",
+ "input_aliases": {
+  "cost": [
+   "cost_price",
+   "unit_cost",
+   "purchase_price",
+   "price_cost",
+   "원가",
+   "costs"
+  ],
+  "margin_pct": [
+   "margin_percent",
+   "margin_percentage",
+   "margin",
+   "target_margin",
+   "target_margin_pct",
+   "target_margin_percent",
+   "margin_rate",
+   "profit_margin",
+   "margin_ratio"
+  ]
+ },
+ "input_sanity": {
+  "margin_pct": {
+   "action": "fraction_to_pct",
+   "why": "margin_pct is in percent (25 = 25%); 0.25 was a fraction"
+  }
+ }
 }

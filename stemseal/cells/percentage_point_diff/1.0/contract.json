@@ -25,5 +25,44 @@
   "pp_diff"
  ],
  "description_en": "Difference between two rates (%) in percentage points.",
- "when_to_use_en": "When comparing two rates such as conversion or return rates, in points rather than percent growth."
+ "when_to_use_en": "When comparing two rates such as conversion or return rates, in points rather than percent growth.",
+ "input_aliases": {
+  "before_pct": [
+   "start_value",
+   "start",
+   "from",
+   "from_pct",
+   "old",
+   "old_pct",
+   "old_rate",
+   "before",
+   "initial",
+   "initial_pct",
+   "prev",
+   "previous",
+   "previous_pct",
+   "rate_before",
+   "before_rate",
+   "start_pct",
+   "first"
+  ],
+  "after_pct": [
+   "end_value",
+   "end",
+   "to",
+   "to_pct",
+   "new",
+   "new_pct",
+   "new_rate",
+   "after",
+   "final",
+   "final_pct",
+   "current",
+   "current_pct",
+   "rate_after",
+   "after_rate",
+   "end_pct",
+   "second"
+  ]
+ }
 }

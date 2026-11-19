@@ -117,6 +117,8 @@ def repair(name, inp, g):
             cur = " ".join(str(x).lower() for kk, x in inp.items() if "currency" in str(kk).lower() or "unit" in str(kk).lower())
             if any(w in cur for w in rule.get("currencies", [])):
                 inp[k] = v / 100; fx.append("per100:%s=%s/100 (%s)" % (k, v, rule.get("why", "quoted per 100")))
+        if rule.get("action") == "fraction_to_pct" and isinstance(v, (int, float)) and not isinstance(v, bool) and 0 < v < 1:
+            inp[k] = round(v * 100, 10); fx.append("pct:%s=%s*100 (%s)" % (k, v, rule.get("why", "fraction given")))
         if rule.get("action") == "percent_list" and isinstance(v, list) and v and all(isinstance(x, (int, float)) and not isinstance(x, bool) for x in v) \
                 and any(abs(x) >= rule.get("if_any_abs_at_least", 1) for x in v):
             # 5, 3, -2 written as percent where the cell takes 0.05, 0.03, -0.02
