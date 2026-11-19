@@ -48,7 +48,7 @@ def _short(v):
     if isinstance(v, dict): return {k: _short(x) for k, x in list(v.items())[:3]}
     return v
 
-def find(need, model=None, caller="unknown", request=None, k=None, min_score=None, words=None):
+def find(need, model=None, caller="unknown", request=None, k=None, min_score=None, words=None, record=True):
     g = guide_for(model); s = g["selection"]
     q = need + (" " + request if request and s.get("search_with_request", True) else "")
     if s.get("search_words") and request:
@@ -56,7 +56,7 @@ def find(need, model=None, caller="unknown", request=None, k=None, min_score=Non
         # off-target phrase from a small model can then add candidates but never push the request's own matches out
         q = request; words = list(words or []) + ([need] if need.strip() else [])
     hits = hub.find(q, caller=caller, k=k or s["max_candidates"], min_score=min_score if min_score is not None else s["min_score"],
-                    words=words if s.get("search_words") else None)
+                    words=words if s.get("search_words") else None, model=model, record=record)
     for h in hits:
         c = hub.load(h["cell"])
         if s.get("show_output_keys"): h["output_keys"] = c["contract"]["output_keys"]
@@ -64,7 +64,8 @@ def find(need, model=None, caller="unknown", request=None, k=None, min_score=Non
             try: h["input_example"] = _short(json.load(open(os.path.join(c["dir"], "gt_cases.json"), encoding="utf-8"))[0]["input"])
             except Exception: pass
     out = {"guide": brief(g, lang_of(need + " " + (request or ""))), "cells": hits}
-    if not hits: out["no_cell"] = hub.request_cell(need + (" | " + request if request else ""), caller=caller)
+    # hub.find has already recorded the need as demand (auto); here the model only hears what happens next
+    if not hits and record and q.strip(): out["no_cell"] = hub.no_cell_reply(q, hub._ticket(q))
     if s.get("output_format") == "schema":
         # constrained decoding: the model can only answer with a candidate's name or "none", and only with the cell's input keys
         out["pick_schema"] = {"type": "object", "properties": {"cell": {"type": "string", "enum": [h["cell"] for h in hits] + ["none"]}}, "required": ["cell"]}

@@ -116,13 +116,8 @@ def _ts(r):
     try: return datetime.fromisoformat(r.get("ts", "").replace("Z", "+00:00"))
     except Exception: return None
 def read_ledger(path=None):
-    """Ledger rows; a damaged line is skipped, not allowed to blank the whole report."""
-    path = path or _hub().LEDGER; out = []
-    if not os.path.exists(path): return out
-    for l in open(path, encoding="utf-8", errors="replace"):
-        try: out.append(json.loads(l))
-        except Exception: pass
-    return out
+    """Ledger rows; a damaged line is skipped, not allowed to blank the whole report. One reader for the whole ledger (hub._rows)."""
+    return _hub()._rows(path=path)
 def _blank(): return {"calls": 0, "cost": 0, "baseline": 0, "saved": 0}
 def summarize(rows, days=None):
     """Totals over ledger rows. Measured and estimated savings are never added together."""
