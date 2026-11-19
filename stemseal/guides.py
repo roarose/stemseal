@@ -99,9 +99,10 @@ def repair(name, inp, g):
     for k, v in list(inp.items()):
         # "12,000" or "5%" as text -> number (templates are text, and small models sometimes keep the quotes)
         if isinstance(v, str):
-            t = v.replace(",", "").replace("%", "").replace("원", "").strip()
-            try: inp[k] = int(t) if re.fullmatch(r"-?\d+", t) else float(t); fx.append("number:%s" % k)
-            except ValueError: pass
+            # "12,000", "8%", "10030 (won)", "10,030원": exactly one number in the text -> that number
+            nums = re.findall(r"-?\d+(?:\.\d+)?", v.replace(",", ""))
+            if len(nums) == 1:
+                inp[k] = int(nums[0]) if re.fullmatch(r"-?\d+", nums[0]) else float(nums[0]); fx.append("number:%s" % k)
         elif isinstance(v, list) and v and all(isinstance(x, str) for x in v):
             try: inp[k] = [float(x.replace(",", "").replace("%", "").strip()) for x in v]; fx.append("number:%s" % k)
             except ValueError: pass
