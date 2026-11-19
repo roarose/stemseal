@@ -16,8 +16,9 @@ TOOLS = [
   "inputSchema": {"type": "object", "properties": {"cell": {"type": "string"}, "input": {"type": "object"}, "input_file": {"type": "string"}}, "required": ["cell"]}},
  {"name": "list_cells", "description": "List every locked cell on this machine with what it computes and its required inputs. Cheap; use it when unsure what exists.",
   "inputSchema": {"type": "object", "properties": {}}},
- {"name": "request_cell", "description": "Tell the hub that you needed a calculation and no cell fit. This is how new cells get made: you get a ticket, and the cell is built as demand gathers, so come back next time. Describe the need in one or two sentences.",
-  "inputSchema": {"type": "object", "properties": {"need": {"type": "string"}}, "required": ["need"]}},
+ {"name": "request_cell", "description": "Ask for a cell that does not exist yet. When find_cell had nothing that fits (or only something close but different), say in one sentence what you needed computed. The request is saved, requests asked alike are counted together, and cells are made in the order they are asked for, so the next time this calculation comes up there may be an exact answer waiting. Only `need` is required.",
+  "inputSchema": {"type": "object", "properties": {"need": {"type": "string", "description": "What you needed computed, in one sentence (Korean or English)."},
+   "example": {"type": "string", "description": "Optional: one input and the answer you expect, in any words (e.g. '1,000,000 won loan, 5% a year, 12 months -> 85,607 a month')."}}, "required": ["need"]}},
 ]
 def _card(h, lang):
     """What a small model needs to act on one candidate, nothing more."""
@@ -30,16 +31,16 @@ def _card(h, lang):
     return card
 NEXT = {"ko": "다음 단계: 사용자가 묻는 값과 output_keys 가 맞는 세포를 골라, call_cell 에 그 cell 이름과 input_template 의 키를 쓰고 값은 사용자 질문의 숫자로 채워 부르세요. 세포의 답이 검증된 정답입니다.",
         "en": "Next step: pick the cell whose output_keys match what the user asked, then call call_cell with that cell name and its input_template keys, filled with the numbers from the user's question. The cell's answer is the verified result."}
-def find_for_mcp(need, words=None):
-    r = guides.find(need, model=MODEL, caller=CALLER, words=words); lang = r["guide"].get("lang", "ko")
+def find_for_mcp(need, words=None, record=True):
+    r = guides.find(need, model=MODEL, caller=CALLER, words=words, record=record); lang = r["guide"].get("lang", "ko")
     out = {"cells": [_card(h, lang) for h in r["cells"]]}
     if out["cells"]: out["next_step"] = NEXT[lang]
-    else: out["no_cell"] = r.get("no_cell")
+    elif r.get("no_cell"): out["no_cell"] = r["no_cell"]
     return out
 def handle(name, a):
     if name == "find_cell": return find_for_mcp(a.get("need", ""), a.get("words") if isinstance(a.get("words"), list) else None)
     if name == "list_cells": return {"cells": [{k: c[k] for k in ("cell", "version", "description", "description_en", "required_inputs")} for c in hub.list_cells()]}
-    if name == "request_cell": return hub.request_cell(a.get("need", ""), caller=CALLER)
+    if name == "request_cell": return hub.request_cell(str(a.get("need") or ""), caller=CALLER, model=MODEL, example=a.get("example") or None)
     if name == "call_cell":
         data = dict(a.get("input") or {})
         if a.get("input_file"):
@@ -50,7 +51,7 @@ def handle(name, a):
         r = guides.call(cell, data, model=MODEL, caller=CALLER)
         if r.get("status") == "not_available" and not (hub.re.fullmatch(r"[a-z][a-z0-9_]{2,63}", cell) and hub.load(cell)):
             # small models often guess a cell name ("wages") instead of calling find_cell first: show the real ones
-            f = find_for_mcp(cell.replace("_", " ") + " " + " ".join(str(k) for k in data))
+            f = find_for_mcp(cell.replace("_", " ") + " " + " ".join(str(k) for k in data), record=False)
             g = guides.guide_for(MODEL)
             # strict: only spelling fixes count here (not rename_single), so an unrelated input never gets run
             g["selection"]["repair_input"] = [x for x in g["selection"].get("repair_input", []) if x != "rename_single"]
@@ -71,10 +72,14 @@ def handle(name, a):
                         return r2
             if top < 0.5:
                 # the guessed name matches no cell: say so plainly and record it as demand, rather than offer unrelated cells
-                r["no_cell"] = hub.request_cell(cell.replace("_", " ") + (" | inputs: " + ", ".join(str(k) for k in data) if data else ""), caller=CALLER)
+                r["no_cell"] = hub.request_cell(cell.replace("_", " ") + (" | inputs: " + ", ".join(str(k) for k in data) if data else ""), caller=CALLER, model=MODEL, auto=True)
+                r["no_cell"].pop("closest_cell", None)   # the guessed name matched nothing well: offer no cell at all
                 r["reason"] = "no cell does this yet. It is recorded as a request; answer the user without a cell and say it is not verified."
             elif f["cells"]:
                 close = [c for c in f["cells"] if c["cell"] in near] or f["cells"]
+                # the model wanted a cell by a name that does not exist and the closest one did not run on its input: keep the need
+                # as demand too (auto), so it is not lost if the model gives up here; the suggestion is saved with it as `nearest`
+                hub._log_demand(cell.replace("_", " ") + (" | inputs: " + ", ".join(str(k) for k in data) if data else ""), CALLER, model=MODEL, auto=True)
                 r["did_you_mean"] = close; r["next_step"] = f["next_step"]
                 if len(close) == 1:
                     # one clear match: hand back the exact call to make, so a small model only has to fill in the numbers

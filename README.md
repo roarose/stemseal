@@ -65,7 +65,8 @@ stemseal list
 stemseal find 연평균 성장률
 stemseal call currency_convert '{"amount": 100, "rate": 1385.5}'
 stemseal request 대출 원리금 균등상환 월 납입액
-stemseal demand --share   # one GitHub-issue link per unmet need
+stemseal demand           # unmet needs on this machine, alike requests counted together
+stemseal demand --open 1  # open a prefilled GitHub cell request for the top one (you press Submit)
 stemseal update           # get cells made since you installed
 ```
 
@@ -85,9 +86,11 @@ stemseal update           # get cells made since you installed
 
 ## Need a cell that isn't here? / 필요한 세포가 없나요?
 
-When `find_cell` comes back empty, the model can call `request_cell`. The need is saved only on your machine (`~/.stemseal/ledger.jsonl`), and the reply carries a link to open a GitHub issue. Nothing is sent unless you open it (`stemseal demand --share` lists a link for every unmet need). Requested cells are built as demand gathers. Run `stemseal update` to get them: it downloads only new locked cells and re-checks each one on your machine (sha256, purity gate, every ground-truth case) before it can be used. Update is the only command that uses the network, and it only downloads.
+When nothing fits, the need is saved without the model having to do anything: a `find_cell` that comes back empty, or a call to a cell name that does not exist, is written to your own ledger (`~/.stemseal/ledger.jsonl`) with the time, the words searched, the model name (`STEMSEAL_MODEL`) and the closest cell. The model can also ask on purpose with `request_cell` (just `need`, one sentence; `example` is optional). Either way the reply is not a refusal: it says the request is saved and counted, to answer on its own for now and say so, and to look again next time, and it points at the closest cell when one comes near.
 
-`request_cell`은 필요를 내 컴퓨터에만 기록하고, GitHub 이슈를 여는 링크를 돌려줍니다. 링크를 직접 열기 전에는 아무것도 보내지 않습니다(`stemseal demand --share`가 못 채운 필요마다 링크를 보여 줍니다). 요청이 모이는 순서대로 세포를 만들고, `stemseal update`로 받습니다. 새 잠금 세포만 내려받아 내 컴퓨터에서 sha256, 순수성, 정답 사례를 모두 다시 확인한 뒤에 씁니다. 네트워크를 쓰는 명령은 update 하나뿐이고, 내려받기만 합니다.
+Requests worded alike (numbers aside) are grouped and counted; the count is how strong the demand is. `stemseal demand` lists them, most asked first. Nothing is sent anywhere: `stemseal demand --open <n>` opens a GitHub cell-request issue already filled in (the need, other wordings, the example, how often it was asked), and you decide whether to submit it. Requested cells are built as demand gathers. Run `stemseal update` to get them: it downloads only new locked cells and re-checks each one on your machine (sha256, purity gate, every ground-truth case) before it can be used, and the requests a new cell answers drop off your list. Update is the only command that uses the network, and it only downloads.
+
+세포가 없으면 모델이 따로 하지 않아도 요청이 남습니다. `find_cell`이 빈손으로 돌아오거나 없는 세포 이름을 부르면, 시각, 찾던 말, 모델 이름, 가장 가까운 세포가 내 컴퓨터의 장부에만 기록됩니다. 모델이 `request_cell`로 직접 요청할 수도 있습니다(`need` 한 문장이면 되고 `example`은 선택). 돌려주는 말은 거절이 아니라 "기록했고 곧 그 물길을 만든다, 다음에 다시 찾아 달라"이고, 가까운 세포가 있으면 함께 알려 줍니다. 숫자만 다르고 뜻이 같은 요청은 한 건으로 묶어 횟수를 셉니다. `stemseal demand`로 쌓인 요청을 보고, `stemseal demand --open <번호>`로 내용이 채워진 GitHub 세포 요청 이슈를 엽니다. 제출은 사용자가 직접 누릅니다. 요청이 모이는 순서대로 세포를 만들고 `stemseal update`로 받습니다. 새 잠금 세포만 내려받아 내 컴퓨터에서 sha256, 순수성, 정답 사례를 모두 다시 확인한 뒤에 쓰고, 그 세포가 답한 요청은 목록에서 빠집니다. 네트워크를 쓰는 명령은 update 하나뿐이고, 내려받기만 합니다.
 
 ## Safety
 
