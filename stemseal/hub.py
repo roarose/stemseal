@@ -151,11 +151,10 @@ def register(name, src, contract, gt_cases, locked_by="unknown", base=None):
     return {"locked": True, "cell": name, "version": version, "sha256": lock["sha256"], "report": rep}
 
 def input_help(c):
-    """What a caller needs to retry a refused call: the exact input keys, what each means, and one input that works."""
+    """What a caller needs to retry a refused call: the exact input keys, what each means, and a template to fill (no example numbers: small models copy them)."""
     sch = c["contract"]["input_schema"]; h = {"required_inputs": sch.get("required", []), "inputs": sch.get("properties", {}),
         "note": "Call call_cell again with exactly these keys in `input`. Optional inputs can be left out."}
-    try: h["input_example"] = json.load(open(os.path.join(c["dir"], "gt_cases.json"), encoding="utf-8"))[0]["input"]
-    except Exception: pass
+    h["input_template"] = {k: "<%s, from the user's question>" % sch.get("properties", {}).get(k, "number") for k in h["required_inputs"]}
     return h
 
 # ---------------------------------------------------------------- the membrane: call

@@ -24,11 +24,12 @@ def _card(h, lang):
     c = hub.load(h["cell"])["contract"]; card = {"cell": h["cell"],
         "computes": (c.get("description_en") if lang == "en" else None) or c["description"],
         "required_inputs": c["input_schema"].get("required", []), "output_keys": c.get("output_keys", [])}
-    try: card["input_example"] = json.load(open(os.path.join(hub.load(h["cell"])["dir"], "gt_cases.json"), encoding="utf-8"))[0]["input"]
-    except Exception: pass
+    # a template, not a worked example: small models copied example numbers (rate 1544.2, rates [-0.011, ...]) into real calls
+    props = c["input_schema"].get("properties", {})
+    card["input_template"] = {k: "<%s, from the user's question>" % props.get(k, "number") for k in card["required_inputs"]}
     return card
-NEXT = {"ko": "다음 단계: 사용자가 묻는 값과 output_keys 가 맞는 세포를 골라, call_cell 에 그 cell 이름과 input_example 과 같은 모양의 input 을 넣어 부르세요. 세포의 답이 검증된 정답입니다.",
-        "en": "Next step: pick the cell whose output_keys match what the user asked, then call call_cell with that cell name and an input shaped like its input_example. The cell's answer is the verified result."}
+NEXT = {"ko": "다음 단계: 사용자가 묻는 값과 output_keys 가 맞는 세포를 골라, call_cell 에 그 cell 이름과 input_template 의 키를 쓰고 값은 사용자 질문의 숫자로 채워 부르세요. 세포의 답이 검증된 정답입니다.",
+        "en": "Next step: pick the cell whose output_keys match what the user asked, then call call_cell with that cell name and its input_template keys, filled with the numbers from the user's question. The cell's answer is the verified result."}
 def find_for_mcp(need, words=None):
     r = guides.find(need, model=MODEL, caller=CALLER, words=words); lang = r["guide"].get("lang", "ko")
     out = {"cells": [_card(h, lang) for h in r["cells"]]}
@@ -75,10 +76,10 @@ def handle(name, a):
             elif f["cells"]:
                 close = [c for c in f["cells"] if c["cell"] in near] or f["cells"]
                 r["did_you_mean"] = close; r["next_step"] = f["next_step"]
-                if len(close) == 1 and close[0].get("input_example") is not None:
+                if len(close) == 1:
                     # one clear match: hand back the exact call to make, so a small model only has to fill in the numbers
-                    r["call_this"] = {"cell": close[0]["cell"], "input": close[0]["input_example"],
-                                      "note": "Same cell, same keys; replace the example numbers with the user's numbers."}
+                    r["call_this"] = {"cell": close[0]["cell"], "input": close[0]["input_template"],
+                                      "note": "Same cell, same keys; put the user's numbers in place of each <...>."}
                 r["reason"] = "no cell is named %r. Call %s instead, with its exact input keys." % (cell, " or ".join(c["cell"] for c in close))
         return r
     raise ValueError("unknown tool")

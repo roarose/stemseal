@@ -4,7 +4,7 @@ cell-selection guide and applies it: how many candidates, what each candidate ca
 Guides live in guides/<id>.json. 'match' holds lowercase glob patterns on the model name; the most specific family match wins,
 and the size guide 'tiny' (4B or smaller) tightens it further. No match -> _default.
 A guide marked 'measured' came from this hub's experiments; the others are public reports to be re-measured."""
-import fnmatch, json, os
+import fnmatch, json, os, re
 from . import hub
 GDIR = os.environ.get("STEMSEAL_GUIDES_DIR") or os.path.join(os.path.dirname(os.path.abspath(__file__)), "guides")
 
@@ -96,6 +96,15 @@ def repair(name, inp, g):
                 is_obj = "object" in str(props.get(k, ""))
                 if (not is_obj and isinstance(iv, (list, int, float)) and not isinstance(iv, bool)) or (is_obj and isinstance(iv, dict) and iv):
                     inp[k] = iv; fx.append("unwrap:%s" % k)
+    for k, v in list(inp.items()):
+        # "12,000" or "5%" as text -> number (templates are text, and small models sometimes keep the quotes)
+        if isinstance(v, str):
+            t = v.replace(",", "").replace("%", "").replace("원", "").strip()
+            try: inp[k] = int(t) if re.fullmatch(r"-?\d+", t) else float(t); fx.append("number:%s" % k)
+            except ValueError: pass
+        elif isinstance(v, list) and v and all(isinstance(x, str) for x in v):
+            try: inp[k] = [float(x.replace(",", "").replace("%", "").strip()) for x in v]; fx.append("number:%s" % k)
+            except ValueError: pass
     norm = lambda x: "".join(ch for ch in str(x).lower() if ch.isalnum())
     for k in list(inp):
         # hourlyWage / Hourly-Wage -> hourly_wage: same key in another spelling (small models write camelCase often)
