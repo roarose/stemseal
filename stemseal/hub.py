@@ -248,12 +248,12 @@ def _keys(need):
     return ["s:" + " ".join(sorted(set(w))), "n:" + "".join(w)]
 def _ticket(need):
     return "D-" + sha(_keys(need)[0])[:8]
-def _rows(kind=None):
+def _rows(kind=None, path=None):
     """Ledger rows, oldest first. A damaged line (a write cut off midway) is skipped, never allowed to hide the rest.
     kind: a type or tuple of types to keep; the raw line is checked first, so a long call log does not slow a miss."""
     kinds = (kind,) if isinstance(kind, str) else tuple(kind or ())
     out = []
-    try: f = open(LEDGER, encoding="utf-8", errors="replace")
+    try: f = open(path or LEDGER, encoding="utf-8", errors="replace")
     except OSError: return out
     with f:
         for l in f:
