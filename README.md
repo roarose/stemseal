@@ -67,6 +67,7 @@ stemseal call currency_convert '{"amount": 100, "rate": 1385.5}'
 stemseal request 대출 원리금 균등상환 월 납입액
 stemseal demand --share   # one GitHub-issue link per unmet need
 stemseal update           # get cells made since you installed
+stemseal savings          # tokens the cells saved on this machine
 ```
 
 ## Cells
@@ -85,9 +86,26 @@ stemseal update           # get cells made since you installed
 
 ## Need a cell that isn't here? / 필요한 세포가 없나요?
 
-When `find_cell` comes back empty, the model can call `request_cell`. The need is saved only on your machine (`~/.stemseal/ledger.jsonl`), and the reply carries a link to open a GitHub issue. Nothing is sent unless you open it (`stemseal demand --share` lists a link for every unmet need). Requested cells are built as demand gathers. Run `stemseal update` to get them: it downloads only new locked cells and re-checks each one on your machine (sha256, purity gate, every ground-truth case) before it can be used. Update is the only command that uses the network, and it only downloads.
+When `find_cell` comes back empty, the model can call `request_cell`. The need is saved only on your machine (`~/.stemseal/ledger.jsonl`), and the reply carries a link to open a GitHub issue. Nothing is sent unless you open it (`stemseal demand --share` lists a link for every unmet need). Requested cells are built as demand gathers. Run `stemseal update` to get them: it downloads only new locked cells and re-checks each one on your machine (sha256, purity gate, every ground-truth case) before it can be used. Update is the only command that reaches the internet, and it only downloads. (`stemseal measure` talks only to the Ollama on your own machine.)
 
-`request_cell`은 필요를 내 컴퓨터에만 기록하고, GitHub 이슈를 여는 링크를 돌려줍니다. 링크를 직접 열기 전에는 아무것도 보내지 않습니다(`stemseal demand --share`가 못 채운 필요마다 링크를 보여 줍니다). 요청이 모이는 순서대로 세포를 만들고, `stemseal update`로 받습니다. 새 잠금 세포만 내려받아 내 컴퓨터에서 sha256, 순수성, 정답 사례를 모두 다시 확인한 뒤에 씁니다. 네트워크를 쓰는 명령은 update 하나뿐이고, 내려받기만 합니다.
+`request_cell`은 필요를 내 컴퓨터에만 기록하고, GitHub 이슈를 여는 링크를 돌려줍니다. 링크를 직접 열기 전에는 아무것도 보내지 않습니다(`stemseal demand --share`가 못 채운 필요마다 링크를 보여 줍니다). 요청이 모이는 순서대로 세포를 만들고, `stemseal update`로 받습니다. 새 잠금 세포만 내려받아 내 컴퓨터에서 sha256, 순수성, 정답 사례를 모두 다시 확인한 뒤에 씁니다. 인터넷을 쓰는 명령은 update 하나뿐이고, 내려받기만 합니다(`stemseal measure`는 내 컴퓨터의 Ollama에만 붙습니다).
+
+## Tokens saved / 아낀 토큰
+
+Every cell call records, in the same local ledger, what it cost and what it saved. It is always on and never leaves your machine.
+
+- **cost**: the call the model wrote plus the reply it read, estimated from the text (1 token per 4 ASCII characters, 1 per Hangul or other character). stemseal never sees your model's tokenizer.
+- **baseline**: the tokens the same model spends doing the job without the cell, measured per cell and per model.
+- **saved** = baseline − cost. Negative stays negative. A refused call saves nothing (saved = −cost), and the tokens spent on `find_cell` are subtracted from the total.
+
+Measured and estimated numbers are kept apart. A model with no measurement of its own gets the smallest baseline measured on any other model, marked `estimate`. A cell with no measurement at all gets no number (`none`), never a guess.
+
+```
+stemseal savings --days 30                      # totals by cell, model and day
+stemseal measure vat_supply_price qwen2.5:3b    # measure a baseline with your local Ollama model (5 cases)
+```
+
+세포를 부를 때마다 든 토큰과 아낀 토큰이 같은 장부에 저절로 남습니다. 끄는 옵션은 없고, 내 컴퓨터 밖으로 나가지 않습니다. 아낀 양은 "세포 없이 같은 일을 할 때 그 모델이 쓰는 토큰(기준값)"에서 이번 호출에 든 토큰을 뺀 값입니다. 기준값은 세포마다, 모델마다 `stemseal measure`로 잽니다. 실측과 추정은 섞지 않고, 잰 적 없는 세포에는 숫자를 지어내지 않습니다.
 
 ## Safety
 

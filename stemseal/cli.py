@@ -7,10 +7,13 @@
   stemseal request <need words...>   record a cell you needed; prints a link you can open to ask for it
   stemseal demand [--share]          your recorded unmet needs (kept only on this machine); --share prints a link per need to ask for it
   stemseal update [--check]          bring cells made since this install (each is re-verified here before use)
+  stemseal savings [--days N]        tokens the cells saved, from this machine's ledger (measured and estimated kept apart)
+  stemseal measure <cell> <model> [--n 5] [--url http://127.0.0.1:11434] [--ship]
+                                     measure a cell's baseline (tokens without the cell) with a local Ollama model
   stemseal guide <model> [ko|en]     the selection guide used for a model name
   stemseal mcp                       run the MCP server on stdio (same as stemseal-mcp)"""
 import json, sys
-from . import hub, guides, update as upd
+from . import hub, guides, savings, update as upd
 
 def _p(o): print(json.dumps(o, ensure_ascii=False, indent=1))
 
@@ -41,6 +44,14 @@ def main(argv=None):
     elif cmd == "index": _p({k: list(v) for k, v in upd.build_index()["cells"].items()})
     elif cmd == "mcp":
         from . import mcp as _m; _m.main(); return 0
+    elif cmd == "savings":
+        days = int(rest[rest.index("--days") + 1]) if "--days" in rest else None
+        _p(savings.summarize(savings.read_ledger(), days=days))
+    elif cmd == "measure":
+        if len(rest) < 2: print(__doc__); return 2
+        opt = lambda k, d: rest[rest.index(k) + 1] if k in rest else d
+        r = savings.measure(rest[0], rest[1], n=int(opt("--n", 5)), url=opt("--url", None), ship="--ship" in rest)
+        _p({k: v for k, v in r.items() if k != "runs"} if r.get("ok") else r); return 0 if r.get("ok") else 1
     elif cmd == "guide": _p(guides.brief(guides.guide_for(rest[0] if rest else ""), (rest[1] if len(rest) > 1 else "ko")))
     else: print(__doc__); return 2
     return 0

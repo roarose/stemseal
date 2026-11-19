@@ -6,7 +6,7 @@ Env: STEMSEAL_CALLER = name recorded in the ledger for this client (default 'mcp
      STEMSEAL_MODEL  = the client's model name (e.g. exaone3.5:7.8b). Unset, the general small-model guide is used. When set, find_cell returns that model's cell-selection guide
                        with the candidates, and call_cell repairs the input mistakes the guide knows about (see guides/)."""
 import json, os, sys
-from . import hub, guides, __version__
+from . import hub, guides, savings, __version__
 CALLER = os.environ.get("STEMSEAL_CALLER", "mcp")
 MODEL = os.environ.get("STEMSEAL_MODEL")
 TOOLS = [
@@ -37,7 +37,12 @@ def find_for_mcp(need, words=None):
     else: out["no_cell"] = r.get("no_cell")
     return out
 def handle(name, a):
-    if name == "find_cell": return find_for_mcp(a.get("need", ""), a.get("words") if isinstance(a.get("words"), list) else None)
+    if name == "find_cell":
+        out = find_for_mcp(a.get("need", ""), a.get("words") if isinstance(a.get("words"), list) else None)
+        # finding a cell costs tokens too (the request and the cards read back); the savings report subtracts it
+        hub._log({"type": "meter", "tool": "find_cell", "caller": CALLER, "model": MODEL,
+                  "tokens": {"meter": savings.METER, "method": savings.METHOD, "cost": savings.est_tokens(json.dumps(a, ensure_ascii=False, sort_keys=True)) + savings.est_tokens(json.dumps(out, ensure_ascii=False, sort_keys=True))}})
+        return out
     if name == "list_cells": return {"cells": [{k: c[k] for k in ("cell", "version", "description", "description_en", "required_inputs")} for c in hub.list_cells()]}
     if name == "request_cell": return hub.request_cell(a.get("need", ""), caller=CALLER)
     if name == "call_cell":
