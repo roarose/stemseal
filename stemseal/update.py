@@ -64,6 +64,8 @@ def update(check_only=False):
                 if rep["passed"] != rep["total"] or rep["total"] < hub.MIN_GT or not rep["deterministic"]:
                     why = "ground-truth gate on this machine: %d/%d" % (rep["passed"], rep["total"])
             if why: refused.append({"cell": name, "version": v, "reason": why}); continue
+            try: open(os.path.join(tmp, "baseline.json"), "wb").write(_get("%s/%s/%s/baseline.json" % (RAW, name, v)))   # optional: token baseline, not part of the lock
+            except Exception: pass
             dest = os.path.join(hub.USER_CELLS, name, v)
             if os.path.isdir(dest): shutil.rmtree(dest)
             shutil.copytree(tmp, dest)

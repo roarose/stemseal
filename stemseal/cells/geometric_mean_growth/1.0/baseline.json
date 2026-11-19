@@ -1,0 +1,23 @@
+{
+ "format": "baseline/1",
+ "cell": "geometric_mean_growth",
+ "version": "1.0",
+ "models": {
+  "exaone3.5:7.8b": {
+   "kind": "measured",
+   "tokens": 177.4,
+   "alone_out": 198.4,
+   "answer_out": 21.0,
+   "n": 5,
+   "alone_correct": 0.0,
+   "with_cell_correct": 1.0,
+   "retry_included": false,
+   "cost_est_mean": 57.2,
+   "cost_real_mean": 147.6,
+   "cost_ratio": 2.58,
+   "measured_at": "2026-11-19T22:19:27+00:00",
+   "method": "ollama eval_count, temperature 0, num_ctx 4096, question built from the cell card, no worked solution asked (savings.question v2)",
+   "where": "local Ollama, 8GB VRAM PC"
+  }
+ }
+}

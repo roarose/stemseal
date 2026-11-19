@@ -1,0 +1,23 @@
+{
+ "format": "baseline/1",
+ "cell": "vat_supply_price",
+ "version": "1.0",
+ "models": {
+  "exaone3.5:7.8b": {
+   "kind": "measured",
+   "tokens": 166.2,
+   "alone_out": 196.2,
+   "answer_out": 30.0,
+   "n": 5,
+   "alone_correct": 0.2,
+   "with_cell_correct": 1.0,
+   "retry_included": false,
+   "cost_est_mean": 51.2,
+   "cost_real_mean": 129.0,
+   "cost_ratio": 2.52,
+   "measured_at": "2026-11-19T22:19:04+00:00",
+   "method": "ollama eval_count, temperature 0, num_ctx 4096, question built from the cell card, no worked solution asked (savings.question v2)",
+   "where": "local Ollama, 8GB VRAM PC"
+  }
+ }
+}
