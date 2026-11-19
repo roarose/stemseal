@@ -1,0 +1,79 @@
+{
+ "description": "외화 금액을 환율(1단위당 원)로 원화 환산, 원 미만 버림.",
+ "when_to_use": "달러·엔·유로 등 외화를 원화로 바꿀 때.",
+ "keywords": [
+  "환율",
+  "환전",
+  "원화 환산",
+  "달러",
+  "외화",
+  "exchange rate",
+  "currency conversion",
+  "convert to won",
+  "usd to krw"
+ ],
+ "input_schema": {
+  "required": [
+   "amount",
+   "rate"
+  ],
+  "properties": {
+   "amount": "number >= 0",
+   "rate": "number > 0 (won per unit)"
+  }
+ },
+ "output_keys": [
+  "krw"
+ ],
+ "description_en": "Convert a foreign currency amount to Korean won at a given rate (won per unit), truncating below 1 won.",
+ "when_to_use_en": "When converting dollars, yen, euros or other currencies to won.",
+ "input_aliases": {
+  "rate": [
+   "exchange_rate",
+   "exchangerate",
+   "krw_rate",
+   "won_rate",
+   "rate_krw",
+   "won_per_unit",
+   "conversion_rate",
+   "fx_rate",
+   "rate_per_unit",
+   "krw_per_unit",
+   "won_per"
+  ],
+  "amount": [
+   "foreign_amount",
+   "value",
+   "money",
+   "amount_foreign",
+   "usd",
+   "jpy",
+   "eur",
+   "dollars",
+   "yen",
+   "source_amount",
+   "from_amount",
+   "amount_from",
+   "original_amount",
+   "foreign",
+   "amount_jpy",
+   "amount_usd"
+  ]
+ },
+ "input_sanity": {
+  "rate": {
+   "action": "per100_currency",
+   "currencies": [
+    "jpy",
+    "yen",
+    "엔",
+    "円",
+    "vnd",
+    "동",
+    "idr"
+   ],
+   "min": 100,
+   "why": "yen is quoted per 100 yen in Korea (905 won per 100 yen = 9.05 per yen)"
+  }
+ }
+}

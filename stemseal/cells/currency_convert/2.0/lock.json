@@ -1,0 +1,10 @@
+{
+ "cell": "currency_convert",
+ "version": "2.0",
+ "sha256": "8086aa697dcf1bd9ea049b81e4467004da4a4b20d59317220ad7f881c6e977f8",
+ "gt_total": 32,
+ "gt_passed": 32,
+ "deterministic": true,
+ "locked_at": "2026-11-19T03:05:05+00:00",
+ "locked_by": "fix of 1.0 float truncation (12000 x 9.12 gave 109439), Claude 2026-11-19"
+}

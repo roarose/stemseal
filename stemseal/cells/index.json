@@ -19,6 +19,14 @@
     "description": "외화 금액을 환율(1단위당 원)로 원화 환산, 원 미만 버림.",
     "description_en": "Convert a foreign currency amount to Korean won at a given rate (won per unit), truncating below 1 won.",
     "answers": []
+   },
+   "2.0": {
+    "sha256": "8086aa697dcf1bd9ea049b81e4467004da4a4b20d59317220ad7f881c6e977f8",
+    "gt": 32,
+    "locked_at": "2026-11-19T03:05:05+00:00",
+    "description": "외화 금액을 환율(1단위당 원)로 원화 환산, 원 미만 버림.",
+    "description_en": "Convert a foreign currency amount to Korean won at a given rate (won per unit), truncating below 1 won.",
+    "answers": []
    }
   },
   "food_calories": {
