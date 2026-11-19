@@ -142,14 +142,15 @@ def repair(name, inp, g):
 def call(name, inp, model=None, caller="unknown"):
     g = guide_for(model)
     inp2, fx = repair(name, inp, g)
-    r = hub.call(name, inp2, caller=caller)
-    r["guide"] = g["id"]; r["repairs"] = fx
-    if r.get("status") == "ok":
-        r["input_used"] = inp2
-        # small models drop or move a digit when they copy 2060740 into a sentence; hand them the number already written out
-        if isinstance(r.get("result"), dict):
-            r["answer_text"] = ", ".join("%s = %s" % (k, ("{:,}".format(v) if isinstance(v, int) else "{:,.2f}".format(v).rstrip("0").rstrip("."))
-                                         if isinstance(v, (int, float)) and not isinstance(v, bool) else v) for k, v in r["result"].items())
-            r["say"] = "Copy the numbers from answer_text exactly."
+    def deco(r):
+        r["guide"] = g["id"]; r["repairs"] = fx
+        if r.get("status") == "ok":
+            r["input_used"] = inp2
+            # small models drop or move a digit when they copy 2060740 into a sentence; hand them the number already written out
+            if isinstance(r.get("result"), dict):
+                r["answer_text"] = ", ".join("%s = %s" % (k, ("{:,}".format(v) if isinstance(v, int) else "{:,.2f}".format(v).rstrip("0").rstrip("."))
+                                             if isinstance(v, (int, float)) and not isinstance(v, bool) else v) for k, v in r["result"].items())
+                r["say"] = "Copy the numbers from answer_text exactly."
+    r = hub.call(name, inp2, caller=caller, model=model, decorate=deco)
     if fx: hub._log({"type": "repair", "cell": name, "model": model, "guide": g["id"], "fixes": fx, "status": r["status"]})
     return r

@@ -6,7 +6,7 @@ Env: STEMSEAL_CALLER = name recorded in the ledger for this client (default 'mcp
      STEMSEAL_MODEL  = the client's model name (e.g. exaone3.5:7.8b). Unset, the general small-model guide is used. When set, find_cell returns that model's cell-selection guide
                        with the candidates, and call_cell repairs the input mistakes the guide knows about (see guides/)."""
 import json, os, sys
-from . import hub, guides, __version__
+from . import hub, guides, savings, __version__
 CALLER = os.environ.get("STEMSEAL_CALLER", "mcp")
 MODEL = os.environ.get("STEMSEAL_MODEL")
 TOOLS = [
@@ -41,7 +41,20 @@ def find_for_mcp(need, words=None, record=True):
     if out["cells"]: out["next_step"] = NEXT[lang]
     elif r.get("no_cell"): out["no_cell"] = _for_model(r["no_cell"])
     return out
+CORE = {"status", "cell", "version", "verified", "result", "reason", "how_to_fix", "guide", "repairs", "input_used", "answer_text", "say"}
 def handle(name, a):
+    """Every tool's tokens are counted. call_cell's core reply is metered on its call row (hub.call); what this server adds to it
+    (did_you_mean, call_this, no_cell, notes) and every other tool's request and reply go on a type=meter row the report subtracts."""
+    out = _handle(name, a)
+    try:
+        if name == "call_cell":
+            extra = {k: v for k, v in out.items() if k not in CORE} if isinstance(out, dict) else {}
+            texts = [json.dumps(extra, ensure_ascii=False, sort_keys=True)] if extra else []
+        else: texts = [json.dumps(a, ensure_ascii=False, sort_keys=True), json.dumps(out, ensure_ascii=False, sort_keys=True)]
+        if texts: hub._log({"type": "meter", "tool": name, "caller": CALLER, "model": MODEL, "tokens": savings.text_cost(texts, MODEL)})
+    except Exception: pass   # the meter must never break a tool
+    return out
+def _handle(name, a):
     if name == "find_cell": return find_for_mcp(a.get("need", ""), a.get("words") if isinstance(a.get("words"), list) else None)
     if name == "list_cells": return {"cells": [{k: c[k] for k in ("cell", "version", "description", "description_en", "required_inputs")} for c in hub.list_cells()]}
     if name == "request_cell":

@@ -7,11 +7,12 @@ The hub only answers from locked cells. Anything else is an honest refusal (not_
 and every refusal is recorded as demand for a future cell.
 
 Layout:  cells/<name>/<version>/{cell.py, contract.json, gt_cases.json, lock.json}
-         ledger/calls.jsonl   (one line per call, find and refusal)
+         ~/.stemseal/ledger.jsonl   (one line per call, find and refusal; call lines carry the token meter, see savings.py)
 Stdlib only.
 """
 import ast, hashlib, json, os, re, subprocess, sys, time
 from datetime import datetime, timezone
+from . import savings
 
 PKG = os.path.dirname(os.path.abspath(__file__))
 def _home():
@@ -158,16 +159,23 @@ def input_help(c):
     return h
 
 # ---------------------------------------------------------------- the membrane: call
-def call(name, input_data, caller="unknown", version=None):
-    """status = ok | not_available | invalid_input. A result only ever comes from a locked, untampered cell."""
+def call(name, input_data, caller="unknown", version=None, model=None, decorate=None, log=True):
+    """status = ok | not_available | invalid_input. A result only ever comes from a locked, untampered cell.
+    Every call row carries its token meter (savings.py): what the call cost and, against the cell's baseline, what it saved.
+    model: the calling model's name, when known (baselines are per model). decorate(out): lets a wrapper add its fields
+    before the reply is measured, so the meter counts the reply the model actually reads."""
     t0 = time.time()
     def env(status, result=None, reason=None, ver=None):
         rec = {"type": "call", "cell": name, "version": ver, "status": status, "caller": caller, "ms": round((time.time() - t0) * 1000, 1),
                "input_sha": sha(json.dumps(input_data, sort_keys=True, ensure_ascii=False))[:16] if isinstance(input_data, dict) else None, "reason": reason}
         if status != "ok" and isinstance(input_data, dict): rec["input_keys"] = sorted(str(k) for k in input_data)[:12]   # names only, never values
-        _log(rec)
         out = {"status": status, "cell": name, "version": ver, "verified": status == "ok", "result": result, "reason": reason}
         if status == "invalid_input" and c: out["how_to_fix"] = input_help(c)
+        if decorate: decorate(out)
+        rec["model"] = model
+        try: rec["tokens"] = savings.meter(name, ver, model, {"cell": name, "input": input_data}, out, status == "ok")
+        except Exception: pass   # the meter must never break a call
+        if log: _log(rec)
         return out
     c = load(name, version) if isinstance(name, str) and re.fullmatch(r"[a-z][a-z0-9_]{2,63}", name or "") else None
     if not c: return env("not_available", reason="no locked cell with this name")
