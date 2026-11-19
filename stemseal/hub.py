@@ -202,6 +202,7 @@ def find(need, caller="unknown", k=3, min_score=0.3, words=None, model=None, rec
     words: the caller's own short names for the calculation (e.g. "연평균 성장률"). They are searched on their own and the two result lists
     are taken in turn (request, words, request, ...), so a request worded unlike any cell card can still reach its cell (exp8).
     record=False: an internal probe (e.g. after a guessed cell name), whose caller records the demand itself."""
+    need = need if isinstance(need, str) else ("" if need is None else json.dumps(need, ensure_ascii=False))
     a = _rank(need, min_score); b = _rank(" ".join(str(w) for w in words), min_score) if words else []
     hits = []; seen = set()
     for i in range(max(len(a), len(b))):
@@ -209,117 +210,170 @@ def find(need, caller="unknown", k=3, min_score=0.3, words=None, model=None, rec
             if i < len(lst) and lst[i][1]["cell"] not in seen: seen.add(lst[i][1]["cell"]); hits.append(dict(lst[i][1], score=lst[i][0]))
     hits = hits[:k]
     _log({"type": "find", "need": need[:300], "words": (words or [])[:8], "caller": caller, "hits": [h["cell"] for h in hits]})
-    if not hits and record and (need or "").strip(): _log_demand(need, caller, model=model, auto=True)
+    if not hits and record and need.strip(): _log_demand(need, caller, model=model, auto=True)
     return hits
 
 # ---------------------------------------------------------------- demand (what to differentiate next)
 # Every unmet need becomes one ledger row: {"type": "demand", "need", "caller", "model", "ticket", "auto" | "explicit",
 # "nearest", "nearest_score", "example"}. auto = recorded by find/call when nothing fit; explicit = the model called request_cell.
-# Rows stay on this machine. Same-meaning rows are grouped when read (demand_summary), so the count of a group is the strength of the demand.
+# Rows stay on this machine. Requests for the same calculation share a ticket and are counted together; the count is the strength of the demand.
+# Grouping is deliberately strict: merging two different calculations hides one of them, missing a merge only shows it twice.
 CLOSE_ENOUGH = 0.2      # a nearest cell below this score is not worth mentioning
-SAME_NEED = 0.5         # two needs whose words overlap this much (Jaccard, numbers removed) are one request
+FILLER = {"계산", "계산기", "계산법", "계산하기", "구하기", "구하는", "구해", "방법", "금액", "값", "얼마", "알려줘", "해줘",
+          "calculate", "calculation", "calculator", "compute", "computing", "amount", "value", "the", "a", "an", "of", "for", "how", "much", "to", "get"}
 def _lang(text):
     v = (os.environ.get("STEMSEAL_LANG") or "").lower()
     if v in ("ko", "en"): return v
     return "ko" if any("가" <= ch <= "힣" for ch in (text or "")) else "en"
 def _core(need):
     """The words of a need without the numbers and the '| inputs: ...' tail: what the calculation is, not this time's data."""
-    return re.sub(r"\d[\d,.]*", " ", (need or "").split(" | inputs:")[0])
+    return re.sub(r"\d[\d,.]*", " ", str(need or "").split(" | inputs:")[0])
+def _words(need):
+    """The words that name the calculation, in order: numbers, punctuation and filler (계산, amount, ...) removed."""
+    return [w for w in re.sub(r"[^a-z가-힣]+", " ", _core(need).lower()).split() if w not in FILLER]
+def _keys(need):
+    """Two strict keys; a request matching either is the same calculation: the same words in any order ('loan monthly payment' =
+    'monthly loan payment amount'), or the same letters spaced differently ('월 납입액' = '월납입액 계산'). A different word
+    ('복리' vs '단리', '가중 평균' vs '평균') never matches."""
+    w = _words(need)
+    if not w: return ["x:" + re.sub(r"\s+", " ", str(need or "").strip().lower())]
+    return ["s:" + " ".join(sorted(set(w))), "n:" + "".join(w)]
 def _ticket(need):
-    return "D-" + sha(re.sub(r"\s+", " ", (need or "").strip().lower()))[:8]
-def _rows():
-    try: return [json.loads(l) for l in open(LEDGER, encoding="utf-8") if l.strip()] if os.path.exists(LEDGER) else []
-    except Exception: return []
+    return "D-" + sha(_keys(need)[0])[:8]
+def _rows(kind=None):
+    """Ledger rows, oldest first. A damaged line (a write cut off midway) is skipped, never allowed to hide the rest.
+    kind: a type or tuple of types to keep; the raw line is checked first, so a long call log does not slow a miss."""
+    kinds = (kind,) if isinstance(kind, str) else tuple(kind or ())
+    out = []
+    try: f = open(LEDGER, encoding="utf-8", errors="replace")
+    except OSError: return out
+    with f:
+        for l in f:
+            if not l.strip() or (kinds and not any('"%s"' % k in l for k in kinds)): continue
+            try: r = json.loads(l)
+            except ValueError: continue
+            if isinstance(r, dict) and (not kinds or r.get("type") in kinds): out.append(r)
+    return out
+def _doc_words(cell):
+    c = load(cell)["contract"]
+    return set(re.sub(r"[^a-z가-힣]+", " ", " ".join([cell.replace("_", " "), c["description"], c.get("when_to_use", ""), c.get("description_en", ""),
+                                                       c.get("when_to_use_en", ""), " ".join(c.get("keywords", []))]).lower()).split()) - FILLER
+def shares_word(text, cell):
+    """True when the text and the cell's card have a whole word in common (two-letter pieces alone are noise: 'loan calc' ~ annual_leave)."""
+    return bool(set(_words(text)) & _doc_words(cell))
 def nearest(need):
-    """The cell that comes closest to a need nothing fit, with its score, or (None, 0)."""
-    r = _rank(_core(need), 0.0)
-    return (r[0][1]["cell"], r[0][0]) if r and r[0][0] > 0 else (None, 0)
+    """The cell that comes closest to a need nothing fit, with its score, or (None, 0). Only a cell sharing a whole word counts."""
+    for sc, c in _rank(_core(need), 0.0)[:5]:
+        if sc > 0 and shares_word(need, c["cell"]): return c["cell"], sc
+    return None, 0
 def _log_demand(need, caller, model=None, auto=False, example=None):
-    t = _ticket(need); n, sc = nearest(need)
-    rec = {"type": "demand", "need": (need or "")[:300], "caller": caller, "model": model, "ticket": t, "nearest": n, "nearest_score": sc}
+    need = str(need or ""); t = _ticket(need); n, sc = nearest(need)
+    rec = {"type": "demand", "need": need[:300], "caller": caller, "model": model, "ticket": t, "nearest": n, "nearest_score": sc}
     rec["auto" if auto else "explicit"] = True
     if example: rec["example"] = str(example)[:300]
     _log(rec); return t
+def times_requested(need, rows=None):
+    """How often this calculation was asked on this machine: one pass, no grouping (this runs on every miss)."""
+    k = set(_keys(need)); rows = _rows("demand") if rows is None else rows
+    return sum(1 for r in rows if r.get("type") == "demand" and k & set(_keys(r.get("need", ""))))
 
-def _similar(a, b):
-    ga, gb = _grams(_core(a)), _grams(_core(b))
-    return len(ga & gb) / max(1, len(ga | gb))
 def summarize_demand(rows):
-    """Group demand rows: same ticket, or needs worded alike (numbers aside). Returns groups, strongest first:
-    {ticket, need, count, explicit, auto, tickets, models, callers, first, last, nearest, nearest_score, examples, status, cell}.
-    status is 'ready' when a cell was marked as answering one of the group's tickets (stemseal update reads that from the index)."""
-    done = {r.get("ticket"): r.get("cell") for r in rows if r.get("type") == "fulfilled"}
-    by_t = {}
+    """Group demand rows by the strict keys (same calculation; see _keys). Linear in the ledger size. Returns groups, open ones
+    strongest first: {ticket, need, count, explicit, auto, tickets, models, callers, first, last, nearest, nearest_score, examples,
+    wordings, status, cell}. status is 'ready' when a cell was marked as answering one of the group's tickets (stemseal update reads
+    that from the index); only the same calculation joins a ready group, so a different request can never disappear into it."""
+    par = {}
+    def find_(x):
+        while par.setdefault(x, x) != x: par[x] = par[par[x]]; x = par[x]
+        return x
+    def union(a, b): par[find_(a)] = find_(b)
+    dem = [r for r in rows if r.get("type") == "demand" and str(r.get("need") or "").strip()]
+    for r in dem:
+        ks = _keys(r["need"]) + ["t:" + (r.get("ticket") or _ticket(r["need"]))]
+        for k in ks[1:]: union(ks[0], k)
+    done = {}
     for r in rows:
-        if r.get("type") != "demand" or not (r.get("need") or "").strip(): continue
-        t = r.get("ticket") or _ticket(r["need"]); by_t.setdefault(t, []).append(r)
-    groups = []   # each: list of tickets; a ticket joins the first group holding a need alike enough
-    for t, rs in by_t.items():
-        for g in groups:
-            if any(_similar(rs[0]["need"], by_t[t2][0]["need"]) >= SAME_NEED for t2 in g): g.append(t); break
-        else: groups.append([t])
+        if r.get("type") == "fulfilled" and r.get("ticket"): done[find_("t:" + r["ticket"])] = r.get("cell")
+    groups = {}
+    for r in dem: groups.setdefault(find_(_keys(r["need"])[0]), []).append(r)
     out = []
-    for g in groups:
-        rs = sorted((r for t in g for r in by_t[t]), key=lambda r: r.get("ts", ""))
-        # the wording asked most often speaks for the group; on a tie the model's own request_cell words (no data mixed in)
-        lead = max(g, key=lambda t: (len(by_t[t]), any(not r.get("auto") for r in by_t[t]), -g.index(t)))
-        ready = [done[t] for t in g if t in done]
-        nr = next((r for r in reversed(rs) if r.get("nearest")), None)
-        out.append({"ticket": lead, "need": by_t[lead][0]["need"], "count": len(rs), "explicit": sum(1 for r in rs if not r.get("auto")),
-                    "auto": sum(1 for r in rs if r.get("auto")), "tickets": g, "models": sorted({r["model"] for r in rs if r.get("model")}),
+    for root, rs in groups.items():
+        rs.sort(key=lambda r: r.get("ts", ""))
+        tickets = list(dict.fromkeys(r.get("ticket") or _ticket(r["need"]) for r in rs))
+        wc = {}
+        for r in rs: wc.setdefault(r["need"], [0, False]); wc[r["need"]][0] += 1; wc[r["need"]][1] |= not r.get("auto")
+        # the wording asked most often speaks for the group; on a tie the model's own request_cell words (no data mixed in), then the shortest
+        lead = max(wc, key=lambda w: (wc[w][0], wc[w][1], -len(w)))
+        nr = next((r for r in reversed(rs) if r.get("nearest") and (r.get("nearest_score") or 0) >= CLOSE_ENOUGH), None)
+        cell = done.get(root)
+        out.append({"ticket": _ticket(lead), "need": lead, "count": len(rs), "explicit": sum(1 for r in rs if not r.get("auto")),
+                    "auto": sum(1 for r in rs if r.get("auto")), "tickets": tickets, "models": sorted({r["model"] for r in rs if r.get("model")}),
                     "callers": sorted({r["caller"] for r in rs if r.get("caller")}), "first": rs[0].get("ts"), "last": rs[-1].get("ts"),
                     "nearest": nr["nearest"] if nr else None, "nearest_score": nr["nearest_score"] if nr else 0,
                     "examples": list(dict.fromkeys(r["example"] for r in rs if r.get("example")))[:3],
-                    "wordings": list(dict.fromkeys(r["need"] for r in rs))[:5],
-                    "status": "ready" if ready else "open", "cell": ready[-1] if ready else None})
+                    "wordings": sorted(wc, key=lambda w: -wc[w][0])[:5],
+                    "status": "ready" if cell else "open", "cell": cell})
     out.sort(key=lambda x: (x["status"] != "open", -x["count"], x["first"] or ""))
     return out
 def demand_summary(include_ready=False):
-    s = summarize_demand(_rows()); return s if include_ready else [g for g in s if g["status"] == "open"]
+    s = summarize_demand(_rows(("demand", "fulfilled"))); return s if include_ready else [g for g in s if g["status"] == "open"]
 def _group_of(ticket, rows=None):
-    for g in summarize_demand(_rows() if rows is None else rows):
-        if ticket in g["tickets"]: return g
+    for g in summarize_demand(_rows(("demand", "fulfilled")) if rows is None else rows):
+        if ticket in g["tickets"] or ticket == g["ticket"]: return g
     return None
 
-def share_link(t, need, group=None):
-    """A prefilled GitHub cell-request issue. Opening it is the user's choice; stemseal never sends it."""
-    from urllib.parse import quote
-    g = group or {}
+# ---------------------------------------------------------------- the way out: a cell-request issue the user opens
+PRIVATE = [(re.compile(r"[\w.+-]+@[\w-]+\.[\w.]+"), "[email]"),
+           (re.compile(r"\b\d{6}\s*-\s*\d{7}\b"), "[id-number]"),                                 # 주민등록번호 꼴
+           (re.compile(r"(?<!\d)(?:\+?82[\s-]?)?0\d{1,2}[\s.-]?\d{3,4}[\s.-]?\d{4}(?!\d)"), "[phone]"),
+           (re.compile(r"(?<![\d.,])\d(?:[\s-]?\d){9,}(?![\d.,])"), "[long-number]")]            # 계좌·카드 꼴: 띄어 쓰거나 - 로 이은 10자리 이상
+def mask_private(text):
+    """Hide what looks like contact or ID data before anything is shown as a public issue. Amounts (3,000,000) stay: they make the example.
+    Names cannot be found reliably, which is why `stemseal demand --open` shows the whole text and asks first."""
+    t = str(text or "")
+    for rx, sub in PRIVATE: t = rx.sub(sub, t)
+    return t
+def issue_text(group):
+    """Title and body of the cell-request issue for one demand group, already masked. This is exactly what goes public if the user submits."""
+    g = group; need = mask_private(g["need"])
+    others = [mask_private(w) for w in g.get("wordings", []) if w != g["need"]]
     body = ("**What needs computing** (one or two sentences):\n%s\n\n" % need
-            + ("Other wordings: %s\n\n" % " / ".join(w for w in g.get("wordings", []) if w != need) if len(g.get("wordings", [])) > 1 else "")
-            + "**An example input and the answer you expect**:\n%s\n\n" % ("\n".join(g.get("examples") or []) or "(optional)")
+            + ("Other wordings: %s\n\n" % " / ".join(others) if others else "")
+            + "**An example input and the answer you expect**:\n%s\n\n" % ("\n".join(mask_private(e) for e in g.get("examples") or []) or "(optional)")
             + "**Rule source, if there is one**:\n\n"
             + "---\nticket: %s\nrequested: %d times on this machine%s\nmodels: %s\nclosest cell now: %s\n"
-              % (" ".join(g.get("tickets") or [t]), g.get("count", 1), " (%d by the model itself)" % g["explicit"] if g.get("explicit") else "",
-                 ", ".join(g.get("models") or []) or "-", ("%s (%.2f)" % (g["nearest"], g["nearest_score"])) if g.get("nearest") and g.get("nearest_score", 0) >= CLOSE_ENOUGH else "-"))
-    return "%s/issues/new?labels=cell-request&title=%s&body=%s" % (REPO, quote(("cell request " + t + ": " + re.sub(r"\s+", " ", need).strip())[:120]), quote(body[:1800]))
+              % (" ".join(g.get("tickets") or [g["ticket"]]), g.get("count", 1), " (%d by the model itself)" % g["explicit"] if g.get("explicit") else "",
+                 ", ".join(g.get("models") or []) or "-", ("%s (%.2f)" % (g["nearest"], g["nearest_score"])) if g.get("nearest") else "-"))
+    title = ("cell request %s: %s" % (g["ticket"], re.sub(r"\s+", " ", need).strip()))[:120]
+    return title, body[:1800]
+def share_link(group):
+    """A prefilled GitHub cell-request issue. Opening it is the user's choice; stemseal never sends it. The repository is public."""
+    from urllib.parse import quote
+    title, body = issue_text(group)
+    return "%s/issues/new?labels=cell-request&title=%s&body=%s" % (REPO, quote(title), quote(body))
 
-PROMISE = {
- "ko": ("이 계산을 하는 검증된 세포는 아직 없습니다. 요청은 이 기기에 기록됐고(표 {ticket}, 지금까지 {n}번), 요청이 모이는 순서대로 이 계산의 세포를 만듭니다. "
-        "지금은 직접 계산해 답하되, 검증된 세포의 답이 아니라고 함께 말해 주세요. 다음에 같은 계산이 필요하면 find_cell 로 다시 찾아 주세요. 그때는 세포가 있을 수 있고, 있으면 정확한 답을 바로 얻습니다."),
- "en": ("No verified cell does this yet. The request is saved on this machine (ticket {ticket}, asked {n} times so far), and cells are built in the order demand gathers. "
-        "For now, work it out yourself and tell the user the answer is not from a verified cell. Next time you need this, look again with find_cell: the cell may be there, and then the answer is exact."),
+PROMISE = {   # short on purpose: a model pays for every token of it, on every miss
+ "ko": "검증된 세포가 아직 없습니다. 요청을 기록했고({n}번째), 요청이 모이는 순서대로 만듭니다. 지금은 직접 답하되 검증되지 않은 답이라고 밝혀 주세요. 다음에 find_cell 로 다시 찾으면 세포가 있을 수 있습니다.",
+ "en": "No verified cell yet. Request saved ({n} so far); cells are built as requests gather. Answer yourself for now and say it is unverified. Next time, find_cell may have it.",
 }
-NEAR = {"ko": "가장 가까운 세포는 {cell} 입니다 ({desc}). 사용자가 묻는 값이 바로 이 계산이라면 이 세포로 정확한 답을 얻을 수 있습니다. 다른 계산이면 쓰지 마세요.",
-        "en": "The closest cell is {cell} ({desc}). If what the user asks is exactly this calculation, this cell gives the exact answer; if not, leave it."}
+NEAR = {"ko": "가장 가까운 세포: {cell} ({desc}). 바로 이 계산일 때만 쓰세요.",
+        "en": "Closest cell: {cell} ({desc}). Use it only for exactly this calculation."}
 def no_cell_reply(need, ticket=None, rows=None):
     """What a model hears when nothing fits: not a refusal but 'saved, the channel is being built, come back', plus the closest cell
-    when there is one worth a look. Records nothing by itself."""
-    t = ticket or _ticket(need); lang = _lang(need); g = _group_of(t, rows) or {}
-    out = {"recorded": True, "ticket": t, "times_requested": g.get("count", 1), "message": PROMISE[lang].format(ticket=t, n=g.get("count", 1))}
-    n, sc = nearest(need)
-    if n and sc >= CLOSE_ENOUGH:
-        c = load(n)["contract"]; desc = (c.get("description_en") if lang == "en" else None) or c["description"]
-        out["closest_cell"] = {"cell": n, "computes": desc, "required_inputs": c["input_schema"].get("required", []), "score": sc,
-                               "note": NEAR[lang].format(cell=n, desc=desc.split(".")[0])}
-    out["share"] = {"note": "Saved only on this machine. To ask for the cell, the user can open this link (nothing is sent automatically). `stemseal demand` lists every saved request.",
-                    "link": share_link(t, need, g or None)}
+    when one is worth a look. Short on purpose: every character here is a token the model pays. Records nothing by itself;
+    the issue link for people lives in `stemseal demand`, not here."""
+    t = ticket or _ticket(need); lang = _lang(need); n = max(1, times_requested(need, rows))
+    out = {"recorded": True, "ticket": t, "message": PROMISE[lang].format(n=n)}
+    c, sc = nearest(need)
+    if c and sc >= CLOSE_ENOUGH:
+        con = load(c)["contract"]; desc = ((con.get("description_en") if lang == "en" else None) or con["description"]).split(".")[0].split("(")[0].strip()
+        out["closest_cell"] = NEAR[lang].format(cell=c, desc=desc)
     return out
 def request_cell(need, caller="unknown", model=None, example=None, auto=False):
     """An AI says: I needed this and nothing fit. Recorded as demand; this is what gets differentiated next.
-    example: optional, one input and the answer it expects, in any words. Returns a ticket (same need -> same ticket),
-    how often this need (and needs worded alike) was asked, and the promise, so the caller knows the channel is being built and comes back."""
-    need = (need or "").strip()
+    example: optional, one input and the answer it expects, in any words. Returns a ticket (same calculation -> same ticket),
+    how often it was asked here, and the promise, so the caller knows the channel is being built and comes back."""
+    need = str(need if need is not None else "").strip()
     if not need: return {"recorded": False, "reason": "say in one sentence what you need computed (need)"}
     t = _log_demand(need, caller, model=model, auto=auto, example=example)
     return no_cell_reply(need, t)

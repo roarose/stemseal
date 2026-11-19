@@ -8,7 +8,7 @@
                                      record a cell you needed; prints a link you can open to ask for it
   stemseal demand                    your unmet needs, alike requests grouped and counted (kept only on this machine)
   stemseal demand --share            the same, with a prefilled GitHub cell-request link per need
-  stemseal demand --open <n>         open the n-th need's request link in your browser (you still press Submit)
+  stemseal demand --open <n> [--yes] show the n-th need's issue text (contact data hidden), then open it in your browser if you agree
   stemseal demand --all | --json     include needs a cell now answers | raw groups as JSON
   stemseal update [--check]          bring cells made since this install (each is re-verified here before use)
   stemseal guide <model> [ko|en]     the selection guide used for a model name
@@ -25,22 +25,29 @@ def _demand(rest):
         i = rest.index("--open")
         try: g = groups[int(rest[i + 1]) - 1]
         except (IndexError, ValueError): print("stemseal demand --open <n>: n is a number from the `stemseal demand` list"); return 2
-        import webbrowser
-        link = hub.share_link(g["ticket"], g["need"], g)
-        print("Opening a prefilled cell request for: %s\nNothing is sent until you press Submit on GitHub.\n%s" % (g["need"], link))
-        webbrowser.open(link); return 0
+        title, body = hub.issue_text(g)
+        print("This is what the GitHub issue will say. The repository is PUBLIC: anyone can read it.")
+        print("Contact-like data (phone, email, ID, long number runs) is hidden; check names and anything else private.\n")
+        print("title: %s\n\n%s" % (title, body))
+        ok = "--yes" in rest
+        if not ok and sys.stdin.isatty():
+            try: ok = input("Open this in your browser? You still press Submit on GitHub. [y/N] ").strip().lower() in ("y", "yes")
+            except EOFError: ok = False
+        link = hub.share_link(g)
+        if not ok: print("\nNot opened. To open it yourself: %s" % link); return 0
+        import webbrowser; webbrowser.open(link); print("\nOpened. Nothing is sent until you press Submit."); return 0
     if not groups: print("No unmet needs recorded on this machine (%s)." % hub.LEDGER); return 0
     print("Unmet needs on this machine, most asked first (%s). Nothing here has been sent anywhere.\n" % hub.LEDGER)
     for n, g in enumerate(groups, 1):
         by = "%d asked by the model" % g["explicit"] + (", %d found nothing" % g["auto"] if g["auto"] else "")
         print("%2d. [%dx] %s   (%s%s)" % (n, g["count"], g["need"], by, "; ready: " + g["cell"] if g["status"] == "ready" else ""))
-        print("     ticket %s · last %s%s%s" % (" ".join(g["tickets"]), (g["last"] or "")[:16].replace("T", " "),
+        print("     ticket %s · last %s%s%s" % (" ".join(g["tickets"][:4]), (g["last"] or "")[:16].replace("T", " "),
               " · models " + ", ".join(g["models"]) if g["models"] else "",
-              " · closest %s (%.2f)" % (g["nearest"], g["nearest_score"]) if g["nearest"] and g["nearest_score"] >= hub.CLOSE_ENOUGH else ""))
+              " · closest %s (%.2f)" % (g["nearest"], g["nearest_score"]) if g["nearest"] else ""))
         for w in g["wordings"][1:3]: print("     also asked as: %s" % w)
         for e in g["examples"][:1]: print("     example: %s" % e)
-        if "--share" in rest: print("     ask for it: %s" % hub.share_link(g["ticket"], g["need"], g))
-    if "--share" not in rest: print("\nTo ask for one: stemseal demand --open <n>   (opens a prefilled GitHub issue; you decide whether to submit)")
+        if "--share" in rest: print("     ask for it: %s" % hub.share_link(g))
+    if "--share" not in rest: print("\nTo ask for one: stemseal demand --open <n>   (shows the issue text first; you decide whether to open and submit it)")
     return 0
 
 def main(argv=None):
