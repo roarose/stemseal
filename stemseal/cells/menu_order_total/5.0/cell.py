@@ -207,7 +207,7 @@ def cell_executor(inp):
             raise ValueError("item %d: name is not in the question; copy the customer's words for the menu exactly, do not rename or translate it" % k)
         cands = []; span = sp[0]
         def around(a, b):
-            """The longest menu name the customer said that holds a..b inside it ('계란찜' in '폭탄 치즈 계란찜'), or None."""
+            """The longest menu name the customer said that holds a..b inside it ('계란찜' in '치즈 계란찜'), or None."""
             best = None
             for e in menu:
                 for n in e["names"]:
