@@ -83,7 +83,7 @@ stemseal savings          # tokens the cells saved on this machine
 | menu_order_total | 손님이 말한 메뉴 이름·수량을 가게 메뉴판에서 찾아 합계 (가격은 메뉴판에서만, 애매하면 손님께 할 질문) · built from a store kiosk test | question, menu, items (3.0: 수량은 세포가 원문에서 읽음, 못 읽거나 주인 없는 수량은 되묻기, 1개로 친 메뉴는 qty_assumed, 빠진 메뉴는 거절) |
 | order_total | 주문 항목(가격×수량) 합계, 할인, 결제 금액 · built from a store kiosk test | question, items, discount_pct, discount_won (5.0: 손님 말 그대로 받고 원문에 있는지 확인, 빠진 수량은 세포가 읽음, 쓰이지 않은 수량·넘기지 않은 할인은 거절) |
 | monthly_wage_from_hourly | 시급을 월 209시간 기준 월급으로 | hourly_wage |
-| party_set | "둘이서", "4명"을 읽어 인원에 맞는 세트와 가격 · built from a store kiosk test | question, sets, people 선택 (3.0: 인원은 세포가 문장에서 찾음, 부정한 인원은 빼고 후보가 둘 이상이면 되묻기) |
+| party_set | "둘이서", "4명"을 읽어 인원에 맞는 세트와 가격 · built from a store kiosk test | question, sets, people 선택 (4.0: 인원은 세포가 문장에서 찾음, 부정한 인원은 빼고 후보가 둘 이상이면 되묻기) |
 | percentage_point_diff | 두 비율의 차이 (%p) | before_pct, after_pct |
 | percentile_rank | 값이 목록에서 몇 % 위치인지 | values, value |
 | price_for_target_margin | 원가와 목표 마진율로 판매가 | cost, margin_pct |

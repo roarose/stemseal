@@ -177,6 +177,14 @@
     "description": "손님 문장 전체에서 인원('넷이서', '두 명', '혼자', '세 분')을 세포가 직접 찾아 가게 세트 목록(sets)에서 그 인원에 맞는 세트와 가격을 고른다. 서로 다른 인원이 섞이거나 인원이 없으면 ask_customer를 준다. people은 선택(세포가 못 찾을 때만 쓴다). 손님이 부정한 인원('혼자 온 건 아니고')은 빼고, 인원 후보가 둘 이상 남거나 사람이 더 붙으면('친구 셋이랑 저요', '두 명 더') 되묻는다.",
     "description_en": "Finds the party size in the customer's whole sentence ('넷이서', '두 명', '혼자') and picks the store's sets for that many people with prices. Mixed or missing sizes give ask_customer. people is optional. A number the customer takes back ('혼자 온 건 아니고') is dropped; two different numbers, or people added on top ('친구 셋이랑 저요'), are asked back.",
     "answers": []
+   },
+   "4.0": {
+    "sha256": "f2fae8657d3337c0c5bca8d841917f062e2fcf695ff0b79617252436851ac5d3",
+    "gt": 52,
+    "locked_at": "2026-11-20T08:35:44+00:00",
+    "description": "손님 문장 전체에서 인원('넷이서', '두 명', '혼자', '세 분')을 세포가 직접 찾아 가게 세트 목록(sets)에서 그 인원에 맞는 세트와 가격을 고른다. 서로 다른 인원이 섞이거나 인원이 없으면 ask_customer를 준다. people은 선택(세포가 못 찾을 때만 쓴다). 손님이 부정한 인원('혼자 온 건 아니고')은 빼고, 인원 후보가 둘 이상 남거나 사람이 더 붙으면('친구 셋이랑 저요', '두 명 더') 되묻는다. '어른 셋 아이 둘'처럼 맨 숫자 말도 인원 후보로 센다.",
+    "description_en": "Finds the party size in the customer's whole sentence ('넷이서', '두 명', '혼자') and picks the store's sets for that many people with prices. Mixed or missing sizes give ask_customer. people is optional. A number the customer takes back ('혼자 온 건 아니고') is dropped; two different numbers, or people added on top ('친구 셋이랑 저요'), are asked back. Bare count words ('어른 셋 아이 둘') count as candidates too.",
+    "answers": []
    }
   },
   "percentage_point_diff": {
