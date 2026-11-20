@@ -113,12 +113,12 @@ def _pick(frag, qtext, menu, question):
     """Menu entries the customer's words point to. Exact name first, then names that contain the words."""
     f = norm(frag)
     exact = [e for e in menu if f == e["names"][0]] or [e for e in menu if f in e["names"]]
-    if exact and "포장" in norm(question) and "포장" not in f:   # "직화 쭈꾸미 볶음 ... 포장이요" -> the takeout entry of the same name
+    if exact and "포장" in norm(question) and "포장" not in f:   # "김치찌개 ... 포장이요" -> the takeout entry of the same name
         exact = [e for e in menu if e["takeout"] and e["names"][1] == f] or exact
     cands = exact or [e for e in menu if any(f in n for n in e["names"])]
     if len(cands) > 1 and qtext:
         q = norm(qtext)
-        hit = [e for e in cands if q and q.rstrip("분") in e["names"][0]]   # "3인분" picks "보배 반상 3인"
+        hit = [e for e in cands if q and q.rstrip("분") in e["names"][0]]   # "3인분" picks "한상 3인"
         cands = hit or cands
     if len(cands) > 1:
         want_takeout = "포장" in norm(question)
@@ -137,7 +137,7 @@ def _qty_after(rest):
         return None
     return m.group(0)
 def _at(qn, a, menu):
-    """Menu entries whose full name the question spells out from position a (longest first): '보배반상4인' beats '보배반상'."""
+    """Menu entries whose full name the question spells out from position a (longest first): '한상4인' beats '한상'."""
     best = 0; hit = []
     for e in menu:
         for n in e["names"]:
@@ -157,7 +157,7 @@ def cell_executor(inp):
     menu = _menu(inp.get("menu"))
     items = inp.get("items")
     if not isinstance(items, list) or not items:
-        raise ValueError("pass items: a list like [{\"name\": \"삼겹 쭈꾸미\", \"qty\": \"3인분\"}] with the customer's own words")
+        raise ValueError("pass items: a list like [{\"name\": \"김치찌개\", \"qty\": \"3인분\"}] with the customer's own words")
     out = {"answer_ready": False, "ask_customer": None, "lines": [], "total": None}
     asks = []
     qn = norm(q); covered = []
