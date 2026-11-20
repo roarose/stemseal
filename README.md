@@ -116,6 +116,8 @@ stemseal measure vat_supply_price qwen2.5:3b    # measure a baseline with your l
 
 Cells run in a separate `python -I` process with a timeout, and only after the purity gate. This is process isolation, not an OS sandbox. Every cell here was reviewed before locking, and `stemseal verify` lets you check that none changed.
 
+That process runs under limits set before it receives the cell: the call's time limit for both wall and CPU time, 256 MB of memory (not enforced on macOS, where only time limits apply), no child processes, no file writes and 16 open files (Linux, macOS), no core dumps, and lower priority, so the rest of the machine comes first. `STEMSEAL_MEM_MB` can lower the memory limit, not raise it. If the limits cannot be applied, the cell does not run and the call answers `not_available`.
+
 ## License
 
 MIT. See [LICENSE](LICENSE).

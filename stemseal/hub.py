@@ -10,9 +10,9 @@ Layout:  cells/<name>/<version>/{cell.py, contract.json, gt_cases.json, lock.jso
          ~/.stemseal/ledger.jsonl   (one line per call, find and refusal; call lines carry the token meter, see savings.py)
 Stdlib only.
 """
-import hashlib, json, os, re, shutil, subprocess, sys, tempfile, time
+import hashlib, json, os, re, shutil, sys, tempfile, time
 from datetime import datetime, timezone
-from . import savings, policy
+from . import savings, policy, limits
 
 PKG = os.path.dirname(os.path.abspath(__file__))
 def _home():
@@ -33,6 +33,7 @@ REPO = "https://github.com/roarose/stemseal"
 MIN_GT = 20                      # a cell needs at least this many ground-truth cases to be locked
 CALL_TIMEOUT = 5                 # seconds per call
 ALLOWED_IMPORTS = set(policy.MODULES)   # what a cell may contain is defined in policy.py
+LIMITS_FAILED = "cannot apply limits"
 RUNNER = os.path.join(os.path.dirname(os.path.abspath(__file__)), "_runner.py")
 
 def now(): return datetime.now(timezone.utc).isoformat(timespec="seconds")
@@ -54,31 +55,26 @@ def policy_check_isolated(src_bytes):
     pre = policy.precheck(src_bytes)
     if pre: return [policy.describe(p) for p in pre]
     rep = read_reply(_run_runner({"mode": "check", "src": bytes(src_bytes).decode("utf-8"), "sha256": sha(bytes(src_bytes)), "inputs": []}, CALL_TIMEOUT), "check")
-    if not rep["complete"]: return ["checker did not finish (E_INTERNAL: %s)" % rep["why"]]
+    if not rep["complete"]: return [LIMITS_FAILED] if rep["why"] == "limits" else ["checker did not finish (E_INTERNAL: %s)" % rep["why"]]
     if rep["blocked"]: return ["checker refused the request (%s)" % rep["blocked"]]
     return rep["problems"]
 
 # ---------------------------------------------------------------- isolated execution
-def _limits():
-    try:
-        import resource
-        resource.setrlimit(resource.RLIMIT_CPU, (CALL_TIMEOUT * 4, CALL_TIMEOUT * 4))
-        resource.setrlimit(resource.RLIMIT_AS, (512 * 1024 * 1024, 512 * 1024 * 1024))
-    except Exception: pass
-
 def _run_runner(request, timeout):
-    """Start the runner in a new empty folder and send one request. Returns (exit code, stdout bytes), or ("timeout", b"")."""
-    kw = {"preexec_fn": _limits} if os.name == "posix" else {}
+    """Start the runner in a new empty folder under the limits in limits.py and send one request.
+    Returns (exit code, stdout bytes), ("timeout", b"") or ("limits", b"") when the limits could not be applied (nothing ran)."""
     env = {"PATH": os.environ.get("PATH", ""), "SYSTEMROOT": os.environ.get("SYSTEMROOT", "")}
     work = tempfile.mkdtemp(prefix="stemseal_run_")
     try:
-        p = subprocess.run([sys.executable, "-I", "-S", "-B", "-X", "utf8", RUNNER], input=json.dumps(request, ensure_ascii=False).encode("utf-8"),
-                           capture_output=True, timeout=timeout, env=env, cwd=work, **kw)
-    except subprocess.TimeoutExpired:
+        code, out, _ = limits.run([sys.executable, "-I", "-S", "-B", "-X", "utf8", RUNNER],
+                                  json.dumps(request, ensure_ascii=False).encode("utf-8"), timeout, cwd=work, env=env)
+    except limits.Timeout:
         return "timeout", b""
+    except limits.LimitError:
+        return "limits", b""
     finally:
         shutil.rmtree(work, ignore_errors=True)
-    return p.returncode, p.stdout
+    return code, out
 
 def read_reply(proc, mode, n=0):
     """The one place a runner's answer is read, for every path (call, verify, register, update). A reply is trusted only when it
@@ -87,7 +83,7 @@ def read_reply(proc, mode, n=0):
     Complete: {"complete": True, "blocked": None | str, "problems": [str], "results": [{"ok": True, "out": {...}} | {"ok": False, "err": str}]}."""
     def bad(why): return {"complete": False, "why": why}
     code, out = proc
-    if code == "timeout": return bad("timeout")
+    if code in ("timeout", "limits"): return bad(code)
     if code not in (0, 3): return bad("exit %s" % code)
     try: rep = json.loads(out.decode("utf-8"))
     except Exception: return bad("no reply" if not out else "broken reply")
@@ -116,7 +112,7 @@ def run_isolated(src, sha256, inputs, timeout=None):
     rep = read_reply(_run_runner({"mode": "run", "src": src, "sha256": sha256, "inputs": inputs}, timeout or CALL_TIMEOUT * max(1, len(inputs) // 5 + 1)),
                      "run", len(inputs))
     if not rep["complete"]:
-        err = "timeout" if rep["why"] == "timeout" else "runner gave no proper answer (%s)" % rep["why"]
+        err = {"timeout": "timeout", "limits": LIMITS_FAILED}.get(rep["why"]) or "runner gave no proper answer (%s)" % rep["why"]
         return [{"ok": False, "err": err, "fault": True} for _ in inputs]
     if rep["blocked"]: return [{"ok": False, "err": "blocked: %s" % rep["blocked"], "blocked": rep["blocked"]} for _ in inputs]
     return rep["results"]
@@ -231,6 +227,7 @@ def call(name, input_data, caller="unknown", version=None, model=None, decorate=
     missing = [k for k in c["contract"]["input_schema"].get("required", []) if k not in input_data]
     if missing: return env("invalid_input", reason="missing required inputs: %s" % missing, ver=ver)
     r = run_isolated(raw.decode("utf-8"), c["lock"]["sha256"], [input_data])[0]
+    if r.get("err") == LIMITS_FAILED: return env("not_available", reason="cannot apply limits on this machine", ver=ver)
     if r.get("blocked"):
         if log: _log({"type": "blocked", "cell": name, "version": ver, "why": r["blocked"]})
         return env("not_available", reason="cell failed the safety check", ver=ver)
