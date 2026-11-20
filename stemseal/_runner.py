@@ -83,7 +83,7 @@ def execute(code, ns, inputs, state):
                 if not isinstance(r, dict): out.append({"ok": False, "err": "result is not an object"}); continue
                 text = json.dumps(r, ensure_ascii=False)
                 if len(text) > MAX_RESULT: out.append({"ok": False, "err": "result too large"}); continue
-                out.append({"ok": True, "out": r})
+                out.append({"ok": True, "out": json.loads(text)})   # what is sent is exactly what was measured
             except Exception as e:
                 out.append({"ok": False, "err": "%s: %s" % (type(e).__name__, str(e)[:200])})
     if state[1] is not None:
@@ -95,7 +95,7 @@ def serve(raw, policy):
         if len(raw) > MAX_REQUEST: return _fail_all(1, "request too large", "request")
         req = json.loads(raw.decode("utf-8"))
         src, inputs, mode = req["src"], req.get("inputs") or [], req.get("mode", "run")
-        if not isinstance(src, str) or not isinstance(inputs, list): raise ValueError("bad request")
+        if not isinstance(src, str) or not isinstance(inputs, list) or mode not in ("run", "check"): raise ValueError("bad request")
     except Exception:
         return _fail_all(1, "bad request", "request")
     if hashlib.sha256(src.encode("utf-8")).hexdigest() != req.get("sha256"):

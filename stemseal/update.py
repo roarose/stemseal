@@ -58,8 +58,10 @@ def update(check_only=False):
             lock = json.load(open(os.path.join(tmp, "lock.json"), encoding="utf-8"))
             why = None
             if hub.sha(src) != meta["sha256"] or lock.get("sha256") != meta["sha256"]: why = "sha256 does not match the index"
-            elif hub.purity_check(src): why = "policy gate: %s" % hub.purity_check(src)
-            else:
+            if not why:
+                problems = hub.purity_check(src)
+                if problems: why = "policy gate: %s" % problems
+            if not why:
                 rep = hub.gt_check(src, json.load(open(os.path.join(tmp, "gt_cases.json"), encoding="utf-8")))
                 if rep["passed"] != rep["total"] or rep["total"] < hub.MIN_GT or not rep["deterministic"]:
                     why = "ground-truth gate on this machine: %d/%d" % (rep["passed"], rep["total"])

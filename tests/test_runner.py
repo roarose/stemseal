@@ -239,6 +239,16 @@ class RunnerRequests(unittest.TestCase):
         src = "def cell_executor(input_data):\n    return {'s': 'a' * 2000000}\n"
         self.assertEqual(run_raw(req(src))[1]["results"], [{"ok": False, "err": "result too large"}])
 
+    def test_each_result_is_sent_as_measured(self):
+        src = ("_seen = []\ndef cell_executor(input_data):\n    if _seen:\n        _seen[0].update({'s': 'a' * 2000000})\n        return {'n': 2}\n"
+               "    r = {'n': 1}\n    _seen.append(r)\n    return r\n")
+        code, rep = run_raw(req(src, [{}, {}]))
+        self.assertEqual(rep["results"], [{"ok": True, "out": {"n": 1}}, {"ok": True, "out": {"n": 2}}])
+
+    def test_unknown_mode(self):
+        code, rep = run_raw(req(OK_CELL, mode="other"))
+        self.assertEqual((code, rep["blocked"]), (3, "request"))
+
     def test_result_not_an_object(self):
         src = "def cell_executor(input_data):\n    return 1\n"
         self.assertEqual(run_raw(req(src))[1]["results"], [{"ok": False, "err": "result is not an object"}])

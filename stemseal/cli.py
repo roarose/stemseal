@@ -68,7 +68,7 @@ def main(argv=None):
         r = hub.call(rest[0], data, caller="cli"); _p(r); return 0 if r["status"] == "ok" else 1
     elif cmd == "verify":
         r = hub.verify_all(); _p(r)
-        bad = [k for k, v in r.items() if not (v["hash_ok"] and v.get("policy_ok") and v["deterministic"] and v["gt"].split("/")[0] == v["gt"].split("/")[1])]
+        bad = [k for k, v in r.items() if not (v["hash_ok"] and v.get("policy_ok") and v.get("gt_ok") and v["deterministic"])]
         print("all %d cells verified" % len(r) if not bad else "FAILED: %s" % bad); return 1 if bad else 0
     elif cmd == "request":
         ex = None

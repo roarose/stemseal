@@ -53,9 +53,10 @@ def purity_check(src):
 def policy_check_isolated(src_bytes):
     pre = policy.precheck(src_bytes)
     if pre: return [policy.describe(p) for p in pre]
-    rep = _run_runner({"mode": "check", "src": bytes(src_bytes).decode("utf-8"), "sha256": sha(bytes(src_bytes)), "inputs": []}, CALL_TIMEOUT)
-    if rep is None: return ["checker did not finish (E_INTERNAL)"]
-    return list(rep.get("problems") or [])
+    rep = read_reply(_run_runner({"mode": "check", "src": bytes(src_bytes).decode("utf-8"), "sha256": sha(bytes(src_bytes)), "inputs": []}, CALL_TIMEOUT), "check")
+    if not rep["complete"]: return ["checker did not finish (E_INTERNAL: %s)" % rep["why"]]
+    if rep["blocked"]: return ["checker refused the request (%s)" % rep["blocked"]]
+    return rep["problems"]
 
 # ---------------------------------------------------------------- isolated execution
 def _limits():
@@ -66,7 +67,7 @@ def _limits():
     except Exception: pass
 
 def _run_runner(request, timeout):
-    """Start the runner in a new empty folder, send one request, return its reply (None if it did not answer properly)."""
+    """Start the runner in a new empty folder and send one request. Returns (exit code, stdout bytes), or ("timeout", b"")."""
     kw = {"preexec_fn": _limits} if os.name == "posix" else {}
     env = {"PATH": os.environ.get("PATH", ""), "SYSTEMROOT": os.environ.get("SYSTEMROOT", "")}
     work = tempfile.mkdtemp(prefix="stemseal_run_")
@@ -74,37 +75,65 @@ def _run_runner(request, timeout):
         p = subprocess.run([sys.executable, "-I", "-S", "-B", "-X", "utf8", RUNNER], input=json.dumps(request, ensure_ascii=False).encode("utf-8"),
                            capture_output=True, timeout=timeout, env=env, cwd=work, **kw)
     except subprocess.TimeoutExpired:
-        return {"results": None, "blocked": "timeout"}
+        return "timeout", b""
     finally:
         shutil.rmtree(work, ignore_errors=True)
-    try:
-        rep = json.loads(p.stdout.decode("utf-8"))
-        if isinstance(rep, dict): return rep
-    except ValueError: pass
-    msg = (p.stderr.decode("utf-8", "replace").strip().splitlines() or ["exit %d" % p.returncode])[-1][:300]
-    return {"results": None, "blocked": None, "error": msg}
+    return p.returncode, p.stdout
+
+def read_reply(proc, mode, n=0):
+    """The one place a runner's answer is read, for every path (call, verify, register, update). A reply is trusted only when it
+    is complete and in the exact form the runner writes; anything else (timeout, other exit code, empty or broken output,
+    unexpected shape) is returned as {"complete": False, "why": ...}, which every caller treats as not passed.
+    Complete: {"complete": True, "blocked": None | str, "problems": [str], "results": [{"ok": True, "out": {...}} | {"ok": False, "err": str}]}."""
+    def bad(why): return {"complete": False, "why": why}
+    code, out = proc
+    if code == "timeout": return bad("timeout")
+    if code not in (0, 3): return bad("exit %s" % code)
+    try: rep = json.loads(out.decode("utf-8"))
+    except Exception: return bad("no reply" if not out else "broken reply")
+    if not isinstance(rep, dict) or set(rep) != {"results", "blocked", "problems"}: return bad("unexpected reply")
+    blocked, problems, results = rep["blocked"], rep["problems"], rep["results"]
+    if not (blocked is None or (isinstance(blocked, str) and blocked)): return bad("unexpected reply")
+    if not (isinstance(problems, list) and all(isinstance(x, str) for x in problems)): return bad("unexpected reply")
+    if not isinstance(results, list): return bad("unexpected reply")
+    if (code == 3) != (blocked is not None): return bad("exit %s" % code)
+    if blocked: return {"complete": True, "blocked": blocked, "problems": problems, "results": []}
+    if mode == "check":
+        if results: return bad("unexpected reply")
+        return {"complete": True, "blocked": None, "problems": problems, "results": []}
+    if problems or len(results) != n: return bad("unexpected reply")
+    for r in results:
+        if not isinstance(r, dict) or not isinstance(r.get("ok"), bool): return bad("unexpected reply")
+        if r["ok"] and not (set(r) == {"ok", "out"} and isinstance(r["out"], dict)): return bad("unexpected reply")
+        if not r["ok"] and not (set(r) == {"ok", "err"} and isinstance(r["err"], str)): return bad("unexpected reply")
+    return {"complete": True, "blocked": None, "problems": [], "results": results}
 
 def run_isolated(src, sha256, inputs, timeout=None):
     """Run cell_executor on a list of inputs in a separate Python process (see _runner.py: policy check, cell-only built-ins,
     audit hook). src is the source text whose hash the caller checked; the runner checks it again before running it.
-    Returns a list of {"ok": bool, "out": ..., "err": str}; when the runner refused the cell, each item also has "blocked"."""
-    rep = _run_runner({"mode": "run", "src": src, "sha256": sha256, "inputs": inputs}, timeout or CALL_TIMEOUT * max(1, len(inputs) // 5 + 1))
-    res = rep.get("results")
-    if rep.get("blocked") == "timeout": return [{"ok": False, "err": "timeout"} for _ in inputs]
-    if not isinstance(res, list) or len(res) != len(inputs):
-        if rep.get("blocked"): return [{"ok": False, "err": "blocked: %s" % rep["blocked"], "blocked": rep["blocked"]} for _ in inputs]
-        return [{"ok": False, "err": rep.get("error") or "runner gave no answer"} for _ in inputs]
-    if rep.get("blocked"):
-        for r in res: r["blocked"] = rep["blocked"]
-    return res
+    Returns a list of {"ok": bool, "out": ..., "err": str}. When the runner refused the cell, each item also has "blocked";
+    when its answer could not be trusted (read_reply), each item has "fault"."""
+    rep = read_reply(_run_runner({"mode": "run", "src": src, "sha256": sha256, "inputs": inputs}, timeout or CALL_TIMEOUT * max(1, len(inputs) // 5 + 1)),
+                     "run", len(inputs))
+    if not rep["complete"]:
+        err = "timeout" if rep["why"] == "timeout" else "runner gave no proper answer (%s)" % rep["why"]
+        return [{"ok": False, "err": err, "fault": True} for _ in inputs]
+    if rep["blocked"]: return [{"ok": False, "err": "blocked: %s" % rep["blocked"], "blocked": rep["blocked"]} for _ in inputs]
+    return rep["results"]
 
 # ---------------------------------------------------------------- gate 2: ground truth
+def _refused_as_expected(case, r):
+    """A refusal case passes only on the cell's own refusal: a non-empty expected text, found in an error the cell raised."""
+    want = case.get("expected_error")
+    return (isinstance(want, str) and bool(want) and r.get("ok") is False and not r.get("blocked") and not r.get("fault")
+            and want in str(r.get("err")))
+
 def gt_check(src, gt_cases):
     """src: the cell source text (not a path)."""
     h = sha(src)
     res = run_isolated(src, h, [c["input"] for c in gt_cases])
     # a case may say the cell must refuse: {"input": ..., "expected_error": "text the refusal must contain"} (ambiguous input is refused, not guessed)
-    good = lambda c, r: (not r.get("ok") and not r.get("blocked") and c["expected_error"] in str(r.get("err"))) if "expected_error" in c else (r.get("ok") and r.get("out") == c["expected"])
+    good = lambda c, r: _refused_as_expected(c, r) if "expected_error" in c else (r.get("ok") is True and r.get("out") == c["expected"])
     fails = [{"case": i, "expected": c.get("expected", {"error": c.get("expected_error")}), "got": r.get("out"), "err": r.get("err")} for i, (c, r) in enumerate(zip(gt_cases, res)) if not good(c, r)]
     # determinism: second run must give byte-identical outputs
     res2 = run_isolated(src, h, [c["input"] for c in gt_cases])
@@ -205,6 +234,7 @@ def call(name, input_data, caller="unknown", version=None, model=None, decorate=
     if r.get("blocked"):
         if log: _log({"type": "blocked", "cell": name, "version": ver, "why": r["blocked"]})
         return env("not_available", reason="cell failed the safety check", ver=ver)
+    if r.get("fault") and r.get("err") != "timeout": return env("not_available", reason="the cell gave no proper answer", ver=ver)
     if not r.get("ok"): return env("invalid_input", reason="cell rejected the input: %s" % r.get("err"), ver=ver)
     return env("ok", result=r["out"], ver=ver)
 
@@ -447,7 +477,8 @@ def verify_all():
         src = raw.decode("utf-8")
         ok_hash = sha(raw) == L["lock"]["sha256"]
         problems = purity_check(raw)
-        rep = gt_check(src, json.load(open(os.path.join(L["dir"], "gt_cases.json"), encoding="utf-8")))
-        out[c["cell"]] = {"version": c["version"], "hash_ok": ok_hash, "policy_ok": not problems, "gt": "%d/%d" % (rep["passed"], rep["total"]), "deterministic": rep["deterministic"]}
+        with open(os.path.join(L["dir"], "gt_cases.json"), encoding="utf-8") as f: rep = gt_check(src, json.load(f))
+        out[c["cell"]] = {"version": c["version"], "hash_ok": ok_hash, "policy_ok": not problems, "gt": "%d/%d" % (rep["passed"], rep["total"]),
+                          "gt_ok": rep["total"] >= MIN_GT and rep["passed"] == rep["total"], "deterministic": rep["deterministic"]}
         if problems: out[c["cell"]]["problems"] = problems[:5]
     return out
