@@ -71,6 +71,7 @@ def main(argv=None):
         bad = [k for k, v in r.items() if not (v["hash_ok"] and v.get("policy_ok") and v.get("gt_ok") and v["deterministic"])]
         print("all %d cells verified" % len(r) if not bad else "FAILED: %s" % bad)
         if not limits.MEMORY_ENFORCED: print("note: this system does not enforce the memory limit; cells are limited by time only")
+        if not limits.PROCESS_LIMIT_ENFORCED: print("note: running as root, so the system does not enforce the one-process limit; run stemseal as a regular user")
         return 1 if bad else 0
     elif cmd == "request":
         ex = None
