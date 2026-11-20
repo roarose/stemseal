@@ -1,0 +1,10 @@
+{
+ "cell": "store_hours",
+ "version": "5.0",
+ "sha256": "e847b8008ca3a2784a5d89debca810ce17b3dbf1fc630f49e1da4c47413b386d",
+ "gt_total": 38,
+ "gt_passed": 38,
+ "deterministic": true,
+ "locked_at": "2026-11-20T07:19:02+00:00",
+ "locked_by": "claude-opus (store laptop round 5-6 lessons)"
+}

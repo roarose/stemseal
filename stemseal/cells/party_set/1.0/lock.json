@@ -1,0 +1,10 @@
+{
+ "cell": "party_set",
+ "version": "1.0",
+ "sha256": "bc6d4f88ce2f8a10949ed2aac3ecf2c9ad94aa7e7d280e1817906b142dfb36ef",
+ "gt_total": 25,
+ "gt_passed": 25,
+ "deterministic": true,
+ "locked_at": "2026-11-20T05:12:32+00:00",
+ "locked_by": "claude-opus (store laptop round 4 lessons)"
+}

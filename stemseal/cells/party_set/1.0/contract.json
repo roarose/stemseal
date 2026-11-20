@@ -1,0 +1,36 @@
+{
+ "description": "손님이 말한 인원('둘이서', '4명', '혼자', '세 사람')을 읽어 가게 세트 목록(sets)에서 그 인원에 맞는 세트와 가격을 고른다. 맞는 세트가 없거나 인원을 읽을 수 없으면 ask_customer를 준다.",
+ "when_to_use": "'둘이서 뭐 먹어요?', '넷인데 세트 있어요?'처럼 인원으로 메뉴를 물을 때. question에 손님 문장, people에 손님이 말한 인원 말 그대로, sets에 가게 자료의 세트 목록.",
+ "keywords": [
+  "인원",
+  "세트",
+  "몇 명",
+  "둘이서",
+  "셋이서",
+  "추천",
+  "세트 메뉴",
+  "party size",
+  "set menu"
+ ],
+ "input_schema": {
+  "required": [
+   "question",
+   "people",
+   "sets"
+  ],
+  "properties": {
+   "question": "the customer's whole sentence, unchanged",
+   "people": "the customer's words for how many people ('둘이서', '4명')",
+   "sets": "the store's set list from its data: [{name, people (whole number), price (whole won)}]"
+  }
+ },
+ "output_keys": [
+  "answer_ready",
+  "ask_customer",
+  "people",
+  "sets"
+ ],
+ "raw_text": true,
+ "description_en": "Reads a party size as the customer said it ('둘이서', '4명', '혼자') and picks the store's sets for that many people with prices. No fitting set, or a size it cannot read, gives ask_customer instead.",
+ "when_to_use_en": "A customer asks what to order for a number of people."
+}

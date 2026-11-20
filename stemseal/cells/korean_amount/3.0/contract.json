@@ -1,0 +1,42 @@
+{
+ "description": "손님이 말한 금액·수량 한 덩어리를 숫자로 읽는다. '만삼천구백원' 13900원, '9천5백원' 9500원, '2만3천원', '두 잔' 2잔, '열두 개', '3인분', '10%'. 숫자와 단위(원, 잔, 개, 인분, %)를 돌려준다. question을 함께 주면 그 말이 손님 문장에 실제로 있는지 확인하고 없으면 거절한다. 고유어 수는 '아흔아홉'까지 읽는다.",
+ "when_to_use": "손님이 한글이나 섞인 말로 금액·수량을 말했을 때 숫자로 바꿀 때. 직접 바꿔 쓰지 말고 손님 말 그대로 넘긴다.",
+ "keywords": [
+  "한글 금액",
+  "한글 숫자",
+  "금액 읽기",
+  "만원",
+  "천원",
+  "얼마",
+  "수량",
+  "잔",
+  "개",
+  "인분",
+  "korean number",
+  "korean amount",
+  "won"
+ ],
+ "input_schema": {
+  "required": [
+   "text"
+  ],
+  "properties": {
+   "text": "the customer's words for one amount, unchanged ('만이천구백원', '두 잔')",
+   "question": "optional: the customer's whole sentence, to check text is really in it"
+  }
+ },
+ "output_keys": [
+  "value",
+  "unit"
+ ],
+ "raw_text": true,
+ "description_en": "Reads one amount or count as the customer said it in Korean: '만삼천구백원' 13900 won, '9천5백원', '두 잔' 2 cups, '10%'. Returns the number and its unit. With question, refuses text that is not in the customer's sentence. Native Korean counts read up to 99.",
+ "when_to_use_en": "A customer gave an amount or count in Korean words. Pass their words unchanged; do not convert them yourself.",
+ "input_aliases": {
+  "text": [
+   "amount",
+   "words",
+   "value"
+  ]
+ }
+}

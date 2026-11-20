@@ -1,0 +1,10 @@
+{
+ "cell": "korean_amount",
+ "version": "1.0",
+ "sha256": "745203537b4e401bac9283fc9854350b03bbf97add22d7cd8cf45a1c641f0737",
+ "gt_total": 28,
+ "gt_passed": 28,
+ "deterministic": true,
+ "locked_at": "2026-11-20T04:14:53+00:00",
+ "locked_by": "claude-store-demand-20261120"
+}

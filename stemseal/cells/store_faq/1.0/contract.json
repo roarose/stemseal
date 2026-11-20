@@ -1,0 +1,36 @@
+{
+ "description": "가게가 정해 둔 안내(맵기, 아이 메뉴, 원산지, 주차, 영업시간 등)에서 손님 질문에 맞는 문장을 그대로 꺼낸다. 모델이 지어내지 않게 한다. 가게 자료에 답이 아직 없거나(answer null), 맞는 안내가 없거나, 두 안내가 똑같이 맞으면 ask_staff true로 직원에게 넘긴다.",
+ "when_to_use": "손님이 메뉴 계산이 아닌 가게 정보를 물을 때: 맵기, 아이 메뉴, 원산지, 포장, 주차, 와이파이, 소개. answer가 있으면 그 문장을 그대로 말하고, ask_staff면 직원을 부른다.",
+ "keywords": [
+  "가게 안내",
+  "자주 묻는 질문",
+  "FAQ",
+  "맵기",
+  "원산지",
+  "아이 메뉴",
+  "주차",
+  "와이파이",
+  "포장",
+  "store faq",
+  "store information"
+ ],
+ "input_schema": {
+  "required": [
+   "question",
+   "faq"
+  ],
+  "properties": {
+   "question": "the customer's whole sentence, unchanged",
+   "faq": "the store's list from its data: [{id, keys: [words that mark the question], answer: the sentence to say, or null when the store has no answer yet}]"
+  }
+ },
+ "output_keys": [
+  "answer_ready",
+  "faq_id",
+  "answer",
+  "ask_staff"
+ ],
+ "raw_text": true,
+ "description_en": "Finds the store's own prepared answer (spice level, kids' menu, origin, parking...) for a customer's question and returns it word for word. When the store has no answer yet, nothing fits, or two answers fit equally, ask_staff is true.",
+ "when_to_use_en": "A customer asks about the store rather than a price. Say the answer as it is; when ask_staff is true, call a person."
+}

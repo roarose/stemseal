@@ -1,0 +1,67 @@
+{
+ "description": "손님 문장과, 그 문장에서 그대로 옮긴 가격·수량 말('만삼천구백원', '두 잔')로 주문 합계, 할인, 결제 금액을 낸다. 모델은 숫자로 바꾸지 말고 손님 말을 그대로 넘긴다. 넘긴 말이 문장에 없거나 더 긴 숫자의 일부('삼천오백원' 속 '오백원')면 거절한다. 수량을 넘기지 않은 품목은 세포가 가격 바로 뒤(또는 앞)의 수량 말('두 개', '둘에', '셋 주세요')을 읽고, 없으면 1개로 친다. 문장 전체를 읽어 가격, 수량, 할인, 조사를 쓰고 나서도 수량일 수 있는 말이 남으면 거절한다. 한 번 말한 가격을 두 품목에 쓰기, 다른 품목 가격 뒤의 수량 가져오기, '2개에 만원'처럼 여러 개 값, '하나씩 두 명'처럼 곱해야 하는 말도 거절한다. '두 개씩'은 앞의 수량 없는 가격에도 붙인다. 할인은 items 밖 discount_pct('10%', '반값'), discount_won('3천원'). 손님이 할인을 받는다고 말했는데 넘기지 않았거나 금액을 알 수 없으면('할인 쿠폰 써요') 거절하고, '할인 돼요?', '쿠폰 없어요' 같은 질문이나 부정은 할인으로 보지 않는다. 읽은 값을 items_read로 돌려준다.",
+ "when_to_use": "손님 주문 금액을 더할 때. question에 손님 문장 전체, items에 품목마다 {price: 손님이 말한 가격, qty: 손님이 말한 수량}을 그대로.",
+ "keywords": [
+  "주문 합계",
+  "합계",
+  "총액",
+  "얼마",
+  "결제 금액",
+  "할인",
+  "메뉴 가격",
+  "수량",
+  "order total",
+  "bill",
+  "subtotal",
+  "discount",
+  "주문",
+  "메뉴",
+  "잔",
+  "개",
+  "인분",
+  "커피",
+  "음료",
+  "아메리카노",
+  "라떼",
+  "총 얼마"
+ ],
+ "input_schema": {
+  "required": [
+   "question",
+   "items"
+  ],
+  "properties": {
+   "question": "the customer's whole sentence, unchanged",
+   "items": "list of {price: the customer's words for the price ('만이천구백원'), qty: their words for the count ('두 잔'), qty may be left out for one}",
+   "discount_pct": "optional, the customer's words for a percent discount ('10%')",
+   "discount_won": "optional, their words for a won discount ('3천원')"
+  }
+ },
+ "output_keys": [
+  "subtotal",
+  "discount",
+  "total",
+  "item_count",
+  "items_read",
+  "discount_capped"
+ ],
+ "description_en": "Order total from the customer's sentence and the price/count words copied from it unchanged ('만삼천구백원', '두 잔'). Words not in the sentence, or part of a longer number, are refused. Items without qty take the count said right after (or before) their price ('두 개', '둘에', '셋 주세요'), else one. The cell reads the whole sentence: if a number word that could be a count is left over after prices, counts, discounts and particles, it refuses. Also refused: one said price used twice, a count taken from another item's price, a price for several ('2개에 만원'), per-person counts ('하나씩 두 명'). '두 개씩' covers the count-less prices before it. Discounts go outside items: discount_pct ('10%', '반값'), discount_won ('3천원'). A discount the customer claims but that is not passed or has no amount is refused; a question or a no ('할인 돼요?', '쿠폰 없어요') is not a discount.",
+ "when_to_use_en": "Adding up a customer's order. Put their whole sentence in question and copy each price and count word for word; do not convert numbers.",
+ "input_aliases": {
+  "items": [
+   "order",
+   "menu",
+   "orders",
+   "lines"
+  ],
+  "discount_pct": [
+   "discount_percent",
+   "discount_rate"
+  ],
+  "discount_won": [
+   "discount_amount",
+   "coupon"
+  ]
+ },
+ "raw_text": true
+}
