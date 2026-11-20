@@ -37,7 +37,7 @@
   "입력은 입력 예시와 같은 모양으로 data.json 값을 옮기면 세포가 가장 잘 받아들입니다.",
   "JSON 한 개로 답하면 허브가 바로 읽고 처리합니다.",
   "raw_text 세포에는 손님 말을 숫자로 바꾸지 말고 글자 그대로 넘기는 편이 낫습니다. 매장 시험(qwen 1.5b)에서 손님에게 틀린 숫자가 12건에서 2건이 됐고, 세포를 고친 뒤 0건이 됐습니다. 모르는 오전·오후는 세포가 손님께 물을 문장을 줍니다.",
-  "금액·수량 질문에는 가격·수량을 인자로 받는 세포보다 손님 문장을 직접 읽는 raw_text 세포를 고르는 편이 낫습니다. 매장 시험(exaone 2.4b)에서 수량을 모델이 넘기던 세포는 25개 중 틀린 답 3건, 세포가 손님 문장에서 수량을 읽게 바꾸니 0건(22/25)이었습니다."
+  "금액·수량 질문에는 가격·수량을 인자로 받는 세포보다 손님 문장을 직접 읽는 raw_text 세포를 고르는 편이 낫습니다. 매장 시험(exaone 2.4b)에서 수량을 모델이 넘기던 세포는 25개 중 틀린 답 3건(5차), 세포가 손님 문장에서 수량을 읽게 바꾼 뒤 다른 새 질문 25개에서 0건(22/25, 7차)이었습니다."
  ],
  "sources": [
   "https://www.docker.com/blog/local-llm-tool-calling-a-practical-evaluation/",
@@ -57,7 +57,7 @@
   "Copy the values from the data into the same shape as the input example; the cell accepts that best.",
   "Answer with a single JSON object so the hub can read it directly.",
   "For a raw_text cell, pass the customer's words as written rather than converting them to numbers. In a store test (qwen 1.5b) this took wrong numbers told to customers from 12 to 2, and to 0 after the cells were fixed. If am/pm is unknown, the cell gives you the question to ask.",
-  "For amount and count questions, a raw_text cell that reads the customer's sentence itself works better than a cell that takes prices and counts as arguments. In a store test (exaone 2.4b), the cell that took counts from the model gave 3 wrong answers in 25; reading the counts from the sentence gave 0 (22/25)."
+  "For amount and count questions, a raw_text cell that reads the customer's sentence itself works better than a cell that takes prices and counts as arguments. In a store test (exaone 2.4b), the cell that took counts from the model gave 3 wrong answers in 25 (round 5); after the cell read the counts from the sentence, a different new set of 25 gave 0 (22/25, round 7)."
  ],
  "recommended_use": [
   "1.5b (2코어 구형 CPU 실측): 손님 말을 그대로 옮기지 못해 raw_text 세포가 25개 중 18개를 거절(직원 호출). 틀린 숫자는 0이라 안전하지만 접객에 쓰기는 어렵다. 2B 이상을 권한다(매장 실측은 exaone 2.4B뿐, qwen 3b는 매장 시험을 하지 않았다).",
