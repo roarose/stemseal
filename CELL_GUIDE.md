@@ -33,6 +33,8 @@ A cell, once locked, goes to many models unchanged. Its first job is never to gi
    *Keep long reference data in the cell's input, not in the model's prompt.*
 15. **조회형 질문은 모델을 거치지 않아도 된다.** 안내(맵기, 원산지, 포장)와 인원별 세트처럼 손님 문장만으로 찾을 수 있는 것은 앱이 세포를 바로 부른다. 5차에서 두 모델 모두 7/7, 0초였다.
    *A lookup the cell can do from the sentence alone needs no model call.*
+16. **못 읽은 수량을 1로 치지 않는다.** 수량 말이 아예 없을 때만 1로 치고, 그렇게 친 항목을 결과에 적는다(`qty_assumed`). 문장 속 수량 말은 모두 어느 항목의 것인지 확인하고, 주인 없는 수량('2인분, 아니 3인분'), 범위('한두 개'), 0, 100 이상은 되묻는다. 손님이 부정한 말('혼자 온 건 아니고')은 후보에서 뺀다. 7차 뒤 검수에서 찾았고, 고친 세포는 새 입력 36개에서 틀린 숫자가 18건에서 1건이 됐다(그 1건도 고침).
+   *Never count an unread quantity as one: ask, and say when one was assumed.*
 
 ## 2. 정답 사례 / Ground truth
 
@@ -69,6 +71,6 @@ A cell, once locked, goes to many models unchanged. Its first job is never to gi
 | 5 | 가게 운영 세포 (메뉴판으로 주문, 안내, 세트) | 25개 (새 질문) | 혼자(메뉴판을 글로 줌) 11/25, 24초 → 세포 14/25, 7초 | 혼자 18/25, **65초** → 세포 15/25, 11초 |
 | 6 | 4차에서 고친 세포 | 25개 (새 질문) | 혼자 2/20 → 7/25, 틀린 숫자 0, 직원 18 | 혼자 4/20 → **20/25, 틀린 숫자 0**, 되묻기 5/5 |
 
-4차에서 틀린 숫자는 12·7건에서 2·1건으로 줄었다. qwen 1.5b는 손님 말을 그대로 옮기지 못하고("8000", "오전 8시") 대부분 거절되어, 이 구조에는 2B 이상 모델이 맞다. 남은 오답과 직원 호출에서 위 8~10번을 배웠다(korean_amount 2.0, order_total 3.0, store_hours 4.0). 6차에서 고친 세포는 exaone으로 틀린 숫자 0이었다. 5차에서는 메뉴판을 통째로 글로 주면 2코어 CPU에서 질문당 1분이 넘었고(세포는 11초), 세포의 틀린 답 3건은 모두 수량을 모델에게 받은 탓이라 11~13번을 배웠다(menu_order_total 2.0, party_set 2.0, order_total 4.0, store_hours 5.0).
+4차에서 틀린 숫자는 12·7건에서 2·1건으로 줄었다. qwen 1.5b는 손님 말을 그대로 옮기지 못하고("8000", "오전 8시") 대부분 거절되어, 이 구조에는 2B 이상 모델이 맞다(실측은 exaone 2.4B뿐). 남은 오답과 직원 호출에서 위 8~10번을 배웠다(korean_amount 2.0, order_total 3.0, store_hours 4.0). 6차에서 고친 세포는 exaone으로 틀린 숫자 0이었다. 5차에서는 메뉴판을 통째로 글로 주면 2코어 CPU에서 질문당 1분이 넘었고(세포는 11초), 세포의 틀린 답 3건은 모두 수량을 모델에게 받은 탓이라 11~13번을 배웠다(menu_order_total 2.0, party_set 2.0, order_total 4.0, store_hours 5.0).
 
 자료: 세포 PR #7, #8, #9. 시험 스크립트와 줄별 결과는 프로젝트 공유 폴더 `store_test/`.

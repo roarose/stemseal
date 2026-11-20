@@ -30,9 +30,9 @@ Caveats, honestly / 솔직한 한계:
 
 ### On an old laptop / 구형 노트북에서
 
-On a 2011 laptop (2-core i5-2430M, no AVX2, no GPU), `exaone3.5:2.4b` got 4 of 20 hours-and-price questions right alone and 15 of 20 with cells, asked the customer back on all 5 questions where am/pm was unknown, and told no customer a wrong number (the other 5 went to staff). Expect about 10-25 seconds per answer. Putting a long menu into the prompt instead took about 65 seconds per question. A 1.5B model refused to guess (no wrong numbers) but could not copy the customer's words, so most questions went to staff; use 2B or larger. Details: [the case](docs/cases/old-laptop-small-models.md).
+On a 2011 laptop (2-core i5-2430M, no AVX2, no GPU), `exaone3.5:2.4b` got 4 of 20 hours-and-price questions right alone and 15 of 20 with cells, asked the customer back on all 5 questions where am/pm was unknown, and told no customer a wrong number (the other 5 went to staff). Expect about 10-25 seconds per answer. Putting a long menu into the prompt instead took about 65 seconds per question. A 1.5B model refused to guess (no wrong numbers) but could not copy the customer's words, so most questions went to staff; use 2B or larger (measured on exaone 2.4B only). Details: [the case](docs/cases/old-laptop-small-models.md).
 
-2011년형 노트북(2코어 i5-2430M, AVX2·GPU 없음)에서 `exaone3.5:2.4b`는 영업시간·금액 질문 20개를 혼자 4개, 세포로 15개 맞혔고, 오전·오후를 알 수 없는 5개는 모두 손님께 되물었으며, 손님에게 틀린 숫자는 0이었습니다(나머지 5개는 직원 호출). 답 하나에 10~25초쯤 걸립니다. 긴 메뉴판을 프롬프트에 넣으면 질문당 65초쯤 걸렸습니다. 1.5B 모델은 틀리지는 않았지만 손님 말을 그대로 옮기지 못해 대부분 직원 호출로 넘어갔으니 2B 이상을 권합니다. 자세한 내용: [사례](docs/cases/old-laptop-small-models.md).
+2011년형 노트북(2코어 i5-2430M, AVX2·GPU 없음)에서 `exaone3.5:2.4b`는 영업시간·금액 질문 20개를 혼자 4개, 세포로 15개 맞혔고, 오전·오후를 알 수 없는 5개는 모두 손님께 되물었으며, 손님에게 틀린 숫자는 0이었습니다(나머지 5개는 직원 호출). 답 하나에 10~25초쯤 걸립니다. 긴 메뉴판을 프롬프트에 넣으면 질문당 65초쯤 걸렸습니다. 1.5B 모델은 틀리지는 않았지만 손님 말을 그대로 옮기지 못해 대부분 직원 호출로 넘어갔으니 2B 이상을 권합니다(실측은 exaone 2.4B뿐). 자세한 내용: [사례](docs/cases/old-laptop-small-models.md).
 
 ## Install / 설치
 

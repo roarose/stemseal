@@ -36,7 +36,8 @@
   "글쓰기, 번역, 요약, 추측은 세포보다 당신이 직접 하는 편이 잘 맞습니다.",
   "입력은 입력 예시와 같은 모양으로 data.json 값을 옮기면 세포가 가장 잘 받아들입니다.",
   "JSON 한 개로 답하면 허브가 바로 읽고 처리합니다.",
-  "raw_text 세포에는 손님 말을 숫자로 바꾸지 말고 글자 그대로 넘기는 편이 낫습니다. 매장 시험에서 그렇게 하니 손님에게 틀린 숫자가 7건에서 0건이 됐습니다. 모르는 오전·오후는 세포가 손님께 물을 문장을 줍니다."
+  "raw_text 세포에는 손님 말을 숫자로 바꾸지 말고 글자 그대로 넘기는 편이 낫습니다. 매장 시험(qwen 1.5b)에서 손님에게 틀린 숫자가 12건에서 2건이 됐고, 세포를 고친 뒤 0건이 됐습니다. 모르는 오전·오후는 세포가 손님께 물을 문장을 줍니다.",
+  "금액·수량 질문에는 가격·수량을 인자로 받는 세포보다 손님 문장을 직접 읽는 raw_text 세포를 고르는 편이 낫습니다. 매장 시험(exaone 2.4b)에서 수량을 모델이 넘기던 세포는 25개 중 틀린 답 3건, 세포가 손님 문장에서 수량을 읽게 바꾸니 0건(22/25)이었습니다."
  ],
  "sources": [
   "https://www.docker.com/blog/local-llm-tool-calling-a-practical-evaluation/",
@@ -45,7 +46,7 @@
  "style_note": "설득형 문구(water-channel 원칙): 금지·강요 대신 이점과 다음 길을 알려 준다. 2026-11-17",
  "measured_notes": [
   "exp10 (qwen2.5:3b, 처음 보는 업무 52개 x3): 혼자 5/44, 이 가이드(후보 목록에서 고르기) 88/156. 하나씩 예/아니오 확인(confirm) 방식은 42~53/156 으로 나쁨",
-  "매장 노트북 (2026-11-20, qwen2.5:1.5b, i5-2430M CPU, 새 질문 25개): 혼자 숫자 1/20. 3차(모델이 숫자로 옮김) 세포 7/20, 손님에게 틀린 숫자 12건. 4차(손님 말 그대로 받는 raw_text 세포) 4/20, 틀린 숫자 2건이지만 16건이 직원 호출. 1.5b는 손님 말을 그대로 옮기지 못하고 '8000', '오전 8시'처럼 바꾸거나 붙인다. raw_text 세포는 3b 이상에서 쓰는 편이 낫다.",
+  "매장 노트북 (2026-11-20, qwen2.5:1.5b, i5-2430M CPU, 새 질문 25개): 혼자 숫자 1/20. 3차(모델이 숫자로 옮김) 세포 7/20, 손님에게 틀린 숫자 12건. 4차(손님 말 그대로 받는 raw_text 세포) 4/20, 틀린 숫자 2건이지만 16건이 직원 호출. 1.5b는 손님 말을 그대로 옮기지 못하고 '8000', '오전 8시'처럼 바꾸거나 붙인다. raw_text 세포는 2B 이상(실측은 exaone 2.4B)에서 쓰는 편이 낫다.",
   "매장 노트북 5·6차 (2026-11-20, qwen2.5:1.5b): 6차 고친 세포 새 질문 25개에서 7/25, 틀린 숫자 0, 직원 호출 18('구천원'→'3000', '저녁 6시'→'23시 00분'처럼 바꿔 넘김). 5차 가게 자료를 글로 주면 11/25(24초), 세포 14/25(7초)."
  ],
  "prompt_rules_en": [
@@ -55,10 +56,11 @@
   "Writing, translation, summaries and guesses suit you better than a cell. Do those yourself.",
   "Copy the values from the data into the same shape as the input example; the cell accepts that best.",
   "Answer with a single JSON object so the hub can read it directly.",
-  "For a raw_text cell, pass the customer's words as written rather than converting them to numbers. In a store test this took wrong numbers told to customers from 7 to 0. If am/pm is unknown, the cell gives you the question to ask."
+  "For a raw_text cell, pass the customer's words as written rather than converting them to numbers. In a store test (qwen 1.5b) this took wrong numbers told to customers from 12 to 2, and to 0 after the cells were fixed. If am/pm is unknown, the cell gives you the question to ask.",
+  "For amount and count questions, a raw_text cell that reads the customer's sentence itself works better than a cell that takes prices and counts as arguments. In a store test (exaone 2.4b), the cell that took counts from the model gave 3 wrong answers in 25; reading the counts from the sentence gave 0 (22/25)."
  ],
  "recommended_use": [
-  "1.5b (2코어 구형 CPU 실측): 손님 말을 그대로 옮기지 못해 raw_text 세포가 25개 중 18개를 거절(직원 호출). 틀린 숫자는 0이라 안전하지만 접객에 쓰기는 어렵다. 3b 이상을 권한다.",
+  "1.5b (2코어 구형 CPU 실측): 손님 말을 그대로 옮기지 못해 raw_text 세포가 25개 중 18개를 거절(직원 호출). 틀린 숫자는 0이라 안전하지만 접객에 쓰기는 어렵다. 2B 이상을 권한다(매장 실측은 exaone 2.4B뿐, qwen 3b는 매장 시험을 하지 않았다).",
   "1.5b: 모델 없이 세포가 손님 문장에서 바로 찾는 일(안내 7/7, 인원별 세트)에서만 쓸 만하다.",
   "1.5b: 긴 자료를 프롬프트에 넣으면 질문당 24초, 정답 11/25. 자료는 세포가 들게 하기.",
   "3b: exp10 측정(후보 목록에서 고르기) 참고. 매장 시험은 하지 않았다."
