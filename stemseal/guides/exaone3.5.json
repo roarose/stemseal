@@ -39,7 +39,7 @@
   "글쓰기, 번역, 요약, 추측은 세포보다 당신이 직접 하는 편이 잘 맞습니다.",
   "입력은 입력 예시와 같은 모양으로 data.json 값을 옮기면 세포가 가장 잘 받아들입니다.",
   "JSON 한 개로 답하면 허브가 바로 읽고 처리합니다.",
-  "세포 계약에 raw_text가 있으면 손님 말을 숫자로 바꾸지 말고 글자 그대로 옮기는 편이 낫습니다. 세포가 그 말을 직접 정확히 읽고, 바꾼 숫자보다 훨씬 덜 틀립니다. 오전·오후도 손님이 말한 대로만 두면, 모르는 부분은 세포가 손님께 물을 문장을 줍니다."
+  "raw_text 세포에는 손님 말을 숫자로 바꾸지 말고 글자 그대로 넘기는 편이 낫습니다. 매장 시험에서 그렇게 하니 손님에게 틀린 숫자가 7건에서 0건이 됐습니다. 모르는 오전·오후는 세포가 손님께 물을 문장을 줍니다."
  ],
  "sources": [
   "experiments/exp3/summary.md",
@@ -67,7 +67,14 @@
   "Writing, translation, summaries and guesses suit you better than a cell. Do those yourself.",
   "Copy the values from the data into the same shape as the input example; the cell accepts that best.",
   "Answer with a single JSON object so the hub can read it directly.",
-  "If a cell's contract says raw_text, copy the customer's words as they are instead of converting them to numbers. The cell reads them accurately and is wrong far less often. Leave am/pm as the customer said it; when it is unknown, the cell gives you the question to ask."
+  "For a raw_text cell, pass the customer's words as written rather than converting them to numbers. In a store test this took wrong numbers told to customers from 7 to 0. If am/pm is unknown, the cell gives you the question to ask."
  ],
- "search_words_prompt_en": "List 3-6 standard names (in English) for the calculation this request needs, the words a bookkeeping guide or textbook would use. Leave out numbers and dates. If it is writing rather than calculation, name that task."
+ "search_words_prompt_en": "List 3-6 standard names (in English) for the calculation this request needs, the words a bookkeeping guide or textbook would use. Leave out numbers and dates. If it is writing rather than calculation, name that task.",
+ "recommended_use": [
+  "2.4b (2코어 구형 CPU, GPU 없음에서 실측): 숫자·시각은 손님 말 그대로 raw_text 세포에 넘기기. 혼자 숫자 4/20 → 세포 20/25, 손님에게 틀린 숫자 0 (사례 docs/cases/old-laptop-small-models.md 6차).",
+  "2.4b: 수량·인원·안내처럼 세포가 손님 문장에서 직접 읽는 것은 모델을 거치지 않기. 안내 7/7, 0초.",
+  "2.4b: 메뉴판 같은 긴 자료(약 1,400토큰)를 프롬프트에 넣지 않기. 넣으면 질문당 평균 65초, 세포 입력으로 넘기면 11초.",
+  "2.4b: 세포가 거절하거나 ask_customer를 주면 숫자를 지어내지 말고 그 질문을 하거나 직원에게 넘기기. 이렇게 해서 틀린 숫자 0을 지켰다.",
+  "7.8b: 위 실측은 2.4b만 해당. 7.8b는 exp3~5 측정(혼자 23% → 78%)."
+ ]
 }

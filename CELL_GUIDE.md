@@ -25,10 +25,14 @@ A cell, once locked, goes to many models unchanged. Its first job is never to gi
    *Accept a different form of the same value; the customer's words win over what the model added.*
 10. **값의 역할도 원문으로 확인한다.** 여는 시각 자리에 "~까지" 시각을 넣으면 숫자는 원문에 있어도 답이 틀린다. 그 말 바로 뒤가 "열고/오픈/부터"인지 "닫/마감/까지"인지로 확인한다. 손님이 한 번 말한 가격을 두 품목에 쓰는 것도 거절한다("1인분 만육천원인데 4인분").
    *Check the role from the words around it, and use a value the customer said once only once.*
-11. **세포가 원문에서 직접 읽을 수 있는 것은 모델에게 받지 않는다.** 메뉴 이름 바로 뒤의 수량("카스 두 병"), 문장 속 인원("넷이서")은 세포가 읽는다. 모델에게 받으면 "보배 반상 4인 하나"에서 이름 속 "4"를 수량으로 넘기거나("292,000원"), 수량을 빼먹거나, "하나"를 "1"로 바꿔 거절당한다(5차 실제 오답과 직원 호출). 모델은 세포가 스스로 찾기 어려운 것(어느 말이 메뉴 이름인지)만 넘긴다.
+11. **세포가 원문에서 직접 읽을 수 있는 것은 모델에게 받지 않는다.** 메뉴 이름 바로 뒤의 수량("맥주 두 병"), 문장 속 인원("넷이서")은 세포가 읽는다. 모델에게 받으면 "B 세트 4인 하나"에서 이름 속 "4"를 수량으로 넘기거나(세트 4개 값), 수량을 빼먹거나, "하나"를 "1"로 바꿔 거절당한다(5차 실제 오답과 직원 호출). 모델은 세포가 스스로 찾기 어려운 것(어느 말이 메뉴 이름인지)만 넘긴다.
    *What the cell can read from the sentence itself, it reads; the model passes only what the cell cannot find.*
-12. **빠진 것도 확인한다.** 손님이 말한 메뉴가 items에 없으면 합계가 모자란다(5차 "카스" 빠짐). 원문에 있는 메뉴 이름이 모두 쓰였는지 보고, 아니면 거절한다.
+12. **빠진 것도 확인한다.** 손님이 말한 메뉴가 items에 없으면 합계가 모자란다(5차에서 맥주 한 품목이 빠짐). 원문에 있는 메뉴 이름이 모두 쓰였는지 보고, 아니면 거절한다.
 13. **거절 이유에 어느 항목인지 적는다.** "price is not in the question"만으로는 모델이 맞게 옮긴 다른 품목을 고친다. "item 2 price ..."처럼 몇 번째인지 적는다.
+14. **긴 자료는 세포가 들고, 모델 프롬프트에 넣지 않는다.** 메뉴판·안내 같은 가게 자료(약 1,400토큰)를 매 질문에 넣으면 2코어 CPU에서 2.4B 모델이 질문당 평균 65초, 길게는 3분이 걸렸다. 같은 자료를 세포 입력으로 넘기면 11초였다.
+   *Keep long reference data in the cell's input, not in the model's prompt.*
+15. **조회형 질문은 모델을 거치지 않아도 된다.** 안내(맵기, 원산지, 포장)와 인원별 세트처럼 손님 문장만으로 찾을 수 있는 것은 앱이 세포를 바로 부른다. 5차에서 두 모델 모두 7/7, 0초였다.
+   *A lookup the cell can do from the sentence alone needs no model call.*
 
 ## 2. 정답 사례 / Ground truth
 
