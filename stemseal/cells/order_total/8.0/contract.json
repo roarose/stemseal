@@ -1,0 +1,68 @@
+{
+ "description": "손님 문장과, 그 문장에서 그대로 옮긴 음식 이름·가격·수량 말로 주문 합계, 할인, 결제 금액을 낸다. items마다 {name: 손님이 말한 음식 이름, price: '만삼천구백원', qty: '두 잔'}을 그대로 넘긴다(숫자로 바꾸지 않는다). 넘긴 말이 문장에 없거나 더 긴 숫자의 일부면 거절한다. 수량을 넘기지 않은 품목은 세포가 가격 바로 뒤(또는 앞)의 수량 말('두 개', '둘에', '셋 주세요')을 읽고, 없으면 1개로 치고 qty_assumed에 품목 번호를 적는다. 읽지 못한 말이 있으면 계산하지 않는다: 음식 이름, 가격, 수량, 할인, 조사와 주문 말(허용 목록)을 쓰고 남은 말이 하나라도 있으면('너이', '투', '두 개 반', '인원수만큼', '원플러스원', 넘기지 않은 음식 이름) 거절한다. 한 번 말한 가격을 두 품목에 쓰기, 다른 품목 가격 뒤의 수량, '2개에 만원', '하나씩 두 명'도 거절한다. '두 개씩'은 앞의 수량 없는 가격에도 붙인다. 할인은 items 밖 discount_pct('10%', '반값'), discount_won('3천원'). 손님이 받는다고 한 할인을 넘기지 않았거나 금액이 없으면 거절하고, '할인 돼요?', '쿠폰 없어요'는 할인으로 보지 않는다.",
+ "when_to_use": "손님 주문 금액을 더할 때. question에 손님 문장 전체, items에 품목마다 {name: 손님이 말한 음식 이름, price: 손님이 말한 가격, qty: 손님이 말한 수량}을 그대로.",
+ "keywords": [
+  "주문 합계",
+  "합계",
+  "총액",
+  "얼마",
+  "결제 금액",
+  "할인",
+  "메뉴 가격",
+  "수량",
+  "order total",
+  "bill",
+  "subtotal",
+  "discount",
+  "주문",
+  "메뉴",
+  "잔",
+  "개",
+  "인분",
+  "커피",
+  "음료",
+  "아메리카노",
+  "라떼",
+  "총 얼마"
+ ],
+ "input_schema": {
+  "required": [
+   "question",
+   "items"
+  ],
+  "properties": {
+   "question": "the customer's whole sentence, unchanged",
+   "items": "list of {name: the customer's words for the dish (pass it whenever they said one), price: their words for the price ('만이천구백원'), qty: their words for the count ('두 잔'), qty may be left out for one}",
+   "discount_pct": "optional, the customer's words for a percent discount ('10%')",
+   "discount_won": "optional, their words for a won discount ('3천원')"
+  }
+ },
+ "output_keys": [
+  "subtotal",
+  "discount",
+  "total",
+  "item_count",
+  "items_read",
+  "discount_capped",
+  "qty_assumed"
+ ],
+ "description_en": "Order total from the customer's sentence and the dish, price and count words copied from it unchanged: items [{name, price ('만삼천구백원'), qty ('두 잔')}]. Words not in the sentence, or part of a longer number, are refused. Items without qty take the count said right after (or before) their price, else one, listed by item number in qty_assumed. It computes only when nothing unread is left: after dish names, prices, counts, discounts, particles and order words on its ignore list, any other word ('너이', '투', '두 개 반', '인원수만큼', '원플러스원', a dish name not passed) is refused. Also refused: one said price used twice, a count after another item's price, a price for several, per-person counts. '두 개씩' covers the count-less prices before it. Discounts go outside items (discount_pct, discount_won); a claimed discount not passed or without an amount is refused; a question or a no ('할인 돼요?') is not a discount.",
+ "when_to_use_en": "Adding up a customer's order. Put their whole sentence in question and copy each dish name, price and count word for word; do not convert numbers.",
+ "input_aliases": {
+  "items": [
+   "order",
+   "menu",
+   "orders",
+   "lines"
+  ],
+  "discount_pct": [
+   "discount_percent",
+   "discount_rate"
+  ],
+  "discount_won": [
+   "discount_amount",
+   "coupon"
+  ]
+ },
+ "raw_text": true
+}
