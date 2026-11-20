@@ -40,7 +40,8 @@
   "입력은 입력 예시와 같은 모양으로 data.json 값을 옮기면 세포가 가장 잘 받아들입니다.",
   "JSON 한 개로 답하면 허브가 바로 읽고 처리합니다.",
   "raw_text 세포에는 손님 말을 숫자로 바꾸지 말고 글자 그대로 넘기는 편이 낫습니다. 매장 시험(exaone 2.4b)에서 그렇게 바꾸니 손님에게 틀린 숫자가 7건에서 1건이 됐고, 세포를 고친 뒤 0건이 됐습니다. 모르는 오전·오후는 세포가 손님께 물을 문장을 줍니다.",
-  "금액·수량 질문에는 가격·수량을 인자로 받는 세포보다 손님 문장을 직접 읽는 raw_text 세포를 고르는 편이 낫습니다. 매장 시험(exaone 2.4b)에서 수량을 모델이 넘기던 세포는 25개 중 틀린 답 3건(5차), 세포가 손님 문장에서 수량을 읽게 바꾼 뒤 다른 새 질문 25개에서 0건(22/25, 7차)이었습니다."
+  "금액·수량 질문에는 가격·수량을 인자로 받는 세포보다 손님 문장을 직접 읽는 raw_text 세포를 고르는 편이 낫습니다. 매장 시험(exaone 2.4b)에서 수량을 모델이 넘기던 세포는 25개 중 틀린 답 3건(5차), 세포가 손님 문장에서 수량을 읽게 바꾼 뒤 다른 새 질문 25개에서 0건(22/25, 7차)이었습니다.",
+  "손님 문장을 읽는 주문 합계 세포(order_total)에는 품목마다 손님이 말한 음식 이름을 name에 그대로 넣으면 세포가 그 말을 읽은 것으로 치고 계산합니다. 넣지 않으면 모르는 말이 남았다고 거절합니다. 음식 하나에 품목 하나씩 만드세요. '라면이랑 떡볶이'처럼 두 음식을 한 name에 넣으면 세포가 거절합니다."
  ],
  "sources": [
   "experiments/exp3/summary.md",
@@ -63,7 +64,8 @@
   "매장 노트북 7차 (2026-11-20, exaone3.5:2.4b): 수량·인원을 세포가 원문에서 읽는 menu_order_total 2.0, party_set 2.0, 새 질문 25개에서 22/25, 틀린 답 0, 직원 0, 평균 6.3초. 가게 자료를 글로 주고 혼자 답하면 15/25, 65.4초. 남은 3건은 메뉴 이름에 수량을 붙여 넘김('A 메뉴 두 개') → 세포가 메뉴 이름을 되물음.",
   "검수 반영 (2026-11-20 저녁): 수량을 못 읽으면 1로 치던 길을 막은 menu_order_total 4.0, order_total 6.0, party_set 4.0, store_hours 7.0은 이 메모를 쓸 때 매장 노트북에서 아직 재지 않았다. 세포만 따로 새 입력으로 확인: 1차 36개에서 틀린 숫자 18→1, 재검수 변형 입력의 '씩' 오답을 고친 뒤 새 15개에서 0.",
   "3차 검수 반영 (2026-11-20 밤): '둘에요', '둘로', '만원짜리 둘에' 같은 맨 숫자 말을 1로 치던 오답을 남김 없는 읽기로 고친 menu_order_total 6.0, order_total 7.0(수량일 수 있는 말이 남으면 되묻기·거절, 섞인 주문의 수량 없는 메뉴는 1개+qty_assumed)은 매장 노트북에서 아직 재지 않았다. 세포만 새 입력 30개로 확인: 틀린 숫자 0, 괜한 되묻기 1.",
-  "4차 검수 반영 (2026-11-20 밤): menu_order_total 7.0, order_total 8.0은 읽은 것과 허용 목록의 말(조사, 주문 말)을 빼고 남은 말이 있으면 되묻거나 거절한다. order_total에는 품목마다 손님이 말한 음식 이름을 name으로 넘긴다(넘기지 않으면 거절). 매장 노트북에서는 아직 재지 않았다."
+  "4차 검수 반영 (2026-11-20 밤): menu_order_total 7.0, order_total 8.0은 읽은 것과 허용 목록의 말(조사, 주문 말)을 빼고 남은 말이 있으면 되묻거나 거절한다. order_total에는 품목마다 손님이 말한 음식 이름을 name으로 넘긴다(넘기지 않으면 거절). 매장 노트북에서는 아직 재지 않았다.",
+  "5차 검수 반영 (2026-11-20 밤): menu_order_total 8.0, order_total 9.0은 허용 목록에서 수량·금액·주문 여부를 바꿀 수 있는 말(더, 추가, 빼, 또 등)을 지워 그런 말이 있으면 되묻거나 거절한다('라면 4500원 두 그릇 빼 주세요'를 9,000원으로 계산하던 길). name 하나에 두 음식을 이으면 거절한다. 매장 노트북에서는 아직 재지 않았다."
  ],
  "prompt_rules_en": [
   "In past measurements, using a candidate with the right output key was 3 times as accurate as computing alone. When you see a matching candidate, let that cell do it.",
@@ -73,7 +75,8 @@
   "Copy the values from the data into the same shape as the input example; the cell accepts that best.",
   "Answer with a single JSON object so the hub can read it directly.",
   "For a raw_text cell, pass the customer's words as written rather than converting them to numbers. In a store test (exaone 2.4b) this took wrong numbers told to customers from 7 to 1, and to 0 after the cells were fixed. If am/pm is unknown, the cell gives you the question to ask.",
-  "For amount and count questions, a raw_text cell that reads the customer's sentence itself works better than a cell that takes prices and counts as arguments. In a store test (exaone 2.4b), the cell that took counts from the model gave 3 wrong answers in 25 (round 5); after the cell read the counts from the sentence, a different new set of 25 gave 0 (22/25, round 7)."
+  "For amount and count questions, a raw_text cell that reads the customer's sentence itself works better than a cell that takes prices and counts as arguments. In a store test (exaone 2.4b), the cell that took counts from the model gave 3 wrong answers in 25 (round 5); after the cell read the counts from the sentence, a different new set of 25 gave 0 (22/25, round 7).",
+  "For the order-total cell that reads the customer's sentence (order_total), put the customer's own words for each dish in that item's name; the cell then counts those words as read and computes. Left out, they are unread words and the cell refuses. One item per dish: two dishes in one name ('라면이랑 떡볶이') are refused."
  ],
  "search_words_prompt_en": "List 3-6 standard names (in English) for the calculation this request needs, the words a bookkeeping guide or textbook would use. Leave out numbers and dates. If it is writing rather than calculation, name that task.",
  "recommended_use": [
