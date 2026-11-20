@@ -278,7 +278,7 @@ class ParentSide(unittest.TestCase):
     def test_call_answers_not_available_for_a_refused_cell(self):
         d = tempfile.mkdtemp(); base = os.path.join(d, "cells", "bad_cell", "1.0"); os.makedirs(base)
         src = "import os\n" + OK_CELL
-        with open(os.path.join(base, "cell.py"), "w", encoding="utf-8") as f: f.write(src)
+        with open(os.path.join(base, "cell.py"), "w", encoding="utf-8", newline="\n") as f: f.write(src)
         with open(os.path.join(base, "contract.json"), "w", encoding="utf-8") as f: json.dump({"description": "x", "input_schema": {}, "output_keys": ["v"]}, f)
         with open(os.path.join(base, "lock.json"), "w", encoding="utf-8") as f: json.dump({"cell": "bad_cell", "version": "1.0", "sha256": hub.sha(src), "gt_total": 20, "locked_at": "x"}, f)
         old = hub.USER_CELLS

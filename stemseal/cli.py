@@ -55,6 +55,9 @@ def _demand(rest):
     return 0
 
 def main(argv=None):
+    for st in (sys.stdout, sys.stderr):
+        try: st.reconfigure(errors="replace")   # a console that cannot show Korean prints '?' instead of failing
+        except Exception: pass
     a = list(sys.argv[1:] if argv is None else argv) or ["list"]
     cmd, rest = a[0], a[1:]
     if cmd == "list": _p([{k: c[k] for k in ("cell", "version", "description", "required_inputs")} for c in hub.list_cells()])
