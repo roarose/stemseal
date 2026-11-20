@@ -1,0 +1,46 @@
+{
+ "description": "손님이 말한 메뉴 이름과 수량('삼겹 쭈꾸미 3인분', '콜라 두 개')을 가게 메뉴판(menu)에서 찾아 가격을 붙이고 합계를 낸다. 가격은 손님이나 모델이 아니라 메뉴판에서만 가져온다. 이름이 여러 메뉴에 걸리거나, 크기(소/대, 2마리/4마리)가 빠졌거나, '2인 이상' 메뉴를 1인분 시키거나, 메뉴판에 없으면 계산하지 않고 ask_customer에 손님께 할 질문을 준다. '포장'이라는 말이 있으면 포장 메뉴를 고른다. 세트 이름('한상 3인')은 '3인분'으로 시켜도 한 세트로 센다.",
+ "when_to_use": "손님이 메뉴 이름으로 주문하거나 얼마인지 물을 때. question에 손님 문장 전체, menu에 가게 자료의 메뉴판, items에 품목마다 {name: 손님이 말한 메뉴 이름, qty: 손님이 말한 수량}을 그대로.",
+ "keywords": [
+  "메뉴 주문",
+  "주문 합계",
+  "메뉴판",
+  "얼마",
+  "인분",
+  "합계",
+  "총액",
+  "주문",
+  "메뉴",
+  "menu order",
+  "order total from menu",
+  "bill"
+ ],
+ "input_schema": {
+  "required": [
+   "question",
+   "menu",
+   "items"
+  ],
+  "properties": {
+   "question": "the customer's whole sentence, unchanged",
+   "menu": "the store's menu from its data: [{name, price (whole won), unit ('1인' = priced per person), min_people, variants [{name, price}] or [{name}] for brands, aliases}]",
+   "items": "[{name: the customer's words for the dish, qty: their words for how many, may be left out}]"
+  }
+ },
+ "output_keys": [
+  "answer_ready",
+  "ask_customer",
+  "lines",
+  "total"
+ ],
+ "raw_text": true,
+ "description_en": "Order total from a customer's dish names and counts, priced only from the store's menu. When the words fit several dishes, miss a size, break a minimum-people rule, or are not on the menu, it does not compute: answer_ready is false and ask_customer holds the question to ask.",
+ "when_to_use_en": "A customer orders or asks a price by dish name. Pass their whole sentence, the store's menu, and their words for each dish and count unchanged.",
+ "input_aliases": {
+  "items": [
+   "order",
+   "orders",
+   "dishes"
+  ]
+ }
+}

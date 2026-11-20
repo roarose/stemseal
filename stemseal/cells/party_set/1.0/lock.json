@@ -1,0 +1,10 @@
+{
+ "cell": "party_set",
+ "version": "1.0",
+ "sha256": "a62543df1a9c71a49f1e48956604290b65b718e0addda99a5fbe3391df7426e3",
+ "gt_total": 25,
+ "gt_passed": 25,
+ "deterministic": true,
+ "locked_at": "2026-11-20T04:39:57+00:00",
+ "locked_by": "claude-store-demand-20261120"
+}
