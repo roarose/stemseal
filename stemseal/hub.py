@@ -34,6 +34,15 @@ MIN_GT = 20                      # a cell needs at least this many ground-truth 
 CALL_TIMEOUT = 5                 # seconds per call
 ALLOWED_IMPORTS = set(policy.MODULES)   # what a cell may contain is defined in policy.py
 LIMITS_FAILED = "cannot apply limits"
+def _interpreter():
+    """The interpreter that runs cells. On Windows, python.exe in a virtual environment (venv, uvx) only starts the base
+    interpreter as a second process, which the one-process limit would end; the runner needs no packages, so it starts
+    the base interpreter directly."""
+    if os.name == "nt":
+        base = getattr(sys, "_base_executable", None)
+        if base and os.path.isfile(base): return base
+    return sys.executable
+PYTHON = _interpreter()
 RUNNER = os.path.join(os.path.dirname(os.path.abspath(__file__)), "_runner.py")
 
 def now(): return datetime.now(timezone.utc).isoformat(timespec="seconds")
@@ -66,7 +75,7 @@ def _run_runner(request, timeout):
     env = {"PATH": os.environ.get("PATH", ""), "SYSTEMROOT": os.environ.get("SYSTEMROOT", "")}
     work = tempfile.mkdtemp(prefix="stemseal_run_")
     try:
-        code, out, _ = limits.run([sys.executable, "-I", "-S", "-B", "-X", "utf8", RUNNER],
+        code, out, _ = limits.run([PYTHON, "-I", "-S", "-B", "-X", "utf8", RUNNER],
                                   json.dumps(request, ensure_ascii=False).encode("utf-8"), timeout, cwd=work, env=env)
     except limits.Timeout:
         return "timeout", b""
