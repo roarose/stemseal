@@ -80,8 +80,8 @@ stemseal savings          # tokens the cells saved on this machine
 | food_calories | 100g당 열량과 먹은 양으로 섭취 열량 | kcal_per_100g, grams |
 | geometric_mean_growth | 기간별 성장률의 기하평균 성장률 (%) | rates |
 | korean_amount | 손님이 한글로 말한 금액·수량 읽기 ("만이천구백원" 12900, "두 잔" 2), 손님 문장에 있는 말인지 확인 · built from a store kiosk test | text, question |
-| menu_order_total | 손님이 말한 메뉴 이름·수량을 가게 메뉴판에서 찾아 합계 (가격은 메뉴판에서만, 애매하면 손님께 할 질문) · built from a store kiosk test | question, menu, items (6.0: 수량은 세포가 원문에서 읽음, 문장 전체를 읽어 수량일 수 있는 말이 남으면 되묻기, 수량 말 없는 메뉴는 1개(qty_assumed), "두 개씩"은 앞 메뉴에도, 빠진 메뉴는 거절) |
-| order_total | 주문 항목(가격×수량) 합계, 할인, 결제 금액 · built from a store kiosk test | question, items, discount_pct, discount_won (7.0: 손님 말 그대로 받고 원문에 있는지 확인, 빠진 수량은 세포가 읽음, 수량일 수 있는 말이 남으면 거절, 손님이 받는다고 한 할인을 넘기지 않거나 금액이 없으면 거절, "할인 돼요?"는 할인 아님) |
+| menu_order_total | 손님이 말한 메뉴 이름·수량을 가게 메뉴판에서 찾아 합계 (가격은 메뉴판에서만, 애매하면 손님께 할 질문) · built from a store kiosk test | question, menu, items (7.0: 수량은 세포가 원문에서 읽음, 읽지 못한 말이 하나라도 남으면 되묻기, 수량 말 없는 메뉴는 1개(qty_assumed), "두 개씩"은 앞 메뉴에도, 빠진 메뉴는 거절) |
+| order_total | 주문 항목(가격×수량) 합계, 할인, 결제 금액 · built from a store kiosk test | question, items[{name, price, qty}], discount_pct, discount_won (8.0: 손님 말 그대로 받고 원문에 있는지 확인, 빠진 수량은 세포가 읽고 1개로 친 품목은 qty_assumed, 읽지 못한 말(넘기지 않은 음식 이름 포함)이 남으면 거절, 받는다고 한 할인을 넘기지 않거나 금액이 없으면 거절) |
 | monthly_wage_from_hourly | 시급을 월 209시간 기준 월급으로 | hourly_wage |
 | party_set | "둘이서", "4명"을 읽어 인원에 맞는 세트와 가격 · built from a store kiosk test | question, sets, people 선택 (4.0: 인원은 세포가 문장에서 찾음, 부정한 인원은 빼고 후보가 둘 이상이면 되묻기) |
 | percentage_point_diff | 두 비율의 차이 (%p) | before_pct, after_pct |

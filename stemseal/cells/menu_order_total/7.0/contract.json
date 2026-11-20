@@ -1,0 +1,47 @@
+{
+ "description": "손님이 말한 메뉴 이름을 가게 메뉴판(menu)에서 찾아 메뉴판 가격으로만 합계를 낸다. 수량은 세포가 손님 문장에서 직접 읽는다(메뉴 이름 바로 뒤, 없으면 바로 앞: '두 병', '3인분', '둘에요', '하나 주시고'). 읽지 못한 말이 있으면 계산하지 않는다: 메뉴 이름, 수량, 조사와 주문 말('주세요', '포장', '그리고' 같은 허용 목록)을 쓰고 남은 말이 하나라도 있으면('너이', '투', '두 개 반', '사람 수대로') ask_customer로 되묻는다. 수량 말이 없는 메뉴는 1개로 치고 qty_assumed에 적는다. 그 밖에 되묻는 경우: 이름이 여러 메뉴에 걸림, 크기가 빠짐, '2인 이상' 메뉴를 1인분, 메뉴판에 없음, 범위('한두 개'), 0이나 100 이상, 주인 없는 수량, '하나씩 두 명'. '씩', '각각'은 앞에 나열한 메뉴에도 붙인다. 메뉴 이름 속 숫자('한상 4인')는 수량이 아니다. 손님이 말한 메뉴가 items에 빠지면 거절한다.",
+ "when_to_use": "손님이 메뉴 이름으로 주문하거나 얼마인지 물을 때. question에 손님 문장 전체, menu에 가게 자료의 메뉴판, items에 손님이 말한 메뉴마다 {name: 손님이 말한 메뉴 이름 그대로}. 수량은 세포가 읽으니 넘기지 않아도 된다.",
+ "keywords": [
+  "메뉴 주문",
+  "주문 합계",
+  "메뉴판",
+  "얼마",
+  "인분",
+  "합계",
+  "총액",
+  "주문",
+  "메뉴",
+  "menu order",
+  "order total from menu",
+  "bill"
+ ],
+ "input_schema": {
+  "required": [
+   "question",
+   "menu",
+   "items"
+  ],
+  "properties": {
+   "question": "the customer's whole sentence, unchanged",
+   "menu": "the store's menu from its data: [{name, price (whole won), unit ('1인' = priced per person), min_people, variants [{name, price}] or [{name}] for brands, aliases}]",
+   "items": "[{name: the customer's words for each dish, unchanged; qty is optional, the cell reads how many from the question}]"
+  }
+ },
+ "output_keys": [
+  "answer_ready",
+  "ask_customer",
+  "lines",
+  "total",
+  "qty_assumed"
+ ],
+ "raw_text": true,
+ "description_en": "Order total from the customer's dish names, priced only from the store's menu; the cell reads each count from the sentence itself. It computes only when nothing unread is left: after dish names, counts, particles and order words on its ignore list ('주세요', '포장', '그리고'), any other word left ('너이', '투', '두 개 반', '사람 수대로') makes it ask back. A dish with no count is one, listed in qty_assumed. It also asks back for a name that fits several dishes, a missing size, a minimum-people dish for one, a dish not on the menu, a range, 0 or over 99, a count that belongs to no dish, or a count per person. '씩'/'각각' covers the dishes listed before it. Numbers inside a dish name are not counts. A dish the customer named but left out of items is refused.",
+ "when_to_use_en": "A customer orders or asks a price by dish name. Pass their whole sentence, the store's menu, and their words for every dish; counts are read by the cell.",
+ "input_aliases": {
+  "items": [
+   "order",
+   "orders",
+   "dishes"
+  ]
+ }
+}
