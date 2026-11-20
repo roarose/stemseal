@@ -242,7 +242,10 @@ def cell_executor(inp):
             if not vs and qm and any(norm(v["name"]) == qm.group(0) for v in e["variants"]):   # "4마리" named the size; a count may follow ("4마리 두 개")
                 vs = [v for v in e["variants"] if norm(v["name"]) == qm.group(0)]
                 nx = _SKIP.match(masked, qm.end()).end()
-                qm = next((x for x in found_q if x.start() == nx), None)
+                qm = None
+                for x in found_q:
+                    if x.start() == nx:
+                        qm = x; break
                 if qm is not None:
                     asks[:] = [a for a in asks if not a.startswith("'%s'" % _show(q, qm.start(), qm.end()))]
             if len(vs) != 1:
@@ -273,7 +276,11 @@ def cell_executor(inp):
                 if not any(x <= a < y or x < b <= y for x, y in covered):
                     raise ValueError("the question names another menu that is not in items; add every menu the customer ordered as its own item")
     if asks:
-        out["ask_customer"] = " ".join(dict.fromkeys(asks))
+        uniq = []
+        for a in asks:
+            if a not in uniq:
+                uniq.append(a)
+        out["ask_customer"] = " ".join(uniq)
         return out
     out["answer_ready"] = True
     out["total"] = sum(x["line_total"] for x in out["lines"])

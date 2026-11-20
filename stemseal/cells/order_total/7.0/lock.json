@@ -1,0 +1,10 @@
+{
+ "cell": "order_total",
+ "version": "7.0",
+ "sha256": "dd4101cbecb9cc382dd1cef48b29b1b32f51f57c9c2426f6d323005b3338adc2",
+ "gt_total": 89,
+ "gt_passed": 89,
+ "deterministic": true,
+ "locked_at": "2026-11-20T09:08:01+00:00",
+ "locked_by": "claude-store-review-20261120"
+}

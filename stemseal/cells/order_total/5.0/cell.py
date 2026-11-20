@@ -161,7 +161,13 @@ def cell_executor(inp):
             qtys.append((claim(str(it["qty"]), ps[1] if ps else None), k, str(it["qty"])))
         else:   # no qty passed: the cell reads the count said right after the price, or right before it ('두 개 2000원씩')
             g = _GAP.match(qn, ps[1]).end() if ps else -1
-            c = next((c for c in counts if c[0] == g and c not in used_counts), None) or (next((c for c in counts if c[1] == ps[0] and c not in used_counts), None) if ps else None)
+            c = None
+            for x in counts:
+                if x not in used_counts and x[0] == g:
+                    c = x; break
+            for x in counts:
+                if c is None and ps and x not in used_counts and x[1] == ps[0]:
+                    c = x; break
             if c:
                 used_counts.add(c)
                 try:
