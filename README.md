@@ -81,15 +81,19 @@ stemseal savings          # tokens the cells saved on this machine
 | geometric_mean_growth | 기간별 성장률의 기하평균 성장률 (%) | rates |
 | korean_amount | 손님이 한글로 말한 금액·수량 읽기 ("만이천구백원" 12900, "두 잔" 2), 손님 문장에 있는 말인지 확인 · built from a store kiosk test | text, question |
 | menu_order_total | 손님이 말한 메뉴 이름·수량을 가게 메뉴판에서 찾아 합계 (가격은 메뉴판에서만, 애매하면 손님께 할 질문) · built from a store kiosk test | question, menu, items |
-| order_total | 주문 항목(가격×수량) 합계, 할인, 결제 금액 · built from a store kiosk test | question, items, discount_pct, discount_won (2.0: 손님 말 그대로 받고 원문에 있는지 확인) |
+| order_total | 주문 항목(가격×수량) 합계, 할인, 결제 금액 · built from a store kiosk test | question, items, discount_pct, discount_won (3.0: 손님 말 그대로 받고 원문에 있는지 확인, 숫자 말 경계 확인, 가격 한 번은 한 품목) |
 | monthly_wage_from_hourly | 시급을 월 209시간 기준 월급으로 | hourly_wage |
 | party_set | "둘이서", "4명"을 읽어 인원에 맞는 세트와 가격 · built from a store kiosk test | question, people, sets |
 | percentage_point_diff | 두 비율의 차이 (%p) | before_pct, after_pct |
 | percentile_rank | 값이 목록에서 몇 % 위치인지 | values, value |
 | price_for_target_margin | 원가와 목표 마진율로 판매가 | cost, margin_pct |
 | store_faq | 가게가 정해 둔 안내(맵기, 원산지, 주차…)를 그대로 꺼냄, 답이 없으면 직원에게 · built from a store kiosk test | question, faq |
-| store_hours | 지금 영업 중인지, 마감·오픈까지 남은 분 (자정 넘는 영업, "오후 9시 45분" 같은 한국어 시각 포함, 오전·오후 없는 시각은 짐작하지 않고 되묻게 함) · built from a store kiosk test | question, now, open, close (3.0: 손님 말 그대로, 애매하면 손님께 할 질문을 돌려줌) |
+| store_hours | 지금 영업 중인지, 마감·오픈까지 남은 분 (자정 넘는 영업, "오후 9시 45분" 같은 한국어 시각 포함, 오전·오후 없는 시각은 짐작하지 않고 되묻게 함) · built from a store kiosk test | question, now, open, close (4.0: 손님 말 그대로, 모델이 붙인 오전·오후는 손님 말 기준, 여는·닫는 시각 역할 확인, 애매하면 손님께 할 질문을 돌려줌) |
 | vat_supply_price | 부가세 포함 금액을 공급가액과 부가세로 (부가세 원 미만 절사) · first cell built from a request (#4) | total, vat_pct |
+
+## Making a cell / 세포 만들기
+
+How to make a cell that small models can trust (refuse when ambiguous, read the customer's own words, measure on fresh questions), learned on a store laptop: [CELL_GUIDE.md](CELL_GUIDE.md). 작은 모델이 믿고 쓸 세포를 만드는 지침은 [CELL_GUIDE.md](CELL_GUIDE.md)에 있습니다.
 
 ## Need a cell that isn't here? / 필요한 세포가 없나요?
 

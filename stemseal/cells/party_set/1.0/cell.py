@@ -1,4 +1,4 @@
-# --- korean reader 1 begin (shared, byte-identical in korean_amount, order_total, store_hours; tests/test_reader.py checks) ---
+# --- korean reader 2 begin (shared, byte-identical in the cells that read a customer's own words; tests/test_reader.py checks) ---
 import re
 from fractions import Fraction
 _SINO = {"영": 0, "공": 0, "일": 1, "이": 2, "삼": 3, "사": 4, "오": 5, "육": 6, "륙": 6, "칠": 7, "팔": 8, "구": 9}
@@ -6,7 +6,7 @@ _SMALL = {"십": 10, "백": 100, "천": 1000}
 _BIG = {"만": 10000, "억": 100000000}
 _NATIVE = [("스무", 20), ("스물", 20), ("열", 10), ("아홉", 9), ("여덟", 8), ("일곱", 7), ("여섯", 6), ("다섯", 5),
            ("하나", 1), ("한", 1), ("둘", 2), ("두", 2), ("셋", 3), ("세", 3), ("석", 3), ("넷", 4), ("네", 4), ("너", 4)]
-COUNTERS = ("인분", "그릇", "공기", "접시", "세트", "마리", "잔", "개", "병", "캔", "판", "장", "컵", "명", "인")
+COUNTERS = ("인분", "그릇", "공기", "접시", "세트", "마리", "조각", "잔", "개", "병", "캔", "판", "장", "컵", "줄", "팩", "명", "인")
 _TAIL = re.compile(r"(짜리|씩|이요|요|이에요|예요|입니다)+$")
 def norm(s):
     """Spaces out; a comma only as a thousands mark (4,500 -> 4500), so '25:00,10:00' stays two times."""
@@ -65,18 +65,36 @@ def amount(text):
     if v is None:
         raise ValueError("cannot read this amount; pass the customer's words for it exactly as written, e.g. '만이천구백원' or '두 잔'")
     return v, unit
-def found(fragment, question):
-    """Is the fragment really in the customer's words (spaces and commas ignored, not inside a longer number)?"""
-    f = norm(fragment); q = norm(question)
+_NUMCH = set("0123456789.영공일이삼사오육륙칠팔구십백천만억")
+def _flat(s):
+    """norm(s) plus, for each kept character, whether a space stood before it in the customer's words."""
+    chars = []; gaps = []; gap = False
+    for c in str(s).lower():
+        if c.isspace():
+            gap = True; continue
+        chars.append(c); gaps.append(gap); gap = False
+    j = "".join(chars)
+    drop = {m.start() for m in re.finditer(r"(?<=\d),(?=\d{3}(?!\d))", j)}
+    return "".join(c for i, c in enumerate(chars) if i not in drop), [g for i, g in enumerate(gaps) if i not in drop] + [True]
+def spots(fragment, question):
+    """Where the fragment stands in the customer's words, as (start, end) in norm(question). A match must not start or end
+    inside a longer number: '오백원' is not in '삼천오백원', '1시' is not in '11시'. A space counts as a boundary between
+    Korean number words ('이 만원'), never between digits."""
+    f = norm(fragment); q, gaps = _flat(question); out = []
     if not f:
-        return False
-    for m in re.finditer(re.escape(f), q):
-        a, b = m.start(), m.end()
-        if (f[0].isdigit() and a > 0 and q[a - 1].isdigit()) or (f[-1].isdigit() and b < len(q) and q[b].isdigit()):
+        return out
+    for m in re.finditer("(?=%s)" % re.escape(f), q):
+        a = m.start(); b = a + len(f)
+        if a > 0 and f[0] in _NUMCH and q[a - 1] in _NUMCH and (not gaps[a] or (f[0].isdigit() and q[a - 1].isdigit())):
             continue
-        return True
-    return False
-# --- korean reader 1 end ---
+        if b < len(q) and f[-1] in _NUMCH and q[b] in _NUMCH and (not gaps[b] or (f[-1].isdigit() and q[b].isdigit())):
+            continue
+        out.append((a, b))
+    return out
+def found(fragment, question):
+    """Is the fragment really in the customer's words (spaces and thousands commas ignored, not inside a longer number)?"""
+    return bool(spots(fragment, question))
+# --- korean reader 2 end ---
 _ALONE = ("혼자", "혼자서", "혼밥", "나혼자")
 def _people(words):
     s = norm(words)

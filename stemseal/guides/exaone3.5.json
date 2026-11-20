@@ -1,6 +1,6 @@
 {
  "id": "exaone3.5",
- "version": "2026-11-17",
+ "version": "2026-11-20",
  "match": [
   "exaone3.5*",
   "exaone-3.5*",
@@ -12,7 +12,9 @@
   "목록이 길면 비슷한 세포를 억지로 고름 (exp3 전체 목록 방식, 비슷한 업무 0/10)",
   "데이터를 세포 입력 키 안에 한 겹 더 감쌈 (exp3 4건)",
   "검색어를 좁게 써서 맞는 세포가 후보에서 빠짐 (exp3 6건)",
-  "혼자 계산하면 거의 틀림 (세포 있는 업무 7/33)"
+  "혼자 계산하면 거의 틀림 (세포 있는 업무 7/33)",
+  "2.4b: 숫자를 옮겨 적다 틀린다(만이천구백원→1050). 손님 말 그대로 넘기면 거의 맞는다",
+  "2.4b: 오전·오후가 없는 시각에 '오후'를 붙여 넘긴다"
  ],
  "selection": {
   "max_candidates": 5,
@@ -36,7 +38,8 @@
   "출력이 요청과 다른 값을 계산하는 세포라면 고르지 않는 편이 낫습니다. 그때는 none 으로 답하면 허브가 그 계산을 새 세포로 만들도록 접수하고, 다음에 다시 찾으면 준비되어 있습니다.",
   "글쓰기, 번역, 요약, 추측은 세포보다 당신이 직접 하는 편이 잘 맞습니다.",
   "입력은 입력 예시와 같은 모양으로 data.json 값을 옮기면 세포가 가장 잘 받아들입니다.",
-  "JSON 한 개로 답하면 허브가 바로 읽고 처리합니다."
+  "JSON 한 개로 답하면 허브가 바로 읽고 처리합니다.",
+  "세포 계약에 raw_text가 있으면 손님 말을 숫자로 바꾸지 말고 글자 그대로 옮기는 편이 낫습니다. 세포가 그 말을 직접 정확히 읽고, 바꾼 숫자보다 훨씬 덜 틀립니다. 오전·오후도 손님이 말한 대로만 두면, 모르는 부분은 세포가 손님께 물을 문장을 줍니다."
  ],
  "sources": [
   "experiments/exp3/summary.md",
@@ -53,7 +56,8 @@
  "style_note": "설득형 문구(water-channel 원칙): 금지·강요 대신 이점과 다음 길을 알려 준다. 2026-11-17",
  "search_words_prompt": "아래 요청을 처리하려면 어떤 계산이 필요한지, 그 계산을 부르는 표준 용어를 한국어로 3~6개 적어 주세요. 가게 장부나 교과서에서 쓰는 이름이면 검색이 잘 됩니다. 숫자와 날짜는 빼 주세요. 계산이 아니라 글쓰기라면 그 일을 부르는 말을 적으면 됩니다.",
  "measured_notes": [
-  "exp8: 요청 검색과 모델이 쓴 계산 이름 검색을 번갈아 합치면 세포 찾기 처음 보는 문장 29→35/36, 새 문장 32→34/36 (낱말 0.9초, 37토큰)"
+  "exp8: 요청 검색과 모델이 쓴 계산 이름 검색을 번갈아 합치면 세포 찾기 처음 보는 문장 29→35/36, 새 문장 32→34/36 (낱말 0.9초, 37토큰)",
+  "매장 노트북 (2026-11-20, exaone3.5:2.4b, CPU, 새 질문 25개): 혼자 숫자 3/20. 3차(모델이 숫자로 옮김) 세포 14/20, 손님에게 틀린 숫자 7건. 4차(손님 말 그대로 받는 raw_text 세포) 17/20, 되묻기 3/5, 틀린 숫자 1건, 직원 호출 4건, 평균 20초. 남은 실수: 단가 설명('1인분 만육천원인데 4인분')을 품목으로 넣음, 손님이 말하지 않은 '오후'를 붙임."
  ],
  "prompt_rules_en": [
   "In past measurements, using a candidate with the right output key was 3 times as accurate as computing alone. When you see a matching candidate, let that cell do it.",
@@ -61,7 +65,8 @@
   "If a cell computes a different value from what the request asks, it is better not to pick it. Answer none; the need is recorded so a new cell can be made, and it may be ready next time.",
   "Writing, translation, summaries and guesses suit you better than a cell. Do those yourself.",
   "Copy the values from the data into the same shape as the input example; the cell accepts that best.",
-  "Answer with a single JSON object so the hub can read it directly."
+  "Answer with a single JSON object so the hub can read it directly.",
+  "If a cell's contract says raw_text, copy the customer's words as they are instead of converting them to numbers. The cell reads them accurately and is wrong far less often. Leave am/pm as the customer said it; when it is unknown, the cell gives you the question to ask."
  ],
  "search_words_prompt_en": "List 3-6 standard names (in English) for the calculation this request needs, the words a bookkeeping guide or textbook would use. Leave out numbers and dates. If it is writing rather than calculation, name that task."
 }

@@ -1,6 +1,6 @@
 {
  "id": "qwen2.5",
- "version": "2026-11-17",
+ "version": "2026-11-20",
  "match": [
   "qwen2.5*",
   "qwen2*"
@@ -11,7 +11,8 @@
   "행동 대신 사용자에게 허락을 물음",
   "7B 도구 선택 F1 약 0.75",
   "예/아니오 확인 질문에는 맞는 세포에도 거의 항상 '아니오'로 답함(3B, exp10). 후보 목록에서 고르게 하는 편이 낫다",
-  "검색어를 직접 쓰면 숫자·중국어 글자·하이픈 묶음이 섞여 검색을 흐림(exp10: 맞는 세포가 후보에 69/108). 요청 문장 검색과 따로 돌리게 함"
+  "검색어를 직접 쓰면 숫자·중국어 글자·하이픈 묶음이 섞여 검색을 흐림(exp10: 맞는 세포가 후보에 69/108). 요청 문장 검색과 따로 돌리게 함",
+  "1.5b: 손님 말을 그대로 옮기라고 해도 숫자로 바꾸거나 오전·오후를 붙인다(4차 25개 중 16개 거절)"
  ],
  "selection": {
   "max_candidates": 5,
@@ -34,7 +35,8 @@
   "출력이 요청과 다른 값을 계산하는 세포라면 고르지 않는 편이 낫습니다. 그때는 none 으로 답하면 허브가 그 계산을 새 세포로 만들도록 접수하고, 다음에 다시 찾으면 준비되어 있습니다.",
   "글쓰기, 번역, 요약, 추측은 세포보다 당신이 직접 하는 편이 잘 맞습니다.",
   "입력은 입력 예시와 같은 모양으로 data.json 값을 옮기면 세포가 가장 잘 받아들입니다.",
-  "JSON 한 개로 답하면 허브가 바로 읽고 처리합니다."
+  "JSON 한 개로 답하면 허브가 바로 읽고 처리합니다.",
+  "세포 계약에 raw_text가 있으면 손님 말을 숫자로 바꾸지 말고 글자 그대로 옮기는 편이 낫습니다. 세포가 그 말을 직접 정확히 읽고, 바꾼 숫자보다 훨씬 덜 틀립니다. 오전·오후도 손님이 말한 대로만 두면, 모르는 부분은 세포가 손님께 물을 문장을 줍니다."
  ],
  "sources": [
   "https://www.docker.com/blog/local-llm-tool-calling-a-practical-evaluation/",
@@ -42,7 +44,8 @@
  ],
  "style_note": "설득형 문구(water-channel 원칙): 금지·강요 대신 이점과 다음 길을 알려 준다. 2026-11-17",
  "measured_notes": [
-  "exp10 (qwen2.5:3b, 처음 보는 업무 52개 x3): 혼자 5/44, 이 가이드(후보 목록에서 고르기) 88/156. 하나씩 예/아니오 확인(confirm) 방식은 42~53/156 으로 나쁨"
+  "exp10 (qwen2.5:3b, 처음 보는 업무 52개 x3): 혼자 5/44, 이 가이드(후보 목록에서 고르기) 88/156. 하나씩 예/아니오 확인(confirm) 방식은 42~53/156 으로 나쁨",
+  "매장 노트북 (2026-11-20, qwen2.5:1.5b, i5-2430M CPU, 새 질문 25개): 혼자 숫자 1/20. 3차(모델이 숫자로 옮김) 세포 7/20, 손님에게 틀린 숫자 12건. 4차(손님 말 그대로 받는 raw_text 세포) 4/20, 틀린 숫자 2건이지만 16건이 직원 호출. 1.5b는 손님 말을 그대로 옮기지 못하고 '8000', '오전 8시'처럼 바꾸거나 붙인다. raw_text 세포는 3b 이상에서 쓰는 편이 낫다."
  ],
  "prompt_rules_en": [
   "Picking directly saves time. The hub does the checking for you.",
@@ -50,6 +53,7 @@
   "If a cell computes a different value from what the request asks, it is better not to pick it. Answer none; the need is recorded so a new cell can be made, and it may be ready next time.",
   "Writing, translation, summaries and guesses suit you better than a cell. Do those yourself.",
   "Copy the values from the data into the same shape as the input example; the cell accepts that best.",
-  "Answer with a single JSON object so the hub can read it directly."
+  "Answer with a single JSON object so the hub can read it directly.",
+  "If a cell's contract says raw_text, copy the customer's words as they are instead of converting them to numbers. The cell reads them accurately and is wrong far less often. Leave am/pm as the customer said it; when it is unknown, the cell gives you the question to ask."
  ]
 }
