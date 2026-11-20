@@ -15,6 +15,7 @@
   stemseal measure <cell> <model> [--n 5] [--url http://127.0.0.1:11434] [--ship]
                                      measure a cell's baseline (tokens without the cell) with a local Ollama model
   stemseal guide <model> [ko|en]     the selection guide used for a model name
+  stemseal bench [--n 30] [--warmup 5] how long a cell call takes on this machine (saved to ~/.stemseal/bench-*.json)
   stemseal mcp                       run the MCP server on stdio (same as stemseal-mcp)"""
 import json, sys
 from . import hub, guides, savings, update as upd
@@ -54,6 +55,9 @@ def _demand(rest):
     return 0
 
 def main(argv=None):
+    for st in (sys.stdout, sys.stderr):
+        try: st.reconfigure(errors="replace")   # a console that cannot show Korean prints '?' instead of failing
+        except Exception: pass
     a = list(sys.argv[1:] if argv is None else argv) or ["list"]
     cmd, rest = a[0], a[1:]
     if cmd == "list": _p([{k: c[k] for k in ("cell", "version", "description", "required_inputs")} for c in hub.list_cells()])
@@ -64,7 +68,7 @@ def main(argv=None):
         r = hub.call(rest[0], data, caller="cli"); _p(r); return 0 if r["status"] == "ok" else 1
     elif cmd == "verify":
         r = hub.verify_all(); _p(r)
-        bad = [k for k, v in r.items() if not (v["hash_ok"] and v["deterministic"] and v["gt"].split("/")[0] == v["gt"].split("/")[1])]
+        bad = [k for k, v in r.items() if not (v["hash_ok"] and v.get("policy_ok") and v.get("gt_ok") and v["deterministic"])]
         print("all %d cells verified" % len(r) if not bad else "FAILED: %s" % bad); return 1 if bad else 0
     elif cmd == "request":
         ex = None
@@ -86,6 +90,10 @@ def main(argv=None):
         opt = lambda k, d: rest[rest.index(k) + 1] if k in rest else d
         r = savings.measure(rest[0], rest[1], n=int(opt("--n", 5)), url=opt("--url", None), ship="--ship" in rest)
         _p({k: v for k, v in r.items() if k != "runs"} if r.get("ok") else r); return 0 if r.get("ok") else 1
+    elif cmd == "bench":
+        from . import bench as _b
+        opt = lambda k, d: int(rest[rest.index(k) + 1]) if k in rest else d
+        _p(_b.run(n=opt("--n", 30), warmup=opt("--warmup", 5)))
     elif cmd == "guide": _p(guides.brief(guides.guide_for(rest[0] if rest else ""), (rest[1] if len(rest) > 1 else "ko")))
     else: print(__doc__); return 2
     return 0
