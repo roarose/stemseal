@@ -3,6 +3,8 @@
 """stemseal - MCP server (stdio). Add to an MCP client as:  command: stemseal-mcp   (or: python -m stemseal.mcp)
 Three tools. An AI states what it needs, gets back the few locked cells that fit, and calls one.
 Env: STEMSEAL_CALLER = name recorded in the ledger for this client (default 'mcp').
+     STEMSEAL_LOG    = full (default) | minimal (request sentences kept only as a hash and a few words) | off (no ledger).
+     STEMSEAL_INPUT_DIR = folder call_cell's input_file may read from (default ~/.stemseal/inputs; the server's start folder is allowed too).
      STEMSEAL_MODEL  = the client's model name (e.g. exaone3.5:7.8b). Unset, the general small-model guide is used. When set, find_cell returns that model's cell-selection guide
                        with the candidates, and call_cell repairs the input mistakes the guide knows about (see guides/)."""
 import json, os, sys
@@ -41,6 +43,19 @@ def find_for_mcp(need, words=None, record=True):
     if out["cells"]: out["next_step"] = NEXT[lang]
     elif r.get("no_cell"): out["no_cell"] = _for_model(r["no_cell"])
     return out
+# input_file may name only a .json file of at most 1MB under the inputs folder or the folder the server was started in.
+INPUT_ROOTS = list(dict.fromkeys(os.path.realpath(p) for p in (os.environ.get("STEMSEAL_INPUT_DIR") or os.path.join(hub.HOME, "inputs"), os.getcwd())))
+MAX_INPUT_FILE = 1024 * 1024
+def read_input_file(path):
+    """The parsed JSON of an allowed input file, or None. Every failure gives the same None, so the reply says only where files may be."""
+    try:
+        real = os.path.realpath(str(path))
+        if not real.lower().endswith(".json") or not os.path.isfile(real): return None
+        if not any(os.path.normcase(os.path.commonpath([real, root])) == os.path.normcase(root) for root in INPUT_ROOTS): return None
+        with open(real, "rb") as fh: raw = fh.read(MAX_INPUT_FILE + 1)
+        if len(raw) > MAX_INPUT_FILE: return None
+        return json.loads(raw.decode("utf-8"))
+    except Exception: return None
 CORE = {"status", "cell", "version", "verified", "result", "reason", "how_to_fix", "guide", "repairs", "input_used", "answer_text", "say"}
 def handle(name, a):
     """Every tool's tokens are counted. call_cell's core reply is metered on its call row (hub.call); what this server adds to it
@@ -63,8 +78,8 @@ def _handle(name, a):
     if name == "call_cell":
         data = dict(a.get("input") or {})
         if a.get("input_file"):
-            try: f = json.load(open(a["input_file"], encoding="utf-8"))
-            except Exception as e: return {"status": "invalid_input", "reason": "cannot read input_file: %s" % e}
+            f = read_input_file(a["input_file"])
+            if f is None: return {"status": "invalid_input", "reason": "input_file must be a .json file under %s" % " or ".join(INPUT_ROOTS)}
             if isinstance(f, dict): data = {**f, **data}
         cell = str(a.get("cell", ""))
         r = guides.call(cell, data, model=MODEL, caller=CALLER)
@@ -115,6 +130,7 @@ def send(o):
     # which garbles Korean text for an MCP client that reads UTF-8.
     sys.stdout.write(json.dumps(o, ensure_ascii=True) + "\n"); sys.stdout.flush()
 def main():
+    hub.tidy_ledger()
     for st in (sys.stdin, sys.stdout):
         try: st.reconfigure(encoding="utf-8", errors="replace")
         except Exception: pass

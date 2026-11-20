@@ -109,6 +109,14 @@ Requests for the same calculation are counted together (numbers, word order, spa
 
 세포가 없으면 모델이 따로 하지 않아도 요청이 남습니다. `find_cell`이 빈손으로 돌아오거나 없는 세포 이름을 부르면, 시각, 찾던 말, 모델 이름, 가장 가까운 세포가 내 컴퓨터의 장부에만 기록됩니다. 모델이 `request_cell`로 직접 요청할 수도 있습니다(`need` 한 문장이면 되고 `example`은 선택). 돌려주는 말은 거절이 아니라 "기록했고 곧 그 물길을 만든다, 다음에 다시 찾아 달라"이고, 가까운 세포가 있으면 함께 알려 줍니다. 같은 계산의 요청은 숫자, 낱말 순서, 띄어쓰기, "계산" 같은 말이 달라도 한 건으로 묶어 횟수를 셉니다(복리/단리처럼 낱말이 다르면 따로 둡니다). `stemseal demand`로 쌓인 요청을 보고, `stemseal demand --open <번호>`로 GitHub 세포 요청 이슈의 내용을 먼저 확인한 뒤 동의하면 엽니다. 전화번호, 이메일, 주민번호, 긴 숫자열은 가려지지만 저장소는 공개이니 이름 같은 개인 정보가 없는지 보고 제출하세요. 요청이 모이는 순서대로 세포를 만들고 `stemseal update`로 받습니다. 새 잠금 세포만 내려받아 내 컴퓨터에서 sha256, 순수성, 정답 사례를 모두 다시 확인한 뒤에 쓰고, 그 세포가 답한 요청은 목록에서 빠집니다. 인터넷을 쓰는 명령은 update 하나뿐이고, 내려받기만 합니다(`stemseal measure`는 내 컴퓨터의 Ollama에만 붙습니다).
 
+### What the ledger keeps / 장부에 남는 것
+
+`STEMSEAL_LOG` sets how much of a request the ledger keeps: `full` (default) keeps the sentence (up to 300 characters); `minimal` keeps only a hash of it and up to 8 of its words, which is still enough to count alike requests together, and no examples; `off` writes no ledger. Rows older than 90 days, and the oldest rows once the file passes 20MB, move to `ledger.1.jsonl` when the MCP server starts (the previous `ledger.1.jsonl` is replaced). Records of installed cells and answered requests are kept. A cell's error message reaches the model as one line of at most 120 characters, and the ledger keeps only its first 60.
+
+`call_cell`'s `input_file` reads only a `.json` file of at most 1MB under `~/.stemseal/inputs` (or `STEMSEAL_INPUT_DIR`) or the folder the MCP server was started in.
+
+`STEMSEAL_LOG=minimal`이면 요청 문장 대신 해시와 낱말 최대 8개만 남고(같은 요청 묶어 세기는 그대로 됨), `off`면 장부를 쓰지 않습니다. 90일 지난 줄과 20MB를 넘는 오래된 줄은 MCP 서버를 띄울 때 `ledger.1.jsonl`로 옮겨집니다. `input_file`은 `~/.stemseal/inputs`(또는 `STEMSEAL_INPUT_DIR`)나 서버를 띄운 폴더 아래의 1MB 이하 `.json` 파일만 읽습니다.
+
 ## Tokens saved / 아낀 토큰
 
 Every cell call records, in the same local ledger, what it cost and what it saved. It is always on and never leaves your machine.

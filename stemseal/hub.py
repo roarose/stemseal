@@ -11,7 +11,7 @@ Layout:  cells/<name>/<version>/{cell.py, contract.json, gt_cases.json, lock.jso
 Stdlib only.
 """
 import hashlib, json, os, re, shutil, sys, tempfile, time
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from . import savings, policy, limits
 
 PKG = os.path.dirname(os.path.abspath(__file__))
@@ -47,9 +47,26 @@ RUNNER = os.path.join(os.path.dirname(os.path.abspath(__file__)), "_runner.py")
 
 def now(): return datetime.now(timezone.utc).isoformat(timespec="seconds")
 def sha(b): return hashlib.sha256(b if isinstance(b, bytes) else b.encode("utf-8")).hexdigest()
+LOG_MODES = ("full", "minimal", "off")
+def log_mode():
+    """STEMSEAL_LOG: full (default) keeps request sentences; minimal keeps, instead of a sentence, its hash and up to 8 of its
+    words (enough to count alike requests together); off writes no ledger at all."""
+    v = (os.environ.get("STEMSEAL_LOG") or "full").strip().lower()
+    return v if v in LOG_MODES else "full"
+def _minimal(rec):
+    """A ledger row in minimal mode: every request sentence becomes need_sha + need_words; examples are not kept."""
+    rec = dict(rec)
+    if "need" in rec:
+        need = str(rec.pop("need") or "")
+        rec["need_sha"] = sha(need)[:16]; rec["need_words"] = _words(need)[:8]
+    rec.pop("example", None)
+    return rec
 def _log(rec):
     """Logging must never break a call: if the log folder cannot be written, the answer still goes back."""
     try:
+        mode = log_mode()
+        if mode == "off": return
+        if mode == "minimal": rec = _minimal(rec)
         os.makedirs(os.path.dirname(LEDGER), exist_ok=True)
         rec = {"ts": now(), **rec}
         with open(LEDGER, "a", encoding="utf-8") as f: f.write(json.dumps(rec, ensure_ascii=False) + "\n")
@@ -209,15 +226,23 @@ def input_help(c):
     return h
 
 # ---------------------------------------------------------------- the membrane: call
+ERR_TO_MODEL = 120     # characters of a cell's error message the model sees
+ERR_TO_LEDGER = 60     # characters of it (after the exception type) the ledger keeps
+def _one_line(text): return re.sub(r"\s+", " ", str(text or "")).strip()
+def _err_for_ledger(err):
+    """The exception type and the first characters of its message only."""
+    kind, sep, msg = err.partition(": ")
+    return (kind + sep + msg[:ERR_TO_LEDGER]) if sep else err[:ERR_TO_LEDGER]
 def call(name, input_data, caller="unknown", version=None, model=None, decorate=None, log=True):
     """status = ok | not_available | invalid_input. A result only ever comes from a locked, untampered cell.
     Every call row carries its token meter (savings.py): what the call cost and, against the cell's baseline, what it saved.
     model: the calling model's name, when known (baselines are per model). decorate(out): lets a wrapper add its fields
     before the reply is measured, so the meter counts the reply the model actually reads."""
     t0 = time.time()
-    def env(status, result=None, reason=None, ver=None):
+    def env(status, result=None, reason=None, ver=None, log_reason=None):
         rec = {"type": "call", "cell": name, "version": ver, "status": status, "caller": caller, "ms": round((time.time() - t0) * 1000, 1),
-               "input_sha": sha(json.dumps(input_data, sort_keys=True, ensure_ascii=False))[:16] if isinstance(input_data, dict) else None, "reason": reason}
+               "input_sha": sha(json.dumps(input_data, sort_keys=True, ensure_ascii=False))[:16] if isinstance(input_data, dict) else None,
+               "reason": reason if log_reason is None else log_reason}
         if status != "ok" and isinstance(input_data, dict): rec["input_keys"] = sorted(str(k) for k in input_data)[:12]   # names only, never values
         out = {"status": status, "cell": name, "version": ver, "verified": status == "ok", "result": result, "reason": reason}
         if status == "invalid_input" and c: out["how_to_fix"] = input_help(c)
@@ -241,7 +266,10 @@ def call(name, input_data, caller="unknown", version=None, model=None, decorate=
         if log: _log({"type": "blocked", "cell": name, "version": ver, "why": r["blocked"]})
         return env("not_available", reason="cell failed the safety check", ver=ver)
     if r.get("fault") and r.get("err") != "timeout": return env("not_available", reason="the cell gave no proper answer", ver=ver)
-    if not r.get("ok"): return env("invalid_input", reason="cell rejected the input: %s" % r.get("err"), ver=ver)
+    if not r.get("ok"):
+        err = _one_line(r.get("err"))
+        return env("invalid_input", reason="cell rejected the input: %s" % err[:ERR_TO_MODEL], ver=ver,
+                   log_reason="cell rejected the input: %s" % _err_for_ledger(err))
     return env("ok", result=r["out"], ver=ver)
 
 # ---------------------------------------------------------------- find (how an AI picks)
@@ -326,8 +354,45 @@ def _rows(kind=None, path=None):
             if not l.strip() or (kinds and not any('"%s"' % k in l for k in kinds)): continue
             try: r = json.loads(l)
             except ValueError: continue
-            if isinstance(r, dict) and (not kinds or r.get("type") in kinds): out.append(r)
+            if isinstance(r, dict) and (not kinds or r.get("type") in kinds):
+                if "need" not in r and isinstance(r.get("need_words"), list): r["need"] = " ".join(str(w) for w in r["need_words"])
+                out.append(r)
     return out
+KEEP_DAYS = 90                      # ledger rows older than this move to ledger.1.jsonl
+MAX_LEDGER = 20 * 1024 * 1024       # past this size the oldest rows move too, down to half of it
+KEEP_TYPES = ("lock", "update", "fulfilled")   # records of what was installed and answered: kept at any age
+def tidy_ledger(today=None):
+    """Run once when the MCP server starts. Rows older than KEEP_DAYS, and the oldest rows while the file is over MAX_LEDGER,
+    move to ledger.1.jsonl, which replaces the previous one. Returns how many rows moved. Never raises."""
+    try:
+        if not os.path.exists(LEDGER): return 0
+        size = os.path.getsize(LEDGER)
+        cut = (today or datetime.now(timezone.utc)) - timedelta(days=KEEP_DAYS)
+        def old(line):
+            try: return datetime.fromisoformat(json.loads(line)["ts"]) < cut
+            except Exception: return False
+        with open(LEDGER, encoding="utf-8", errors="replace") as f: first = f.readline()
+        if size <= MAX_LEDGER and not old(first): return 0      # rows are appended in time order: nothing is old yet
+        with open(LEDGER, encoding="utf-8", errors="replace") as f: lines = [l for l in f if l.strip()]
+        keep, move = [], []
+        for l in lines:
+            if old(l) and not any('"type": "%s"' % t in l for t in KEEP_TYPES): move.append(l)
+            else: keep.append(l)
+        total = sum(len(l.encode("utf-8")) for l in keep)
+        if total > MAX_LEDGER:
+            i = 0
+            while i < len(keep) and total > MAX_LEDGER // 2:
+                if not any('"type": "%s"' % t in keep[i] for t in KEEP_TYPES):
+                    total -= len(keep[i].encode("utf-8")); move.append(keep.pop(i))
+                else: i += 1
+        if not move: return 0
+        d = os.path.dirname(LEDGER); old_path = os.path.join(d, "ledger.1.jsonl")
+        for path, rows in ((old_path, move), (LEDGER, keep)):
+            fd, tmp = tempfile.mkstemp(dir=d, prefix=".ledger_", suffix=".tmp")
+            with os.fdopen(fd, "w", encoding="utf-8") as f: f.writelines(rows)
+            os.replace(tmp, path)
+        return len(move)
+    except Exception: return 0
 def _doc_words(cell):
     c = load(cell)["contract"]
     return set(re.sub(r"[^a-z가-힣]+", " ", " ".join([cell.replace("_", " "), c["description"], c.get("when_to_use", ""), c.get("description_en", ""),
@@ -462,16 +527,16 @@ def request_status(ticket):
 
 # ---------------------------------------------------------------- observation
 def stats():
-    rows = [json.loads(l) for l in open(LEDGER, encoding="utf-8") if l.strip()] if os.path.exists(LEDGER) else []
-    calls = [r for r in rows if r["type"] == "call"]; per = {}
+    rows = _rows()
+    calls = [r for r in rows if r.get("type") == "call" and r.get("cell")]; per = {}
     for r in calls:
         p = per.setdefault(r["cell"], {"calls": 0, "ok": 0, "ms": 0.0, "callers": set()})
-        p["calls"] += 1; p["ok"] += r["status"] == "ok"; p["ms"] += r["ms"]; p["callers"].add(r["caller"])
+        p["calls"] += 1; p["ok"] += r.get("status") == "ok"; p["ms"] += r.get("ms") or 0; p["callers"].add(str(r.get("caller")))
     demand = {}
     for r in rows:
-        if r["type"] == "demand": demand[r["need"]] = demand.get(r["need"], 0) + 1
-    return {"cells_locked": len(list_cells()), "calls": len(calls), "ok": sum(r["status"] == "ok" for r in calls), "refused": sum(r["status"] != "ok" for r in calls),
-            "distinct_callers": len({r["caller"] for r in calls}), "finds": sum(r["type"] == "find" for r in rows),
+        if r.get("type") == "demand" and r.get("need"): demand[r["need"]] = demand.get(r["need"], 0) + 1
+    return {"cells_locked": len(list_cells()), "calls": len(calls), "ok": sum(r.get("status") == "ok" for r in calls), "refused": sum(r.get("status") != "ok" for r in calls),
+            "distinct_callers": len({str(r.get("caller")) for r in calls}), "finds": sum(r.get("type") == "find" for r in rows),
             "per_cell": {k: {"calls": v["calls"], "ok": v["ok"], "avg_ms": round(v["ms"] / v["calls"], 1), "callers": sorted(v["callers"])} for k, v in sorted(per.items(), key=lambda x: -x[1]["calls"])},
             "unmet_demand": sorted(demand.items(), key=lambda x: -x[1])[:20]}
 
