@@ -79,10 +79,12 @@ stemseal savings          # tokens the cells saved on this machine
 | currency_convert | 외화를 원화로 환산 (원 미만 버림) | amount, rate |
 | food_calories | 100g당 열량과 먹은 양으로 섭취 열량 | kcal_per_100g, grams |
 | geometric_mean_growth | 기간별 성장률의 기하평균 성장률 (%) | rates |
+| order_total | 주문 항목(가격×수량) 합계, 할인, 결제 금액 · built from a store kiosk test | items, discount_pct, discount_won |
 | monthly_wage_from_hourly | 시급을 월 209시간 기준 월급으로 | hourly_wage |
 | percentage_point_diff | 두 비율의 차이 (%p) | before_pct, after_pct |
 | percentile_rank | 값이 목록에서 몇 % 위치인지 | values, value |
 | price_for_target_margin | 원가와 목표 마진율로 판매가 | cost, margin_pct |
+| store_hours | 지금 영업 중인지, 마감·오픈까지 남은 분 (자정 넘는 영업 포함) · built from a store kiosk test | now, open, close |
 | vat_supply_price | 부가세 포함 금액을 공급가액과 부가세로 (부가세 원 미만 절사) · first cell built from a request (#4) | total, vat_pct |
 
 ## Need a cell that isn't here? / 필요한 세포가 없나요?

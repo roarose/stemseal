@@ -192,7 +192,7 @@ def call(name, input_data, caller="unknown", version=None, model=None, decorate=
 def _grams(s):
     """Words and their 2-letter pieces. Pieces with a digit are dropped: numbers in a request are data (10030, 3.2),
     and their pieces only dilute the score of the words that name the calculation."""
-    s = re.sub(r"[^0-9a-z가-힣]+", " ", (s or "").lower()); toks = [t for t in s.split() if not t.isdigit()]; g = set(toks)
+    s = re.sub(r"[^0-9a-z가-힣]+", " ", (s or "").lower()); toks = [t for t in s.split() if not any(ch.isdigit() for ch in t)]; g = set(toks)   # "4500원", "2잔" are data, not names
     for t in toks: g.update(p for p in (t[i:i + 2] for i in range(len(t) - 1)) if not any(ch.isdigit() for ch in p))
     return g
 def _rank(need, min_score):

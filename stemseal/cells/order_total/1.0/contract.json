@@ -1,0 +1,52 @@
+{
+ "description": "주문 항목(가격·수량)의 합계, 할인(퍼센트·원), 최종 금액, 총 수량. 원 단위 정수, 퍼센트 할인은 원 미만 버림.",
+ "when_to_use": "손님 주문 금액을 더할 때: 메뉴 여러 개와 수량의 합계, 할인 뒤 결제 금액. 가격은 메뉴표에서 읽어 넣는다.",
+ "keywords": [
+  "주문 합계",
+  "합계",
+  "총액",
+  "얼마",
+  "결제 금액",
+  "할인",
+  "메뉴 가격",
+  "수량",
+  "order total",
+  "bill",
+  "subtotal",
+  "discount"
+ ],
+ "input_schema": {
+  "required": [
+   "items"
+  ],
+  "properties": {
+   "items": "list of {price: whole won, qty: whole number (default 1)}",
+   "discount_pct": "optional percent 0-100",
+   "discount_won": "optional fixed discount in won"
+  }
+ },
+ "output_keys": [
+  "subtotal",
+  "discount",
+  "total",
+  "item_count"
+ ],
+ "description_en": "Order subtotal from items (price x qty), discount (percent and/or fixed won), final total and item count. Whole won; percent discount truncated.",
+ "when_to_use_en": "Adding up a customer order: several menu items with quantities, total after discount. Read prices from the menu.",
+ "input_aliases": {
+  "items": [
+   "order",
+   "menu",
+   "orders",
+   "lines"
+  ],
+  "discount_pct": [
+   "discount_percent",
+   "discount_rate"
+  ],
+  "discount_won": [
+   "discount_amount",
+   "coupon"
+  ]
+ }
+}

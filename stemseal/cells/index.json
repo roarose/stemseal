@@ -59,6 +59,16 @@
     "answers": []
    }
   },
+  "order_total": {
+   "1.0": {
+    "sha256": "9e57302f1cd1185b6ecaa7227085bbecfb13052fb34473c6e787caf18e01de35",
+    "gt": 22,
+    "locked_at": "2026-11-20T02:22:00+00:00",
+    "description": "주문 항목(가격·수량)의 합계, 할인(퍼센트·원), 최종 금액, 총 수량. 원 단위 정수, 퍼센트 할인은 원 미만 버림.",
+    "description_en": "Order subtotal from items (price x qty), discount (percent and/or fixed won), final total and item count. Whole won; percent discount truncated.",
+    "answers": []
+   }
+  },
   "percentage_point_diff": {
    "1.0": {
     "sha256": "5322a96a6f9fa33244762fc957dac9d87e51ba1a426b7ed6968e580949ceb158",
@@ -86,6 +96,16 @@
     "locked_at": "2026-11-18T06:59:09+00:00",
     "description": "원가와 목표 마진율(판매가 기준 %)로 맞춰야 할 판매가.",
     "description_en": "Selling price that gives a target margin (% of selling price) on a cost.",
+    "answers": []
+   }
+  },
+  "store_hours": {
+   "1.0": {
+    "sha256": "b23e4f8f9efa57f6964fd4220c23f397f26ff435c565dd07e3d4c3e1b5c25810",
+    "gt": 21,
+    "locked_at": "2026-11-20T02:22:00+00:00",
+    "description": "지금 시각과 영업시간(여는 시각, 닫는 시각, 24시간제 HH:MM)으로 영업 중인지, 마감까지 남은 분, 다음 오픈까지 남은 분. 자정을 넘기는 영업시간도 처리.",
+    "description_en": "Given the current time and opening hours (HH:MM, 24h), whether the store is open, minutes until closing, minutes until next opening. Handles hours past midnight.",
     "answers": []
    }
   },
