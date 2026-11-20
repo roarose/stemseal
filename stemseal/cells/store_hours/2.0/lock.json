@@ -1,10 +1,10 @@
 {
  "cell": "store_hours",
  "version": "2.0",
- "sha256": "999fcaff147a0da7d4f0d8890454b0134fb4cb9b2d1e8b0db7f4349766a2d61b",
- "gt_total": 32,
- "gt_passed": 32,
+ "sha256": "3f4d34f71369d60d3109f157f9f8283c63d488bc995bde1a157616306fa9d604",
+ "gt_total": 53,
+ "gt_passed": 53,
  "deterministic": true,
- "locked_at": "2026-11-20T03:14:05+00:00",
+ "locked_at": "2026-11-20T03:28:03+00:00",
  "locked_by": "claude-store-demand-20261120"
 }

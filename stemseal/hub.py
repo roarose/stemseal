@@ -89,7 +89,9 @@ def run_isolated(cell_path, inputs, timeout=None):
 # ---------------------------------------------------------------- gate 2: ground truth
 def gt_check(cell_path, gt_cases):
     res = run_isolated(cell_path, [c["input"] for c in gt_cases])
-    fails = [{"case": i, "expected": c["expected"], "got": r.get("out"), "err": r.get("err")} for i, (c, r) in enumerate(zip(gt_cases, res)) if not (r.get("ok") and r.get("out") == c["expected"])]
+    # a case may say the cell must refuse: {"input": ..., "expected_error": "text the refusal must contain"} (ambiguous input is refused, not guessed)
+    good = lambda c, r: (not r.get("ok") and c["expected_error"] in str(r.get("err"))) if "expected_error" in c else (r.get("ok") and r.get("out") == c["expected"])
+    fails = [{"case": i, "expected": c.get("expected", {"error": c.get("expected_error")}), "got": r.get("out"), "err": r.get("err")} for i, (c, r) in enumerate(zip(gt_cases, res)) if not good(c, r)]
     # determinism: second run must give byte-identical outputs
     res2 = run_isolated(cell_path, [c["input"] for c in gt_cases])
     deterministic = json.dumps(res, sort_keys=True) == json.dumps(res2, sort_keys=True)
@@ -189,11 +191,21 @@ def call(name, input_data, caller="unknown", version=None, model=None, decorate=
     return env("ok", result=r["out"], ver=ver)
 
 # ---------------------------------------------------------------- find (how an AI picks)
+# A number followed by one of these is a quantity in the request (data): "4500원", "2잔", "10%", "3년". Dropped from search.
+_UNIT_WORDS = set("원 만원 천원 억 억원 만 천 잔 개 명 인 인분 분 초 시 시간 일 주 월 년 개월 주년 회 번 번째 년차 차 층 호 살 세 그릇 공기 병 캔 장 판 마리 세트 컵 점 등 위 배수 퍼센트 프로 kg g mg l ml km m cm mm".split())
+def _token(t):
+    """A word with a number in it. Number + unit ("4500원", "2잔") is data and goes; number + a word that names something
+    ("1인당", "2배", "4대보험", "3년차") keeps the word, because it says what is being calculated."""
+    if not any(ch.isdigit() for ch in t): return t
+    m = re.fullmatch(r"[0-9.]+([a-z가-힣]*)", t)
+    if not m or not m.group(1) or m.group(1) in _UNIT_WORDS: return None
+    return m.group(1)
 def _grams(s):
-    """Words and their 2-letter pieces. Pieces with a digit are dropped: numbers in a request are data (10030, 3.2),
+    """Words and their 2-letter pieces. Bare numbers and number+unit are dropped: numbers in a request are data (10030, 3.2, 4500원),
     and their pieces only dilute the score of the words that name the calculation."""
-    s = re.sub(r"[^0-9a-z가-힣]+", " ", (s or "").lower()); toks = [t for t in s.split() if not any(ch.isdigit() for ch in t)]; g = set(toks)   # "4500원", "2잔" are data, not names
-    for t in toks: g.update(p for p in (t[i:i + 2] for i in range(len(t) - 1)) if not any(ch.isdigit() for ch in p))
+    s = re.sub(r"[^0-9a-z가-힣.%]+", " ", (s or "").lower()).replace("%", " ")
+    toks = [w for w in (_token(t.strip(".")) for t in s.split()) if w]; g = set(toks)
+    for t in toks: g.update(t[i:i + 2] for i in range(len(t) - 1))
     return g
 def _rank(need, min_score):
     q = _grams(need); scored = []
