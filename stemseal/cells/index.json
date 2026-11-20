@@ -49,6 +49,16 @@
     "answers": []
    }
   },
+  "korean_amount": {
+   "1.0": {
+    "sha256": "745203537b4e401bac9283fc9854350b03bbf97add22d7cd8cf45a1c641f0737",
+    "gt": 28,
+    "locked_at": "2026-11-20T04:14:53+00:00",
+    "description": "손님이 말한 금액·수량 한 덩어리를 숫자로 읽는다. '만이천구백원' 12900원, '9천5백원' 9500원, '2만3천원', '두 잔' 2잔, '열두 개', '3인분', '10%'. 숫자와 단위(원, 잔, 개, 인분, %)를 돌려준다. question을 함께 주면 그 말이 손님 문장에 실제로 있는지 확인하고 없으면 거절한다.",
+    "description_en": "Reads one amount or count as the customer said it in Korean: '만이천구백원' 12900 won, '9천5백원', '두 잔' 2 cups, '10%'. Returns the number and its unit. With question, refuses text that is not in the customer's sentence.",
+    "answers": []
+   }
+  },
   "monthly_wage_from_hourly": {
    "1.0": {
     "sha256": "a9f14c93b48a6f243b9730fdaa1d2efde7d51f82537dd3ea5459aaac97c89ac3",
@@ -66,6 +76,14 @@
     "locked_at": "2026-11-20T04:11:50+00:00",
     "description": "주문 항목(가격·수량)의 합계, 할인(퍼센트·원), 최종 금액, 총 수량. 원 단위 정수. 할인 순서: 퍼센트를 먼저 빼고(원 미만 버림) 그다음 원 할인을 뺀다. 할인이 합계를 넘으면 합계까지만 빼고 discount_capped를 true로 알린다. 가격과 수량은 숫자나 '4,500원', '2잔'처럼 숫자 하나에 단위 하나인 글자도 받는다. 모르는 입력 이름이나 품목 안의 할인은 무시하지 않고 거절한다(할인은 items 밖에 discount_pct, discount_won으로).",
     "description_en": "Order subtotal from items (price x qty), discount, final total and item count. Whole won. Discount order: percent off the subtotal first (won below 1 dropped), then the fixed won discount. A discount larger than the subtotal is cut to the subtotal and discount_capped is true. Price and qty may be numbers or text like '4,500원', '2잔' (one number, one unit). Unknown input names, and a discount put inside an item, are refused, never ignored (discounts go outside items).",
+    "answers": []
+   },
+   "2.0": {
+    "sha256": "b7e625dd650e464753be58e14095f406583c0a748c8e1855753e1e3bb44686bc",
+    "gt": 28,
+    "locked_at": "2026-11-20T04:14:53+00:00",
+    "description": "손님 문장과, 그 문장에서 그대로 옮긴 가격·수량 말('만이천구백원', '두 잔', '4,500원')로 주문 합계, 할인, 결제 금액을 낸다. 모델은 숫자로 바꾸지 말고 손님 말을 그대로 넘긴다. 세포가 한글 금액을 직접 읽고, 넘긴 말이 손님 문장에 없으면 거절한다(지어낸 숫자 막기). 할인은 items 밖 discount_pct('10%'), discount_won('3천원'). 퍼센트를 먼저 빼고 원 할인을 뺀다. 읽은 값을 items_read로 돌려준다.",
+    "description_en": "Order total from the customer's sentence and the price/quantity words copied from it unchanged ('만이천구백원', '두 잔'). The cell reads Korean amounts itself and refuses words that are not in the sentence, so a model cannot pass a number it made up. Discounts go outside items. Returns what it read in items_read.",
     "answers": []
    }
   },
@@ -114,6 +132,14 @@
     "locked_at": "2026-11-20T04:11:50+00:00",
     "description": "지금 시각과 영업시간(여는 시각, 닫는 시각)으로 영업 중인지, 마감까지 남은 분, 다음 오픈까지 남은 분. 시각은 '20:20'(24시간제)이나 '오후 8시 20분', '밤 9시', '새벽 2시', '9시 반'처럼 오전·오후를 붙여 쓴다. 오전·오후가 없는 '9시'처럼 애매한 시각은 짐작하지 않고 거절하며, 손님께 오전인지 오후인지 물어보라고 알려 준다. 여는 시각과 닫는 시각이 같으면 거절한다(24시간 영업은 '00:00'~'24:00'). '7:30'처럼 한 자리 시는 오전인지 오후인지 몰라 거절한다(24시간제는 '07:30', '19:30'처럼 두 자리). 영업이 20시간을 넘으면 long_hours로 알려 준다. 자정을 넘기는 영업시간도 처리. 읽은 시각을 24시간제로 함께 돌려준다.",
     "description_en": "Open now?, minutes to closing, minutes to next opening, from the current time and opening hours. Times may be 'HH:MM' (24h), '9pm', or Korean with the half of the day ('오후 8시 20분', '밤 2시', '새벽 1시'). A clock hour without am/pm ('9시') is refused with a note to ask the customer, never guessed. Same open and close is refused unless it is '00:00'-'24:00' (open all day). A one-digit hour like '7:30' is refused (24h needs two digits, '07:30'). long_hours is true when the store is open more than 20 hours. Handles hours past midnight and returns the times it read in 24h.",
+    "answers": []
+   },
+   "3.0": {
+    "sha256": "63c1136e795d9aec80c2542ad382849fd8320409e36dc3758a27e709c204109e",
+    "gt": 30,
+    "locked_at": "2026-11-20T04:14:53+00:00",
+    "description": "손님 문장과, 그 문장에서 그대로 옮긴 시각 말('밤 7시 반', '열 시', '새벽 2시')로 영업 중인지, 마감·오픈까지 남은 분을 낸다. 오전·오후를 알 수 없는 시각, 여는 시각과 닫는 시각이 같을 때, 20시간 넘는 영업은 계산하지 않고 ask_customer에 손님께 할 질문 문장을 준다(answer_ready false). 넘긴 말이 손님 문장에 없으면 거절. 지금 시각을 기기 시계에서 가져오면 now_from_clock true와 '19:30'.",
+    "description_en": "Open now?, minutes to closing or opening, from the customer's sentence and the time words copied from it unchanged ('밤 7시 반', '새벽 2시'). When only the customer can settle it (am or pm unknown, same open and close, open over 20 hours) it does not compute: answer_ready is false and ask_customer holds the question to ask. Words not in the sentence are refused.",
     "answers": []
    }
   },
