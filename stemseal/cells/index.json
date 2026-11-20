@@ -107,6 +107,14 @@
     "description": "지금 시각과 영업시간(여는 시각, 닫는 시각, 24시간제 HH:MM)으로 영업 중인지, 마감까지 남은 분, 다음 오픈까지 남은 분. 자정을 넘기는 영업시간도 처리.",
     "description_en": "Given the current time and opening hours (HH:MM, 24h), whether the store is open, minutes until closing, minutes until next opening. Handles hours past midnight.",
     "answers": []
+   },
+   "2.0": {
+    "sha256": "999fcaff147a0da7d4f0d8890454b0134fb4cb9b2d1e8b0db7f4349766a2d61b",
+    "gt": 32,
+    "locked_at": "2026-11-20T03:14:05+00:00",
+    "description": "지금 시각과 영업시간(여는 시각, 닫는 시각)으로 영업 중인지, 마감까지 남은 분, 다음 오픈까지 남은 분. 시각은 '20:20'이나 '오후 8시 20분', '밤 9시', '9시 반', '자정'처럼 써도 된다. 자정을 넘기는 영업시간도 처리. 읽은 시각을 24시간제로 함께 돌려준다.",
+    "description_en": "Open now?, minutes to closing, minutes to next opening, from the current time and opening hours. Times may be 'HH:MM' (24h), '9pm', or Korean ('오후 8시 20분', '9시 반', '자정'). Handles hours past midnight and returns the times it read in 24h.",
+    "answers": []
    }
   },
   "vat_supply_price": {
