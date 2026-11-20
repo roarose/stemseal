@@ -2,7 +2,7 @@
 read a customer's own words. Cells cannot import each other, so each carries a copy; this test keeps the copies identical."""
 import os, re, unittest
 ROOT = os.path.join(os.path.dirname(__file__), "..", "stemseal", "cells")
-USERS = [("korean_amount", "3.0"), ("order_total", "5.0"), ("store_hours", "6.0"), ("menu_order_total", "3.0"), ("store_faq", "2.0"), ("party_set", "4.0")]
+USERS = [("korean_amount", "3.0"), ("order_total", "6.0"), ("store_hours", "7.0"), ("menu_order_total", "4.0"), ("store_faq", "2.0"), ("party_set", "4.0")]
 BLOCK = re.compile(r"# --- korean reader (\d+) begin.*?# --- korean reader \1 end ---", re.S)
 class ReaderBlock(unittest.TestCase):
     def test_copies_are_identical(self):
