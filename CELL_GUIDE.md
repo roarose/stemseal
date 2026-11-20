@@ -25,6 +25,10 @@ A cell, once locked, goes to many models unchanged. Its first job is never to gi
    *Accept a different form of the same value; the customer's words win over what the model added.*
 10. **값의 역할도 원문으로 확인한다.** 여는 시각 자리에 "~까지" 시각을 넣으면 숫자는 원문에 있어도 답이 틀린다. 그 말 바로 뒤가 "열고/오픈/부터"인지 "닫/마감/까지"인지로 확인한다. 손님이 한 번 말한 가격을 두 품목에 쓰는 것도 거절한다("1인분 만육천원인데 4인분").
    *Check the role from the words around it, and use a value the customer said once only once.*
+11. **세포가 원문에서 직접 읽을 수 있는 것은 모델에게 받지 않는다.** 메뉴 이름 바로 뒤의 수량("카스 두 병"), 문장 속 인원("넷이서")은 세포가 읽는다. 모델에게 받으면 "보배 반상 4인 하나"에서 이름 속 "4"를 수량으로 넘기거나("292,000원"), 수량을 빼먹거나, "하나"를 "1"로 바꿔 거절당한다(5차 실제 오답과 직원 호출). 모델은 세포가 스스로 찾기 어려운 것(어느 말이 메뉴 이름인지)만 넘긴다.
+   *What the cell can read from the sentence itself, it reads; the model passes only what the cell cannot find.*
+12. **빠진 것도 확인한다.** 손님이 말한 메뉴가 items에 없으면 합계가 모자란다(5차 "카스" 빠짐). 원문에 있는 메뉴 이름이 모두 쓰였는지 보고, 아니면 거절한다.
+13. **거절 이유에 어느 항목인지 적는다.** "price is not in the question"만으로는 모델이 맞게 옮긴 다른 품목을 고친다. "item 2 price ..."처럼 몇 번째인지 적는다.
 
 ## 2. 정답 사례 / Ground truth
 
@@ -58,7 +62,9 @@ A cell, once locked, goes to many models unchanged. Its first job is never to gi
 | 2 | + 한국어 시각 읽기, 재질문 | 7개 (고치는 데 쓴 문제) | 7/7 | 7/7 |
 | 3 | 같은 구조, 새 질문, 읽은 값까지 채점 | 25개 | 혼자 1/20 → 7/20, 틀린 숫자 12 | 혼자 3/20 → 14/20, 틀린 숫자 7 |
 | 4 | 세포가 손님 말 그대로 읽음 | 25개 (새 질문) | 혼자 0/20 → 4/20, 틀린 숫자 2, 직원 호출 16 | 혼자 3/20 → 17/20, 틀린 숫자 1, 직원 호출 4 |
+| 5 | 가게 운영 세포 (메뉴판으로 주문, 안내, 세트) | 25개 (새 질문) | 혼자(메뉴판을 글로 줌) 11/25, 24초 → 세포 14/25, 7초 | 혼자 18/25, **65초** → 세포 15/25, 11초 |
+| 6 | 4차에서 고친 세포 | 25개 (새 질문) | 혼자 2/20 → 7/25, 틀린 숫자 0, 직원 18 | 혼자 4/20 → **20/25, 틀린 숫자 0**, 되묻기 5/5 |
 
-4차에서 틀린 숫자는 12·7건에서 2·1건으로 줄었다. qwen 1.5b는 손님 말을 그대로 옮기지 못하고("8000", "오전 8시") 대부분 거절되어, 이 구조에는 2B 이상 모델이 맞다. 남은 오답과 직원 호출에서 위 8~10번을 배웠다(korean_amount 2.0, order_total 3.0, store_hours 4.0).
+4차에서 틀린 숫자는 12·7건에서 2·1건으로 줄었다. qwen 1.5b는 손님 말을 그대로 옮기지 못하고("8000", "오전 8시") 대부분 거절되어, 이 구조에는 2B 이상 모델이 맞다. 남은 오답과 직원 호출에서 위 8~10번을 배웠다(korean_amount 2.0, order_total 3.0, store_hours 4.0). 6차에서 고친 세포는 exaone으로 틀린 숫자 0이었다. 5차에서는 메뉴판을 통째로 글로 주면 2코어 CPU에서 질문당 1분이 넘었고(세포는 11초), 세포의 틀린 답 3건은 모두 수량을 모델에게 받은 탓이라 11~13번을 배웠다(menu_order_total 2.0, party_set 2.0, order_total 4.0, store_hours 5.0).
 
 자료: 세포 PR #7, #8, #9. 시험 스크립트와 줄별 결과는 프로젝트 공유 폴더 `store_test/`.
