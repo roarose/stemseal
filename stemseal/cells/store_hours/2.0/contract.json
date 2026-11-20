@@ -1,5 +1,5 @@
 {
- "description": "지금 시각과 영업시간(여는 시각, 닫는 시각)으로 영업 중인지, 마감까지 남은 분, 다음 오픈까지 남은 분. 시각은 '20:20'(24시간제)이나 '오후 8시 20분', '밤 9시', '새벽 2시', '9시 반'처럼 오전·오후를 붙여 쓴다. 오전·오후가 없는 '9시'처럼 애매한 시각은 짐작하지 않고 거절하며, 손님께 오전인지 오후인지 물어보라고 알려 준다. 여는 시각과 닫는 시각이 같으면 거절한다(24시간 영업은 '00:00'~'24:00'). 자정을 넘기는 영업시간도 처리. 읽은 시각을 24시간제로 함께 돌려준다.",
+ "description": "지금 시각과 영업시간(여는 시각, 닫는 시각)으로 영업 중인지, 마감까지 남은 분, 다음 오픈까지 남은 분. 시각은 '20:20'(24시간제)이나 '오후 8시 20분', '밤 9시', '새벽 2시', '9시 반'처럼 오전·오후를 붙여 쓴다. 오전·오후가 없는 '9시'처럼 애매한 시각은 짐작하지 않고 거절하며, 손님께 오전인지 오후인지 물어보라고 알려 준다. 여는 시각과 닫는 시각이 같으면 거절한다(24시간 영업은 '00:00'~'24:00'). '7:30'처럼 한 자리 시는 오전인지 오후인지 몰라 거절한다(24시간제는 '07:30', '19:30'처럼 두 자리). 영업이 20시간을 넘으면 long_hours로 알려 준다. 자정을 넘기는 영업시간도 처리. 읽은 시각을 24시간제로 함께 돌려준다.",
  "when_to_use": "지금 영업 중인지, 몇 시까지인지, 마감까지 몇 분 남았는지, 언제 여는지 물을 때. 손님이 말한 시각 표현을 고치지 말고 그대로 넣는다. 거절 이유에 'ask the customer'가 있으면 다시 짐작해 부르지 말고 손님께 오전인지 오후인지 물어본다.",
  "keywords": [
   "영업시간",
@@ -13,7 +13,11 @@
   "opening hours",
   "open now",
   "closing time",
-  "minutes left"
+  "minutes left",
+  "문 열",
+  "열었",
+  "여는 시간",
+  "몇 시에 열"
  ],
  "input_schema": {
   "required": [
@@ -31,11 +35,12 @@
   "now_24h",
   "open_24h",
   "close_24h",
+  "long_hours",
   "is_open",
   "minutes_to_close",
   "minutes_to_open"
  ],
- "description_en": "Open now?, minutes to closing, minutes to next opening, from the current time and opening hours. Times may be 'HH:MM' (24h), '9pm', or Korean with the half of the day ('오후 8시 20분', '밤 2시', '새벽 1시'). A clock hour without am/pm ('9시') is refused with a note to ask the customer, never guessed. Same open and close is refused unless it is '00:00'-'24:00' (open all day). Handles hours past midnight and returns the times it read in 24h.",
+ "description_en": "Open now?, minutes to closing, minutes to next opening, from the current time and opening hours. Times may be 'HH:MM' (24h), '9pm', or Korean with the half of the day ('오후 8시 20분', '밤 2시', '새벽 1시'). A clock hour without am/pm ('9시') is refused with a note to ask the customer, never guessed. Same open and close is refused unless it is '00:00'-'24:00' (open all day). A one-digit hour like '7:30' is refused (24h needs two digits, '07:30'). long_hours is true when the store is open more than 20 hours. Handles hours past midnight and returns the times it read in 24h.",
  "when_to_use_en": "Is it open now, until when, minutes left before closing, when it opens. Pass the customer's time words unchanged. If the refusal says 'ask the customer', ask whether it is am or pm instead of guessing.",
  "input_aliases": {
   "now": [

@@ -14,13 +14,23 @@ def _whole(v, what):
     if v < 0 or v != int(v):
         raise ValueError("%s must be a whole number >= 0" % what)
     return int(v)
-def _amount(v, what):
+def _amount(v, what, unit):
     if v is None:
         return 0
-    if isinstance(v, bool) or not isinstance(v, (int, float)):
+    if isinstance(v, str):
+        m = re.fullmatch(r"(\d{1,3}(?:,\d{3})+|\d+(?:\.\d+)?)" + unit, v.replace(" ", ""))
+        if not m:
+            raise ValueError("%s must be a number like 10 (percent) or 1000 (won)" % what)
+        v = float(m.group(1).replace(",", ""))
+    if isinstance(v, bool) or not isinstance(v, (int, float)) or v != v or v in (float("inf"), float("-inf")):
         raise ValueError("%s must be a number" % what)
     return v
+_TOP = {"items", "discount_pct", "discount_won"}
+_ITEM = {"price", "qty"}
 def cell_executor(inp):
+    extra = sorted(str(k) for k in inp if k not in _TOP)
+    if extra:
+        raise ValueError("unknown input %s; use only items, discount_pct (percent) and discount_won (won)" % extra[:3])
     items = inp.get("items")
     if not isinstance(items, list) or not items:
         raise ValueError("items must be a non-empty list of {price, qty}")
@@ -29,14 +39,16 @@ def cell_executor(inp):
     for it in items:
         if not isinstance(it, dict) or "price" not in it:
             raise ValueError("each item must be an object like {\"price\": 4500, \"qty\": 2}")
+        if set(it) - _ITEM:
+            raise ValueError("an item takes only price and qty; a discount goes outside items as discount_pct (percent) or discount_won (won)")
         price = _whole(it["price"], "price")
         qty = _whole(it.get("qty", 1), "qty")
         subtotal += price * qty
         count += qty
-    pct = _amount(inp.get("discount_pct"), "discount_pct")
-    won = _amount(inp.get("discount_won"), "discount_won")
-    if pct < 0 or pct > 100 or won < 0:
-        raise ValueError("discount_pct must be 0..100 and discount_won >= 0")
+    pct = _amount(inp.get("discount_pct"), "discount_pct", "(%|퍼센트)?")
+    won = _amount(inp.get("discount_won"), "discount_won", "(원)?")
+    if pct < 0 or pct > 100 or won < 0 or won != int(won):
+        raise ValueError("discount_pct must be 0..100 and discount_won a whole number of won >= 0")
     # order is fixed and stated in the contract: percent off the subtotal first (won below 1 dropped), then the fixed won discount
     disc = int(Fraction(subtotal) * Fraction(str(pct)) / 100) + int(won)
     capped = disc > subtotal

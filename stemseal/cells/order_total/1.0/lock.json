@@ -1,10 +1,10 @@
 {
  "cell": "order_total",
  "version": "1.0",
- "sha256": "4cc1509f06984237da46babeb261bf87d991ca06749d5ca5ed571f3de2004171",
- "gt_total": 31,
- "gt_passed": 31,
+ "sha256": "5686429556b48a7dd7f589b74b54d79fd12440f36e932590b6d56caa5779991c",
+ "gt_total": 40,
+ "gt_passed": 40,
  "deterministic": true,
- "locked_at": "2026-11-20T03:28:03+00:00",
+ "locked_at": "2026-11-20T04:11:50+00:00",
  "locked_by": "claude-store-demand-20261120"
 }

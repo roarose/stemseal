@@ -194,8 +194,8 @@ def call(name, input_data, caller="unknown", version=None, model=None, decorate=
 # A number followed by one of these is a quantity in the request (data): "4500원", "2잔", "10%", "3년". Dropped from search.
 _UNIT_WORDS = set("원 만원 천원 억 억원 만 천 잔 개 명 인 인분 분 초 시 시간 일 주 월 년 개월 주년 회 번 번째 년차 차 층 호 살 세 그릇 공기 병 캔 장 판 마리 세트 컵 점 등 위 배수 퍼센트 프로 kg g mg l ml km m cm mm".split())
 def _token(t):
-    """A word with a number in it. Number + unit ("4500원", "2잔") is data and goes; number + a word that names something
-    ("1인당", "2배", "4대보험", "3년차") keeps the word, because it says what is being calculated."""
+    """A word with a number in it. Number + unit ("4500원", "2잔", "3년차") is data and goes; number + a word that names something
+    ("1인당", "2배", "4대보험") keeps the word, because it says what is being calculated."""
     if not any(ch.isdigit() for ch in t): return t
     m = re.fullmatch(r"[0-9.]+([a-z가-힣]*)", t)
     if not m or not m.group(1) or m.group(1) in _UNIT_WORDS: return None

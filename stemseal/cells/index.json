@@ -61,11 +61,11 @@
   },
   "order_total": {
    "1.0": {
-    "sha256": "4cc1509f06984237da46babeb261bf87d991ca06749d5ca5ed571f3de2004171",
-    "gt": 31,
-    "locked_at": "2026-11-20T03:28:03+00:00",
-    "description": "주문 항목(가격·수량)의 합계, 할인(퍼센트·원), 최종 금액, 총 수량. 원 단위 정수. 할인 순서: 퍼센트를 먼저 빼고(원 미만 버림) 그다음 원 할인을 뺀다. 할인이 합계를 넘으면 합계까지만 빼고 discount_capped를 true로 알린다. 가격과 수량은 숫자나 '4,500원', '2잔'처럼 숫자 하나에 단위 하나인 글자도 받는다.",
-    "description_en": "Order subtotal from items (price x qty), discount, final total and item count. Whole won. Discount order: percent off the subtotal first (won below 1 dropped), then the fixed won discount. A discount larger than the subtotal is cut to the subtotal and discount_capped is true. Price and qty may be numbers or text like '4,500원', '2잔' (one number, one unit).",
+    "sha256": "5686429556b48a7dd7f589b74b54d79fd12440f36e932590b6d56caa5779991c",
+    "gt": 40,
+    "locked_at": "2026-11-20T04:11:50+00:00",
+    "description": "주문 항목(가격·수량)의 합계, 할인(퍼센트·원), 최종 금액, 총 수량. 원 단위 정수. 할인 순서: 퍼센트를 먼저 빼고(원 미만 버림) 그다음 원 할인을 뺀다. 할인이 합계를 넘으면 합계까지만 빼고 discount_capped를 true로 알린다. 가격과 수량은 숫자나 '4,500원', '2잔'처럼 숫자 하나에 단위 하나인 글자도 받는다. 모르는 입력 이름이나 품목 안의 할인은 무시하지 않고 거절한다(할인은 items 밖에 discount_pct, discount_won으로).",
+    "description_en": "Order subtotal from items (price x qty), discount, final total and item count. Whole won. Discount order: percent off the subtotal first (won below 1 dropped), then the fixed won discount. A discount larger than the subtotal is cut to the subtotal and discount_capped is true. Price and qty may be numbers or text like '4,500원', '2잔' (one number, one unit). Unknown input names, and a discount put inside an item, are refused, never ignored (discounts go outside items).",
     "answers": []
    }
   },
@@ -109,11 +109,11 @@
     "answers": []
    },
    "2.0": {
-    "sha256": "3f4d34f71369d60d3109f157f9f8283c63d488bc995bde1a157616306fa9d604",
-    "gt": 53,
-    "locked_at": "2026-11-20T03:28:03+00:00",
-    "description": "지금 시각과 영업시간(여는 시각, 닫는 시각)으로 영업 중인지, 마감까지 남은 분, 다음 오픈까지 남은 분. 시각은 '20:20'(24시간제)이나 '오후 8시 20분', '밤 9시', '새벽 2시', '9시 반'처럼 오전·오후를 붙여 쓴다. 오전·오후가 없는 '9시'처럼 애매한 시각은 짐작하지 않고 거절하며, 손님께 오전인지 오후인지 물어보라고 알려 준다. 여는 시각과 닫는 시각이 같으면 거절한다(24시간 영업은 '00:00'~'24:00'). 자정을 넘기는 영업시간도 처리. 읽은 시각을 24시간제로 함께 돌려준다.",
-    "description_en": "Open now?, minutes to closing, minutes to next opening, from the current time and opening hours. Times may be 'HH:MM' (24h), '9pm', or Korean with the half of the day ('오후 8시 20분', '밤 2시', '새벽 1시'). A clock hour without am/pm ('9시') is refused with a note to ask the customer, never guessed. Same open and close is refused unless it is '00:00'-'24:00' (open all day). Handles hours past midnight and returns the times it read in 24h.",
+    "sha256": "4fef8e74ef607fbb665c52a4c64ecb48c57a90e7ca2d9687586047e5a3d453d8",
+    "gt": 58,
+    "locked_at": "2026-11-20T04:11:50+00:00",
+    "description": "지금 시각과 영업시간(여는 시각, 닫는 시각)으로 영업 중인지, 마감까지 남은 분, 다음 오픈까지 남은 분. 시각은 '20:20'(24시간제)이나 '오후 8시 20분', '밤 9시', '새벽 2시', '9시 반'처럼 오전·오후를 붙여 쓴다. 오전·오후가 없는 '9시'처럼 애매한 시각은 짐작하지 않고 거절하며, 손님께 오전인지 오후인지 물어보라고 알려 준다. 여는 시각과 닫는 시각이 같으면 거절한다(24시간 영업은 '00:00'~'24:00'). '7:30'처럼 한 자리 시는 오전인지 오후인지 몰라 거절한다(24시간제는 '07:30', '19:30'처럼 두 자리). 영업이 20시간을 넘으면 long_hours로 알려 준다. 자정을 넘기는 영업시간도 처리. 읽은 시각을 24시간제로 함께 돌려준다.",
+    "description_en": "Open now?, minutes to closing, minutes to next opening, from the current time and opening hours. Times may be 'HH:MM' (24h), '9pm', or Korean with the half of the day ('오후 8시 20분', '밤 2시', '새벽 1시'). A clock hour without am/pm ('9시') is refused with a note to ask the customer, never guessed. Same open and close is refused unless it is '00:00'-'24:00' (open all day). A one-digit hour like '7:30' is refused (24h needs two digits, '07:30'). long_hours is true when the store is open more than 20 hours. Handles hours past midnight and returns the times it read in 24h.",
     "answers": []
    }
   },

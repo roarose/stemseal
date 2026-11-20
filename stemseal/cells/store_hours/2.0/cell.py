@@ -30,8 +30,10 @@ def _m(t, key):
     if s in ("정오", "낮12시"):
         return 720
     m = re.fullmatch(r"(\d{1,2}):(\d{2})", s)
-    if m:  # HH:MM is read as 24h, as the contract says
+    if m:  # HH:MM is read as 24h, as the contract says; a one-digit hour ("7:30") is how "7시 반" gets rewritten, so it is asked
         h, mi = int(m.group(1)), int(m.group(2))
+        if len(m.group(1)) == 1 and h:
+            raise ValueError(_ASK % (key, "a one-digit clock hour like 7:30, which may be am or pm (24h needs two digits: 07:30 or 19:30)"))
         if h > 24 or mi > 59 or (h == 24 and mi):
             raise ValueError("%s is out of range (00:00..24:00)" % key)
         return h * 60 + mi
@@ -64,10 +66,11 @@ def cell_executor(inp):
     base = {"now_24h": hhmm(now), "open_24h": hhmm(op), "close_24h": hhmm(cl)}
     if op == cl:
         if raw_op == 0 and raw_cl == 1440:   # only '00:00'~'24:00' says open all day
-            base.update(is_open=True, minutes_to_close=None, minutes_to_open=0)
+            base.update(is_open=True, minutes_to_close=None, minutes_to_open=0, long_hours=False)
             return base
         raise ValueError("open and close are the same time. If the store is open 24 hours, pass open '00:00' and close '24:00'; "
                          "otherwise ask the customer for the real hours.")
+    base["long_hours"] = (cl - op) % 1440 > 20 * 60   # e.g. opens 11:00, closes 10:00 next day: possible but worth confirming
     is_open = (op <= now < cl) if op < cl else (now >= op or now < cl)
     if is_open:
         base.update(is_open=True, minutes_to_close=(cl - now) % 1440, minutes_to_open=0)
