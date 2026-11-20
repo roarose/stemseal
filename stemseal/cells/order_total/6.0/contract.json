@@ -1,0 +1,67 @@
+{
+ "description": "손님 문장과, 그 문장에서 그대로 옮긴 가격·수량 말('만삼천구백원', '두 잔', '4,500원')로 주문 합계, 할인, 결제 금액을 낸다. 모델은 숫자로 바꾸지 말고 손님 말을 그대로 넘긴다. 세포가 한글 금액을 직접 읽고, 넘긴 말이 손님 문장에 없으면 거절한다(지어낸 숫자 막기). 할인은 items 밖 discount_pct('10%'), discount_won('3천원'). 퍼센트를 먼저 빼고 원 할인을 뺀다. 읽은 값을 items_read로 돌려준다. 금액·수량 말은 손님 문장의 숫자 말 경계에서 시작하고 끝나야 한다('삼천오백원' 안의 '오백원'은 거절). 손님이 한 번 말한 가격을 두 품목에 쓰면 거절('1인분 만육천원인데 4인분'은 가격 한 번, 수량 4인분). 거절 이유에 몇 번째 품목인지 적는다. 수량을 넘기지 않은 품목은 세포가 가격 바로 뒤(또는 앞)의 수량 말을 읽는다. 손님이 말한 수량을 어느 품목도 쓰지 않거나, 다른 품목 가격 뒤의 수량을 가져오거나, '2개에 만원'처럼 여러 개 값이거나, 손님이 말한 할인을 넘기지 않으면 거절한다. '두 개씩'은 앞의 수량 없는 가격에도 붙인다. 사람 수와 곱해야 하는 말, 금액 없는 할인 말('할인 쿠폰 써요', '서비스로')은 거절한다. '반값'은 discount_pct로 받는다.",
+ "when_to_use": "손님 주문 금액을 더할 때. question에 손님 문장 전체, items에 품목마다 {price: 손님이 말한 가격, qty: 손님이 말한 수량}을 그대로.",
+ "keywords": [
+  "주문 합계",
+  "합계",
+  "총액",
+  "얼마",
+  "결제 금액",
+  "할인",
+  "메뉴 가격",
+  "수량",
+  "order total",
+  "bill",
+  "subtotal",
+  "discount",
+  "주문",
+  "메뉴",
+  "잔",
+  "개",
+  "인분",
+  "커피",
+  "음료",
+  "아메리카노",
+  "라떼",
+  "총 얼마"
+ ],
+ "input_schema": {
+  "required": [
+   "question",
+   "items"
+  ],
+  "properties": {
+   "question": "the customer's whole sentence, unchanged",
+   "items": "list of {price: the customer's words for the price ('만이천구백원'), qty: their words for the count ('두 잔'), qty may be left out for one}",
+   "discount_pct": "optional, the customer's words for a percent discount ('10%')",
+   "discount_won": "optional, their words for a won discount ('3천원')"
+  }
+ },
+ "output_keys": [
+  "subtotal",
+  "discount",
+  "total",
+  "item_count",
+  "items_read",
+  "discount_capped"
+ ],
+ "description_en": "Order total from the customer's sentence and the price/quantity words copied from it unchanged ('만삼천구백원', '두 잔'). The cell reads Korean amounts itself and refuses words that are not in the sentence, so a model cannot pass a number it made up. Discounts go outside items. Returns what it read in items_read. A word must start and end on a number boundary in the sentence ('오백원' inside '삼천오백원' is refused), and one price the customer said cannot be used for two items. Items without qty take the count said right after (or before) their price. Refused: a count the customer said that no item uses, a count taken from another item's price, a price for several ('2개에 만원'), a discount the customer said but not passed. '두 개씩' covers the count-less prices before it. Per-person counts and a discount with no amount ('할인 쿠폰 써요') are refused. '반값' is accepted as discount_pct.",
+ "when_to_use_en": "Adding up a customer's order. Put their whole sentence in question and copy each price and count word for word; do not convert numbers.",
+ "input_aliases": {
+  "items": [
+   "order",
+   "menu",
+   "orders",
+   "lines"
+  ],
+  "discount_pct": [
+   "discount_percent",
+   "discount_rate"
+  ],
+  "discount_won": [
+   "discount_amount",
+   "coupon"
+  ]
+ },
+ "raw_text": true
+}

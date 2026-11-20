@@ -97,7 +97,8 @@ def repair(name, inp, g):
                 is_obj = "object" in str(props.get(k, ""))
                 if (not is_obj and isinstance(iv, (list, int, float)) and not isinstance(iv, bool)) or (is_obj and isinstance(iv, dict) and iv):
                     inp[k] = iv; fx.append("unwrap:%s" % k)
-    for k, v in list(inp.items()):
+    raw = c["contract"].get("raw_text")   # the cell reads the customer's own words itself; turning them into numbers here would undo that
+    for k, v in ([] if raw else list(inp.items())):
         # "12,000" or "5%" as text -> number (templates are text, and small models sometimes keep the quotes)
         if isinstance(v, str):
             # "12,000", "8%", "10030 (won)", "10,030원": exactly one number in the text -> that number
