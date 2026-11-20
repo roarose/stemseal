@@ -10,9 +10,9 @@ Layout:  cells/<name>/<version>/{cell.py, contract.json, gt_cases.json, lock.jso
          ~/.stemseal/ledger.jsonl   (one line per call, find and refusal; call lines carry the token meter, see savings.py)
 Stdlib only.
 """
-import ast, hashlib, json, os, re, subprocess, sys, time
+import hashlib, json, os, re, shutil, subprocess, sys, tempfile, time
 from datetime import datetime, timezone
-from . import savings
+from . import savings, policy
 
 PKG = os.path.dirname(os.path.abspath(__file__))
 def _home():
@@ -32,8 +32,7 @@ LEDGER = os.path.join(HOME, "ledger.jsonl")
 REPO = "https://github.com/roarose/stemseal"
 MIN_GT = 20                      # a cell needs at least this many ground-truth cases to be locked
 CALL_TIMEOUT = 5                 # seconds per call
-ALLOWED_IMPORTS = {"math", "statistics", "decimal", "fractions", "re", "json", "collections", "itertools", "functools"}   # no clock, no random, no I/O
-FORBIDDEN_NAMES = {"open", "exec", "eval", "compile", "__import__", "input", "breakpoint", "globals", "locals", "vars", "getattr", "setattr", "delattr", "exit", "quit"}
+ALLOWED_IMPORTS = set(policy.MODULES)   # what a cell may contain is defined in policy.py
 RUNNER = os.path.join(os.path.dirname(os.path.abspath(__file__)), "_runner.py")
 
 def now(): return datetime.now(timezone.utc).isoformat(timespec="seconds")
@@ -46,21 +45,17 @@ def _log(rec):
         with open(LEDGER, "a", encoding="utf-8") as f: f.write(json.dumps(rec, ensure_ascii=False) + "\n")
     except Exception: pass
 
-# ---------------------------------------------------------------- gate 1: purity
+# ---------------------------------------------------------------- gate 1: policy (what a cell may contain, see policy.py)
 def purity_check(src):
-    """Static check: a cell may only compute. Returns a list of problems (empty = clean)."""
-    try: tree = ast.parse(src)
-    except SyntaxError as e: return ["syntax error: %s" % e]
-    bad = []
-    for n in ast.walk(tree):
-        if isinstance(n, ast.Import):
-            bad += ["import %s" % a.name for a in n.names if a.name.split(".")[0] not in ALLOWED_IMPORTS]
-        elif isinstance(n, ast.ImportFrom):
-            if (n.module or "").split(".")[0] not in ALLOWED_IMPORTS: bad.append("from %s import" % n.module)
-        elif isinstance(n, ast.Name) and n.id in FORBIDDEN_NAMES: bad.append("use of %s" % n.id)
-        elif isinstance(n, ast.Attribute) and n.attr.startswith("__"): bad.append("dunder attribute %s" % n.attr)
-    if not any(isinstance(n, ast.FunctionDef) and n.name == "cell_executor" for n in tree.body): bad.append("no top-level cell_executor function")
-    return sorted(set(bad))
+    """The policy gate. Returns a list of problems (empty = allowed). The source is parsed only inside a runner process."""
+    return policy_check_isolated(src.encode("utf-8") if isinstance(src, str) else src)
+
+def policy_check_isolated(src_bytes):
+    pre = policy.precheck(src_bytes)
+    if pre: return [policy.describe(p) for p in pre]
+    rep = _run_runner({"mode": "check", "src": bytes(src_bytes).decode("utf-8"), "sha256": sha(bytes(src_bytes)), "inputs": []}, CALL_TIMEOUT)
+    if rep is None: return ["checker did not finish (E_INTERNAL)"]
+    return list(rep.get("problems") or [])
 
 # ---------------------------------------------------------------- isolated execution
 def _limits():
@@ -70,30 +65,49 @@ def _limits():
         resource.setrlimit(resource.RLIMIT_AS, (512 * 1024 * 1024, 512 * 1024 * 1024))
     except Exception: pass
 
-def run_isolated(cell_path, inputs, timeout=None):
-    """Run cell_executor on a list of inputs in a separate, stripped-down Python process.
-    Returns a list of {"ok": bool, "out": ..., "err": str}. This is process isolation plus the purity gate,
-    not an OS-level sandbox: before running cells written by strangers, put this process in a container."""
+def _run_runner(request, timeout):
+    """Start the runner in a new empty folder, send one request, return its reply (None if it did not answer properly)."""
     kw = {"preexec_fn": _limits} if os.name == "posix" else {}
     env = {"PATH": os.environ.get("PATH", ""), "SYSTEMROOT": os.environ.get("SYSTEMROOT", "")}
+    work = tempfile.mkdtemp(prefix="stemseal_run_")
     try:
-        p = subprocess.run([sys.executable, "-I", "-X", "utf8", RUNNER, cell_path], input=json.dumps(inputs, ensure_ascii=False).encode("utf-8"),
-                           capture_output=True, timeout=timeout or CALL_TIMEOUT * max(1, len(inputs) // 5 + 1), env=env, cwd=os.path.dirname(cell_path), **kw)
+        p = subprocess.run([sys.executable, "-I", "-S", "-B", "-X", "utf8", RUNNER], input=json.dumps(request, ensure_ascii=False).encode("utf-8"),
+                           capture_output=True, timeout=timeout, env=env, cwd=work, **kw)
     except subprocess.TimeoutExpired:
-        return [{"ok": False, "err": "timeout"} for _ in inputs]
-    if p.returncode != 0:
-        msg = (p.stderr.decode("utf-8", "replace").strip().splitlines() or ["exit %d" % p.returncode])[-1][:300]
-        return [{"ok": False, "err": msg} for _ in inputs]
-    return json.loads(p.stdout.decode("utf-8"))
+        return {"results": None, "blocked": "timeout"}
+    finally:
+        shutil.rmtree(work, ignore_errors=True)
+    try:
+        rep = json.loads(p.stdout.decode("utf-8"))
+        if isinstance(rep, dict): return rep
+    except ValueError: pass
+    msg = (p.stderr.decode("utf-8", "replace").strip().splitlines() or ["exit %d" % p.returncode])[-1][:300]
+    return {"results": None, "blocked": None, "error": msg}
+
+def run_isolated(src, sha256, inputs, timeout=None):
+    """Run cell_executor on a list of inputs in a separate Python process (see _runner.py: policy check, cell-only built-ins,
+    audit hook). src is the source text whose hash the caller checked; the runner checks it again before running it.
+    Returns a list of {"ok": bool, "out": ..., "err": str}; when the runner refused the cell, each item also has "blocked"."""
+    rep = _run_runner({"mode": "run", "src": src, "sha256": sha256, "inputs": inputs}, timeout or CALL_TIMEOUT * max(1, len(inputs) // 5 + 1))
+    res = rep.get("results")
+    if rep.get("blocked") == "timeout": return [{"ok": False, "err": "timeout"} for _ in inputs]
+    if not isinstance(res, list) or len(res) != len(inputs):
+        if rep.get("blocked"): return [{"ok": False, "err": "blocked: %s" % rep["blocked"], "blocked": rep["blocked"]} for _ in inputs]
+        return [{"ok": False, "err": rep.get("error") or "runner gave no answer"} for _ in inputs]
+    if rep.get("blocked"):
+        for r in res: r["blocked"] = rep["blocked"]
+    return res
 
 # ---------------------------------------------------------------- gate 2: ground truth
-def gt_check(cell_path, gt_cases):
-    res = run_isolated(cell_path, [c["input"] for c in gt_cases])
+def gt_check(src, gt_cases):
+    """src: the cell source text (not a path)."""
+    h = sha(src)
+    res = run_isolated(src, h, [c["input"] for c in gt_cases])
     # a case may say the cell must refuse: {"input": ..., "expected_error": "text the refusal must contain"} (ambiguous input is refused, not guessed)
-    good = lambda c, r: (not r.get("ok") and c["expected_error"] in str(r.get("err"))) if "expected_error" in c else (r.get("ok") and r.get("out") == c["expected"])
+    good = lambda c, r: (not r.get("ok") and not r.get("blocked") and c["expected_error"] in str(r.get("err"))) if "expected_error" in c else (r.get("ok") and r.get("out") == c["expected"])
     fails = [{"case": i, "expected": c.get("expected", {"error": c.get("expected_error")}), "got": r.get("out"), "err": r.get("err")} for i, (c, r) in enumerate(zip(gt_cases, res)) if not good(c, r)]
     # determinism: second run must give byte-identical outputs
-    res2 = run_isolated(cell_path, [c["input"] for c in gt_cases])
+    res2 = run_isolated(src, h, [c["input"] for c in gt_cases])
     deterministic = json.dumps(res, sort_keys=True) == json.dumps(res2, sort_keys=True)
     return {"total": len(gt_cases), "passed": len(gt_cases) - len(fails), "deterministic": deterministic, "failures": fails[:5]}
 
@@ -140,7 +154,7 @@ def register(name, src, contract, gt_cases, locked_by="unknown", base=None):
     vs = _versions(name); version = "%d.0" % (int(vs[-1].split(".")[0]) + 1) if vs else "1.0"
     d = os.path.join(os.path.abspath(base or CELLS), name, version); os.makedirs(d, exist_ok=True)
     cp = os.path.join(d, "cell.py"); open(cp, "w", encoding="utf-8", newline="\n").write(src)
-    rep = gt_check(cp, gt_cases)
+    rep = gt_check(src, gt_cases)
     if rep["passed"] != rep["total"] or not rep["deterministic"]:
         os.remove(cp); 
         try: os.rmdir(d)
@@ -182,11 +196,15 @@ def call(name, input_data, caller="unknown", version=None, model=None, decorate=
     c = load(name, version) if isinstance(name, str) and re.fullmatch(r"[a-z][a-z0-9_]{2,63}", name or "") else None
     if not c: return env("not_available", reason="no locked cell with this name")
     ver = c["lock"]["version"]; cp = os.path.join(c["dir"], "cell.py")
-    if sha(open(cp, "rb").read().decode("utf-8")) != c["lock"]["sha256"]: return env("not_available", reason="cell file does not match its lock", ver=ver)
+    with open(cp, "rb") as f: raw = f.read()    # read once: the bytes whose hash is checked are the bytes that run
+    if sha(raw) != c["lock"]["sha256"]: return env("not_available", reason="cell file does not match its lock", ver=ver)
     if not isinstance(input_data, dict): return env("invalid_input", reason="input must be an object", ver=ver)
     missing = [k for k in c["contract"]["input_schema"].get("required", []) if k not in input_data]
     if missing: return env("invalid_input", reason="missing required inputs: %s" % missing, ver=ver)
-    r = run_isolated(cp, [input_data])[0]
+    r = run_isolated(raw.decode("utf-8"), c["lock"]["sha256"], [input_data])[0]
+    if r.get("blocked"):
+        if log: _log({"type": "blocked", "cell": name, "version": ver, "why": r["blocked"]})
+        return env("not_available", reason="cell failed the safety check", ver=ver)
     if not r.get("ok"): return env("invalid_input", reason="cell rejected the input: %s" % r.get("err"), ver=ver)
     return env("ok", result=r["out"], ver=ver)
 
@@ -425,7 +443,11 @@ def verify_all():
     out = {}
     for c in list_cells():
         L = load(c["cell"]); cp = os.path.join(L["dir"], "cell.py")
-        ok_hash = sha(open(cp, encoding="utf-8").read()) == L["lock"]["sha256"]
-        rep = gt_check(cp, json.load(open(os.path.join(L["dir"], "gt_cases.json"), encoding="utf-8")))
-        out[c["cell"]] = {"version": c["version"], "hash_ok": ok_hash, "gt": "%d/%d" % (rep["passed"], rep["total"]), "deterministic": rep["deterministic"]}
+        with open(cp, "rb") as f: raw = f.read()
+        src = raw.decode("utf-8")
+        ok_hash = sha(raw) == L["lock"]["sha256"]
+        problems = purity_check(raw)
+        rep = gt_check(src, json.load(open(os.path.join(L["dir"], "gt_cases.json"), encoding="utf-8")))
+        out[c["cell"]] = {"version": c["version"], "hash_ok": ok_hash, "policy_ok": not problems, "gt": "%d/%d" % (rep["passed"], rep["total"]), "deterministic": rep["deterministic"]}
+        if problems: out[c["cell"]]["problems"] = problems[:5]
     return out
