@@ -192,7 +192,7 @@ def measure(cell, model, n=5, url=None, ship=False, chat=None):
     hub = _hub(); chat = chat or _chat; url = url or OLLAMA
     c = hub.load(cell)
     if not c: return {"ok": False, "reason": "no locked cell with this name"}
-    version = c["lock"]["version"]; cases = json.load(open(os.path.join(c["dir"], "gt_cases.json"), encoding="utf-8"))
+    version = c["lock"]["version"]; cases = [x for x in json.load(open(os.path.join(c["dir"], "gt_cases.json"), encoding="utf-8")) if "expected" in x]   # refusal cases have no answer to measure
     runs = []
     for i in _pick(cases, n):
         case = cases[i]; q = question(c["contract"], case["input"])

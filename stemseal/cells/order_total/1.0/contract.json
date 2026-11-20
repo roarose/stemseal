@@ -1,0 +1,63 @@
+{
+ "description": "주문 항목(가격·수량)의 합계, 할인(퍼센트·원), 최종 금액, 총 수량. 원 단위 정수. 할인 순서: 퍼센트를 먼저 빼고(원 미만 버림) 그다음 원 할인을 뺀다. 할인이 합계를 넘으면 합계까지만 빼고 discount_capped를 true로 알린다. 가격과 수량은 숫자나 '4,500원', '2잔'처럼 숫자 하나에 단위 하나인 글자도 받는다. 모르는 입력 이름이나 품목 안의 할인은 무시하지 않고 거절한다(할인은 items 밖에 discount_pct, discount_won으로).",
+ "when_to_use": "손님 주문 금액을 더할 때: 메뉴 여러 개와 수량의 합계, 할인 뒤 결제 금액. 가격은 메뉴표에서 읽어 넣는다.",
+ "keywords": [
+  "주문 합계",
+  "합계",
+  "총액",
+  "얼마",
+  "결제 금액",
+  "할인",
+  "메뉴 가격",
+  "수량",
+  "order total",
+  "bill",
+  "subtotal",
+  "discount",
+  "주문",
+  "메뉴",
+  "잔",
+  "개",
+  "인분",
+  "커피",
+  "음료",
+  "아메리카노",
+  "라떼",
+  "총 얼마"
+ ],
+ "input_schema": {
+  "required": [
+   "items"
+  ],
+  "properties": {
+   "items": "list of {price: whole won, qty: whole number (default 1)}",
+   "discount_pct": "optional percent 0-100",
+   "discount_won": "optional fixed discount in won"
+  }
+ },
+ "output_keys": [
+  "subtotal",
+  "discount",
+  "total",
+  "item_count",
+  "discount_capped"
+ ],
+ "description_en": "Order subtotal from items (price x qty), discount, final total and item count. Whole won. Discount order: percent off the subtotal first (won below 1 dropped), then the fixed won discount. A discount larger than the subtotal is cut to the subtotal and discount_capped is true. Price and qty may be numbers or text like '4,500원', '2잔' (one number, one unit). Unknown input names, and a discount put inside an item, are refused, never ignored (discounts go outside items).",
+ "when_to_use_en": "Adding up a customer order: several menu items with quantities, total after discount. Read prices from the menu.",
+ "input_aliases": {
+  "items": [
+   "order",
+   "menu",
+   "orders",
+   "lines"
+  ],
+  "discount_pct": [
+   "discount_percent",
+   "discount_rate"
+  ],
+  "discount_won": [
+   "discount_amount",
+   "coupon"
+  ]
+ }
+}

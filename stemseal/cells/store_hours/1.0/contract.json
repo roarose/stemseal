@@ -1,0 +1,54 @@
+{
+ "description": "지금 시각과 영업시간(여는 시각, 닫는 시각, 24시간제 HH:MM)으로 영업 중인지, 마감까지 남은 분, 다음 오픈까지 남은 분. 자정을 넘기는 영업시간도 처리.",
+ "when_to_use": "지금 영업 중인지, 몇 시까지인지, 마감까지 몇 분 남았는지, 언제 여는지 물을 때. 시각은 24시간제로 바꿔 넣는다(밤 8시 20분 → 20:20).",
+ "keywords": [
+  "영업시간",
+  "영업 중",
+  "마감",
+  "몇 시까지",
+  "남은 시간",
+  "오픈",
+  "문 닫",
+  "라스트오더",
+  "opening hours",
+  "open now",
+  "closing time",
+  "minutes left"
+ ],
+ "input_schema": {
+  "required": [
+   "now",
+   "open",
+   "close"
+  ],
+  "properties": {
+   "now": "HH:MM 24h",
+   "open": "HH:MM 24h",
+   "close": "HH:MM 24h (may be after midnight, e.g. 02:00)"
+  }
+ },
+ "output_keys": [
+  "is_open",
+  "minutes_to_close",
+  "minutes_to_open"
+ ],
+ "description_en": "Given the current time and opening hours (HH:MM, 24h), whether the store is open, minutes until closing, minutes until next opening. Handles hours past midnight.",
+ "when_to_use_en": "Is it open now, until when, how many minutes left before closing, when does it open. Convert times to 24h (8:20 pm -> 20:20).",
+ "input_aliases": {
+  "now": [
+   "current_time",
+   "time",
+   "current"
+  ],
+  "open": [
+   "open_time",
+   "opening",
+   "opens"
+  ],
+  "close": [
+   "close_time",
+   "closing",
+   "closes"
+  ]
+ }
+}
