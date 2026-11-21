@@ -1,3 +1,4 @@
 # Locked cells are hashed byte for byte (sha256 in lock.json). Never let git turn LF into CRLF on Windows checkouts
 # (core.autocrlf=true), or every cell fails its lock check.
 stemseal/cells/** -text
+tools/signer/*.bat -text
