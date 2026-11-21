@@ -3,6 +3,9 @@
 """stemseal - MCP server (stdio). Add to an MCP client as:  command: stemseal-mcp   (or: python -m stemseal.mcp)
 Three tools. An AI states what it needs, gets back the few locked cells that fit, and calls one.
 Env: STEMSEAL_CALLER = name recorded in the ledger for this client (default 'mcp').
+     STEMSEAL_LOG    = full (default) | minimal (request sentences kept only as a hash and a few words) | off (no ledger).
+     STEMSEAL_INPUT_DIR = folder call_cell's input_file may read from (default ~/.stemseal/inputs; the server's start folder too,
+                        unless it is a drive's top, the home folder or a folder above it).
      STEMSEAL_MODEL  = the client's model name (e.g. exaone3.5:7.8b). Unset, the general small-model guide is used. When set, find_cell returns that model's cell-selection guide
                        with the candidates, and call_cell repairs the input mistakes the guide knows about (see guides/)."""
 import json, os, sys
@@ -41,6 +44,47 @@ def find_for_mcp(need, words=None, record=True):
     if out["cells"]: out["next_step"] = NEXT[lang]
     elif r.get("no_cell"): out["no_cell"] = _for_model(r["no_cell"])
     return out
+# input_file may name only a .json file of at most 1MB under the inputs folder, or under the folder the server was started in
+# when that folder is not a drive's top, the home folder or a folder above it.
+INPUT_DIR = os.path.realpath(os.environ.get("STEMSEAL_INPUT_DIR") or os.path.join(hub.HOME, "inputs"))
+MAX_INPUT_FILE = 1024 * 1024
+RESERVED = {"con", "prn", "aux", "nul", "conin$", "conout$"} | {"%s%d" % (p, i) for p in ("com", "lpt") for i in range(10)}
+def _same(a, b): return os.path.normcase(a) == os.path.normcase(b)
+def _under(path, root):
+    try: return _same(os.path.commonpath([path, root]), root)
+    except ValueError: return False             # another drive, or one path relative
+def _broad(folder):
+    """A folder too wide to read input files from: a drive's (or the file system's) top, the home folder, or one above it."""
+    home = os.path.realpath(os.path.expanduser("~"))
+    return _same(os.path.dirname(folder), folder) or _under(home, folder)
+def input_roots(cwd=None):
+    cwd = os.path.realpath(cwd or os.getcwd())
+    return [INPUT_DIR] + ([cwd] if not _broad(cwd) and not _same(cwd, INPUT_DIR) else [])
+INPUT_ROOTS = input_roots()
+def _shown(folder):
+    home = os.path.realpath(os.path.expanduser("~"))
+    if _under(folder, home): return "~" + folder[len(home):]
+    return os.path.basename(folder) or "the inputs folder"
+def input_file_error(path):
+    name = os.path.basename(str(path).replace("\\", "/"))[:60]
+    where = _shown(INPUT_DIR) + (" or the folder the server was started in" if len(INPUT_ROOTS) > 1 else "")
+    return "input_file '%s' was not read: it must be a .json file of at most 1MB in %s" % (name, where)
+def read_input_file(path):
+    """The parsed JSON of an allowed input file, or None. Every failure gives the same None. A relative path is taken
+    from the inputs folder first, then from the folder the server was started in."""
+    try:
+        path = str(path)
+        cands = [path] if os.path.isabs(path) else [os.path.join(root, path) for root in INPUT_ROOTS]
+        for cand in cands:
+            real = os.path.realpath(cand)
+            base = os.path.basename(real).lower()
+            if not base.endswith(".json") or base.split(".")[0].rstrip(" ") in RESERVED or ":" in base: continue
+            if not os.path.isfile(real) or not any(_under(real, root) for root in INPUT_ROOTS): continue
+            with open(real, "rb") as fh: raw = fh.read(MAX_INPUT_FILE + 1)
+            if len(raw) > MAX_INPUT_FILE: return None
+            return json.loads(raw.decode("utf-8"))
+        return None
+    except Exception: return None
 CORE = {"status", "cell", "version", "verified", "result", "reason", "how_to_fix", "guide", "repairs", "input_used", "answer_text", "say"}
 def handle(name, a):
     """Every tool's tokens are counted. call_cell's core reply is metered on its call row (hub.call); what this server adds to it
@@ -63,8 +107,8 @@ def _handle(name, a):
     if name == "call_cell":
         data = dict(a.get("input") or {})
         if a.get("input_file"):
-            try: f = json.load(open(a["input_file"], encoding="utf-8"))
-            except Exception as e: return {"status": "invalid_input", "reason": "cannot read input_file: %s" % e}
+            f = read_input_file(a["input_file"])
+            if f is None: return {"status": "invalid_input", "reason": input_file_error(a["input_file"])}
             if isinstance(f, dict): data = {**f, **data}
         cell = str(a.get("cell", ""))
         r = guides.call(cell, data, model=MODEL, caller=CALLER)
@@ -114,7 +158,10 @@ def send(o):
     # ASCII-only JSON (\uXXXX escapes): on Windows a pipe defaults to the locale code page (cp949 on Korean Windows),
     # which garbles Korean text for an MCP client that reads UTF-8.
     sys.stdout.write(json.dumps(o, ensure_ascii=True) + "\n"); sys.stdout.flush()
+LEDGER_NOTE = "stemseal: STEMSEAL_LOG=minimal, but the ledger still has rows written before; to keep only what minimal keeps, run: stemseal ledger --minimize"
 def main():
+    hub.tidy_ledger()
+    if hub.log_mode() == "minimal" and hub.ledger_has_text(): print(LEDGER_NOTE, file=sys.stderr)
     for st in (sys.stdin, sys.stdout):
         try: st.reconfigure(encoding="utf-8", errors="replace")
         except Exception: pass

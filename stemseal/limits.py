@@ -7,8 +7,8 @@ outside them. If they cannot be applied, the runner is ended before it is sent a
     wall time   the caller's timeout (5 s per call; ground-truth batches get more), then the process is ended
     CPU time    the same number of seconds
     memory      256 MB (Windows, Linux; macOS does not enforce it, so there only time limits apply)
-    processes   the runner only, no child processes
-    file size   0 bytes written (Linux, macOS)
+    processes   the runner only, no child processes (on Linux and macOS not for root, which the system exempts)
+    file size   no file content written (Linux, macOS; creating, emptying, renaming or removing files is left to the runner's audit hook)
     open files  16 (Linux, macOS)
     core dumps  none
     priority    below normal (Windows), nice +10 (Linux, macOS)
@@ -20,7 +20,9 @@ import math, os, subprocess, sys
 MEM_MB = 256
 NOFILE = 16
 NICE = 10
+PROCESSES = 1
 MEMORY_ENFORCED = sys.platform != "darwin"
+PROCESS_LIMIT_ENFORCED = os.name == "nt" or not hasattr(os, "geteuid") or os.geteuid() != 0
 
 class LimitError(Exception):
     """The limits could not be applied; nothing was run."""
@@ -54,7 +56,7 @@ def _posix_limits(cpu):
     def apply():
         cap(resource.RLIMIT_CPU, cpu)
         if MEMORY_ENFORCED: cap(resource.RLIMIT_AS, mem)
-        cap(resource.RLIMIT_NPROC, 1)
+        cap(resource.RLIMIT_NPROC, PROCESSES)
         cap(resource.RLIMIT_FSIZE, 0)
         cap(resource.RLIMIT_NOFILE, NOFILE)
         cap(resource.RLIMIT_CORE, 0)
@@ -65,8 +67,8 @@ def _run_posix(cmd, data, timeout, cpu, cwd, env):
     try:
         p = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=cwd, env=env,
                              preexec_fn=_posix_limits(cpu), start_new_session=True)
-    except subprocess.SubprocessError as e:
-        raise LimitError(str(e))
+    except (subprocess.SubprocessError, OSError) as e:
+        raise LimitError(type(e).__name__)
     try:
         out, err = p.communicate(data, timeout=timeout)
     except subprocess.TimeoutExpired:
@@ -123,17 +125,18 @@ def _job(cpu):
         _fields_ = [("UIRestrictionsClass", wintypes.DWORD)]
     k = _kernel32()
     job = k.CreateJobObjectW(None, None)
-    if not job: raise LimitError("job %d" % ctypes.get_last_error())
+    last_error = getattr(ctypes, "get_last_error", lambda: 0)
+    if not job: raise LimitError("job %d" % last_error())
     info = EXTENDED()
     info.BasicLimitInformation.LimitFlags = (_LIMIT_PROCESS_TIME | _LIMIT_ACTIVE_PROCESS | _LIMIT_PROCESS_MEMORY | _LIMIT_JOB_MEMORY
                                              | _LIMIT_DIE_ON_UNHANDLED_EXCEPTION | _LIMIT_KILL_ON_JOB_CLOSE)
     info.BasicLimitInformation.PerProcessUserTimeLimit = cpu * 10000000        # 100 ns units
-    info.BasicLimitInformation.ActiveProcessLimit = 1
+    info.BasicLimitInformation.ActiveProcessLimit = PROCESSES
     info.ProcessMemoryLimit = info.JobMemoryLimit = mem_mb() * 1024 * 1024
     ui = UI(_UILIMIT_ALL)
     if not (k.SetInformationJobObject(job, _EXTENDED_LIMIT_INFORMATION, ctypes.byref(info), ctypes.sizeof(info))
             and k.SetInformationJobObject(job, _BASIC_UI_RESTRICTIONS, ctypes.byref(ui), ctypes.sizeof(ui))):
-        e = ctypes.get_last_error(); k.CloseHandle(job)
+        e = last_error(); k.CloseHandle(job)
         raise LimitError("limits %d" % e)
     return job
 
@@ -146,8 +149,11 @@ def _run_windows(cmd, data, timeout, cpu, cwd, env):
     except Exception as e: raise LimitError(type(e).__name__)
     k = _kernel32()
     try:
-        p = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=cwd, env=env,
-                             creationflags=_CREATE_NO_WINDOW | _BELOW_NORMAL_PRIORITY_CLASS)
+        try:
+            p = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=cwd, env=env,
+                                 creationflags=_CREATE_NO_WINDOW | _BELOW_NORMAL_PRIORITY_CLASS)
+        except (subprocess.SubprocessError, OSError) as e:
+            raise LimitError(type(e).__name__)
         # the runner waits for its request, so it has no cell before this point
         try: ok = _assign(job, p)
         except Exception: ok = False

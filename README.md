@@ -109,6 +109,14 @@ Requests for the same calculation are counted together (numbers, word order, spa
 
 세포가 없으면 모델이 따로 하지 않아도 요청이 남습니다. `find_cell`이 빈손으로 돌아오거나 없는 세포 이름을 부르면, 시각, 찾던 말, 모델 이름, 가장 가까운 세포가 내 컴퓨터의 장부에만 기록됩니다. 모델이 `request_cell`로 직접 요청할 수도 있습니다(`need` 한 문장이면 되고 `example`은 선택). 돌려주는 말은 거절이 아니라 "기록했고 곧 그 물길을 만든다, 다음에 다시 찾아 달라"이고, 가까운 세포가 있으면 함께 알려 줍니다. 같은 계산의 요청은 숫자, 낱말 순서, 띄어쓰기, "계산" 같은 말이 달라도 한 건으로 묶어 횟수를 셉니다(복리/단리처럼 낱말이 다르면 따로 둡니다). `stemseal demand`로 쌓인 요청을 보고, `stemseal demand --open <번호>`로 GitHub 세포 요청 이슈의 내용을 먼저 확인한 뒤 동의하면 엽니다. 전화번호, 이메일, 주민번호, 긴 숫자열은 가려지지만 저장소는 공개이니 이름 같은 개인 정보가 없는지 보고 제출하세요. 요청이 모이는 순서대로 세포를 만들고 `stemseal update`로 받습니다. 새 잠금 세포만 내려받아 내 컴퓨터에서 sha256, 순수성, 정답 사례를 모두 다시 확인한 뒤에 쓰고, 그 세포가 답한 요청은 목록에서 빠집니다. 인터넷을 쓰는 명령은 update 하나뿐이고, 내려받기만 합니다(`stemseal measure`는 내 컴퓨터의 Ollama에만 붙습니다).
 
+### What the ledger keeps / 장부에 남는 것
+
+`STEMSEAL_LOG` sets how much of a request the ledger keeps: `full` (default) keeps the sentence (up to 300 characters); `minimal` keeps only a hash of it and at most 4 calculation words found in it (words of the cells' own descriptions or of a fixed list such as 이자, 대출, 할인, written as that list spells them, so names, phone numbers and the rest of the sentence are not kept), keeps a model's search words the same way, keeps no examples, and keeps only the exception type of a cell's error; `off` writes no ledger. Switching to `minimal` does not change rows already written: `stemseal ledger` says whether such rows are there, and `stemseal ledger --minimize` rewrites them as `minimal` would have written them (nothing does this on its own). Rows older than 90 days, and the oldest rows once the file passes 20MB, move to `ledger.1.jsonl` when the MCP server starts (the previous `ledger.1.jsonl` is replaced). Records of installed cells and answered requests are kept. A cell's error message reaches the model as the cell wrote it, on one line, up to 200 characters; in `full` mode the ledger keeps its first 60.
+
+`call_cell`'s `input_file` reads only a `.json` file of at most 1MB under `~/.stemseal/inputs` (or `STEMSEAL_INPUT_DIR`), or under the folder the MCP server was started in when that folder is not a drive's top, your home folder or a folder above it. A relative name is looked up in the inputs folder first. When a file is not read, the reply names only the file, not the folders on your machine.
+
+`STEMSEAL_LOG=minimal`이면 요청 문장 대신 해시와 계산 낱말 최대 4개(세포 설명이나 정해진 목록에 있는 낱말만, 그 목록의 표기로)만 남아 이름, 전화번호, 나머지 문장은 남지 않습니다. 세포 오류도 예외 종류만 남고, 예시는 남지 않습니다. `off`면 장부를 쓰지 않습니다. minimal로 바꿔도 이미 쓰인 줄은 그대로라서, `stemseal ledger`로 확인하고 `stemseal ledger --minimize`로 직접 정리합니다(저절로 지우지 않음). 90일 지난 줄과 20MB를 넘는 오래된 줄은 MCP 서버를 띄울 때 `ledger.1.jsonl`로 옮겨집니다. `input_file`은 `~/.stemseal/inputs`(또는 `STEMSEAL_INPUT_DIR`) 아래, 그리고 서버를 띄운 폴더가 드라이브 맨 위, 홈 폴더, 그 위 폴더가 아닐 때 그 폴더 아래의 1MB 이하 `.json` 파일만 읽습니다.
+
 ## Tokens saved / 아낀 토큰
 
 Every cell call records, in the same local ledger, what it cost and what it saved. It is always on and never leaves your machine.
@@ -130,7 +138,7 @@ stemseal measure vat_supply_price qwen2.5:3b    # measure a baseline with your l
 
 Cells run in a separate `python -I` process with a timeout, and only after the purity gate. This is process isolation, not an OS sandbox. Every cell here was reviewed before locking, and `stemseal verify` lets you check that none changed.
 
-That process runs under limits set before it receives the cell: the call's time limit for both wall and CPU time, 256 MB of memory (not enforced on macOS, where only time limits apply), no child processes, no file writes and 16 open files (Linux, macOS), no core dumps, and lower priority, so the rest of the machine comes first. `STEMSEAL_MEM_MB` can lower the memory limit, not raise it. If the limits cannot be applied, the cell does not run and the call answers `not_available`.
+That process runs under limits set before it receives the cell: the call's time limit for both wall and CPU time, 256 MB of memory (not enforced on macOS, where only time limits apply), no child processes (on Linux and macOS this needs a regular user: the system exempts root, and `stemseal verify` says so), no file content written and 16 open files (Linux, macOS; creating, emptying, renaming or removing files is stopped by the runner's audit hook, not by these limits), no core dumps, and lower priority, so the rest of the machine comes first. `STEMSEAL_MEM_MB` can lower the memory limit, not raise it. If the limits cannot be applied, the cell does not run and the call answers `not_available`.
 
 ## License
 
