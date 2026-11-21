@@ -30,6 +30,14 @@ class Signer(unittest.TestCase):
             self.assertEqual(signer.sign(rel, key_path=os.path.join(a, signer.MAIN_NAME), passphrase=pw[1], out_dir=out, confirm=False, trusted=trusted), 1)
             self.assertEqual(signer.sign(rel, key_path=os.path.join(a, signer.MAIN_NAME), passphrase=pw[0], out_dir=out, confirm=False,
                                          trusted=json.dumps({"1": "0" * 64}).encode()), 1)        # not the release the commit lists
+        gone = os.path.join(out, "gone.json")
+        with open(gone, "wb") as f: f.write(json.dumps({"format": 2, "release": 2, "cells": {}, "revoked_keys": [pubs[0]]}).encode())
+        with open(gone, "rb") as f: graw = f.read()
+        shown = io.StringIO()
+        with redirect_stdout(shown):
+            signer.sign(gone, key_path=os.path.join(b, signer.SPARE_NAME), passphrase=pw[1], out_dir=tempfile.mkdtemp(), confirm=False,
+                        trusted=json.dumps({"2": hashlib.sha256(graw).hexdigest()}).encode())
+        self.assertIn(pubs[0][:16], shown.getvalue())                    # the key a release withdraws is shown before signing
         for path in (sig_path, main_sig):
             with open(path, "rb") as f: sig = f.read()
             keys = [bytes.fromhex(p) for p in pubs]

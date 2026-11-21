@@ -276,6 +276,16 @@ def withdrawn():
     """{(cell, version)} that a cell release withdrew: state.json and the kept copy of the last release, together. Not used."""
     return _release_view()["withdrawn"]
 def _from_release(d): return os.path.isfile(os.path.join(d, "from_release.json"))
+def key_withdrawn(c):
+    """True for a cell that update installed from a release whose signing key a later signed release withdrew. When any key
+    is withdrawn, a cell whose record does not name its key counts as withdrawn too."""
+    if not c or not _from_release(c["dir"]): return False
+    out = _release_view().get("keys_out") or set()
+    if not out: return False
+    try:
+        with open(os.path.join(c["dir"], "from_release.json"), encoding="utf-8") as f: k = json.load(f).get("key")
+    except (OSError, ValueError, AttributeError): k = None
+    return not isinstance(k, str) or k in out
 def release_unknown(c):
     """True for a cell that update installed while this machine cannot tell which release it last took (see update.release_view)."""
     return bool(c) and _from_release(c["dir"]) and _release_view()["unknown"]
@@ -285,7 +295,7 @@ def _sealed():
     view = _release_view(); gone = view["withdrawn"]
     for name in _names():
         c = inspect(name)
-        if not c or (name, c["version"]) in gone or (view["unknown"] and _from_release(c["dir"])): continue
+        if not c or (name, c["version"]) in gone or (view["unknown"] and _from_release(c["dir"])) or key_withdrawn(c): continue
         if c["seal"] is None: yield name, c
         elif c["seal"] != seal.OLD: _tamper(name, c["version"], c["seal"], once=True)
 def list_cells():
@@ -431,7 +441,7 @@ def call(name, input_data, caller="unknown", version=None, model=None, decorate=
     c = inspect(name, version) if exists(name) else None
     if not c: return env("not_available", reason="no locked cell with this name")
     ver = c["version"]
-    if (name, ver) in withdrawn(): c = None; return env("not_available", reason="this cell was withdrawn", ver=ver)
+    if (name, ver) in withdrawn() or key_withdrawn(c): c = None; return env("not_available", reason="this cell was withdrawn", ver=ver)
     if release_unknown(c): c = None; return env("not_available", reason=RELEASE_UNKNOWN, ver=ver)
     raw = seal.read_bytes(c["dir"], "cell.py")   # read once: the bytes whose hash is checked are the bytes that run
     problem = c["seal"] or seal.problem(c["lock"], {"cell.py": raw}, name, ver) or (None if seal.kind(c["lock"]) == "cell" else "lock.json")

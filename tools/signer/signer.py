@@ -41,8 +41,8 @@ def _folder(question, allow_fixed=False):
         if not a or not os.path.isdir(a): say("  그 폴더(드라이브)를 찾지 못했습니다. USB가 꽂혀 있는지 확인하고 다시 입력하세요."); continue
         if not allow_fixed and not _removable(a):
             say("  이 드라이브는 윈도우가 '이동식'이 아니라 '고정 드라이브'로 알려 줍니다.")
-            say("  일부 USB 메모리와 외장 SSD는 이렇게 보입니다. 지금 꽂은 USB가 맞으면 '네'를, 아니면 엔터만 누르세요.")
-            if input("  이 드라이브가 USB가 맞습니까? ").strip() != "네": continue
+            say("  일부 USB 메모리와 외장 SSD는 이렇게 보입니다. 지금 꽂은 USB가 맞으면 '네'(또는 y)를, 아니면 엔터만 누르세요.")
+            if input("  이 드라이브가 USB가 맞습니까? ").strip().lower() not in ("네", "y"): continue
         return a
 
 def _passphrase(twice):
@@ -127,16 +127,21 @@ def sign(source=None, key_path=None, passphrase=None, out_dir=None, confirm=True
         if isinstance(trusted, str):
             with open(trusted, "rb") as f: trusted = f.read()
         if trusted is None: trusted = _download(TRUSTED_URL)
-    except (OSError, ValueError) as e: say("파일을 받지 못했습니다(%s). 서명하지 않습니다." % type(e).__name__); return 1
+    except (OSError, ValueError) as e: say("파일을 받지 못했습니다(%s). 서명하지 않습니다. 5분 뒤 다시 해 보세요." % type(e).__name__); return 1
     n, cells, digest = summary(raw)
     if not listed(n, digest, trusted):
         say("이 release.json은 같은 커밋의 trusted_releases.json에 cells-%s로 적힌 것과 다릅니다. 서명하지 않습니다." % n)
-        say("작업 스레드에 이 메시지를 알려 주세요.")
+        say("병합 직후라면 GitHub에 새 파일이 다 퍼지지 않았을 수 있습니다. 5분 뒤 다시 해 보고, 그래도 같으면 작업 스레드에 알려 주세요.")
         return 1
     say("")
     say("출시 번호: cells-%s" % n)
     say("세포 %d개:" % len(cells))
     for c in cells: say("  " + c)
+    gone = json.loads(raw.decode("utf-8")).get("revoked_keys") or []
+    if gone:
+        say("이 출시가 폐기하는 열쇠 %d개 (공개 열쇠 앞 16글자):" % len(gone))
+        for k in gone: say("  " + str(k)[:16])
+        say("  폐기한 열쇠는 되살릴 수 없습니다. 작업 스레드 메시지의 폐기 대상과 같은지 확인하세요.")
     say("지문: %s  (trusted_releases.json에 적힌 값과 같음을 확인했습니다)" % digest[:FINGERPRINT])
     say("")
     if confirm:
