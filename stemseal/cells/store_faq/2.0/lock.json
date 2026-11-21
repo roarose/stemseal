@@ -1,7 +1,15 @@
 {
+ "format": 2,
+ "kind": "cell",
  "cell": "store_faq",
  "version": "2.0",
  "sha256": "4885082bd3ff0d8699581c845412294be98ab23a4434518395b77597b96fc388",
+ "files": {
+  "cell.py": "4885082bd3ff0d8699581c845412294be98ab23a4434518395b77597b96fc388",
+  "contract.json": "291b132893f4c29589aa39f3d8a15c17c11b2cce9e31c5594ebce03d493e286e",
+  "gt_cases.json": "166ce7d7df497eb9cdbd6918a47960a65376f3f2ba1f94701deb55081316813d"
+ },
+ "policy": 2,
  "gt_total": 24,
  "gt_passed": 24,
  "deterministic": true,

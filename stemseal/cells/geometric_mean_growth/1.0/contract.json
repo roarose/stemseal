@@ -22,6 +22,9 @@
  "output_keys": [
   "geo_mean_pct"
  ],
+ "output_schema": {
+  "geo_mean_pct": "number"
+ },
  "description_en": "Geometric mean growth rate (%) of a list of period growth rates (decimals).",
  "when_to_use_en": "When combining several periods' growth rates into one average growth rate.",
  "input_aliases": {

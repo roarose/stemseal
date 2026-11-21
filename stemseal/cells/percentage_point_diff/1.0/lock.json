@@ -1,7 +1,15 @@
 {
+ "format": 2,
+ "kind": "cell",
  "cell": "percentage_point_diff",
  "version": "1.0",
  "sha256": "5322a96a6f9fa33244762fc957dac9d87e51ba1a426b7ed6968e580949ceb158",
+ "files": {
+  "cell.py": "5322a96a6f9fa33244762fc957dac9d87e51ba1a426b7ed6968e580949ceb158",
+  "contract.json": "631e17dfc3cf5beea165e8b64b8b9e91b1a5d90a3d2f6d0a02b6ba936cfee2c2",
+  "gt_cases.json": "31280fa3a6b0fbfa6028f112ccf58854b6bcd855ae3a1f5d2c8ed18fd8f9dc0e"
+ },
+ "policy": 2,
  "gt_total": 24,
  "gt_passed": 24,
  "deterministic": true,

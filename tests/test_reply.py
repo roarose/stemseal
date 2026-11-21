@@ -6,7 +6,7 @@ from unittest import mock
 os.environ.setdefault("STEMSEAL_HOME", tempfile.mkdtemp(prefix="stemseal_test_"))
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
-from stemseal import hub, update
+from stemseal import hub, seal, update
 
 CELL = "def cell_executor(input_data):\n    return {'v': 1}\n"
 def j(o): return json.dumps(o).encode()
@@ -91,6 +91,7 @@ class EveryPath(unittest.TestCase):
         for f in update.FILES:
             with open(os.path.join(c["dir"], f), "rb") as fh: files[f] = fh.read()
         sha = hub.sha(files["cell.py"])
+        files["lock.json"] = seal.dumps(seal.build("reply_test_update", "1.0", files, 2, 25, 25, "x", "t"))
         index = j({"cells": {"reply_test_update": {"1.0": {"sha256": sha}}}})
         def get(url, timeout=20):
             if url.endswith("/index.json"): return index

@@ -1,7 +1,15 @@
 {
+ "format": 2,
+ "kind": "cell",
  "cell": "percentile_rank",
  "version": "1.0",
  "sha256": "3c31d5bb01c692cde384798d6cffef7d8136ea6cfe1d11dd9f9d1d0343109368",
+ "files": {
+  "cell.py": "3c31d5bb01c692cde384798d6cffef7d8136ea6cfe1d11dd9f9d1d0343109368",
+  "contract.json": "120936fb29b158db8ff7272f441ff9b2ca9c3a0fcd8092c656a173a21667a7e5",
+  "gt_cases.json": "efd39649774973ac659d5d077390a8460cd3ca53a3f8568b9823994bd7c1b7d5"
+ },
+ "policy": 2,
  "gt_total": 24,
  "gt_passed": 24,
  "deterministic": true,

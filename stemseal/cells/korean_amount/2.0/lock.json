@@ -1,7 +1,15 @@
 {
+ "format": 2,
+ "kind": "cell",
  "cell": "korean_amount",
  "version": "2.0",
  "sha256": "c38ac7029fb961e043b6ec4becb4a3503021f78d6867b1baaa4c8a4c52bae7fc",
+ "files": {
+  "cell.py": "c38ac7029fb961e043b6ec4becb4a3503021f78d6867b1baaa4c8a4c52bae7fc",
+  "contract.json": "74c9288067e88667e0cd0c30911629a81c7dc42cba89f02a781f7a570f49f963",
+  "gt_cases.json": "e07efb3162907cd53ab06765c82cb1453eb34526fdb66bd22187fabf88a92c67"
+ },
+ "policy": 2,
  "gt_total": 31,
  "gt_passed": 31,
  "deterministic": true,

@@ -1,7 +1,15 @@
 {
+ "format": 2,
+ "kind": "cell",
  "cell": "geometric_mean_growth",
  "version": "1.0",
  "sha256": "6cab69e643547e7606ace91786dc1c1dc832e8b99565ccabc2fe03c121c1105a",
+ "files": {
+  "cell.py": "6cab69e643547e7606ace91786dc1c1dc832e8b99565ccabc2fe03c121c1105a",
+  "contract.json": "b47a1fd57d919010ca55410390c5d7df0dd1aba7883c157164b8a4632a475198",
+  "gt_cases.json": "29186704d82f486eede479ba05c03e258a682e4743d6372367c86712759305bf"
+ },
+ "policy": 2,
  "gt_total": 24,
  "gt_passed": 24,
  "deterministic": true,

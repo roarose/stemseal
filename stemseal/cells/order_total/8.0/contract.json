@@ -46,6 +46,15 @@
   "discount_capped",
   "qty_assumed"
  ],
+ "output_schema": {
+  "subtotal": "number",
+  "discount": "number",
+  "total": "number",
+  "item_count": "number",
+  "items_read": "list",
+  "discount_capped": "boolean",
+  "qty_assumed": "list"
+ },
  "description_en": "Order total from the customer's sentence and the dish, price and count words copied from it unchanged: items [{name, price ('만삼천구백원'), qty ('두 잔')}]. Words not in the sentence, or part of a longer number, are refused. Items without qty take the count said right after (or before) their price, else one, listed by item number in qty_assumed. It computes only when nothing unread is left: after dish names, prices, counts, discounts, particles and order words on its ignore list, any other word ('너이', '투', '두 개 반', '인원수만큼', '원플러스원', a dish name not passed) is refused. Also refused: one said price used twice, a count after another item's price, a price for several, per-person counts. '두 개씩' covers the count-less prices before it. Discounts go outside items (discount_pct, discount_won); a claimed discount not passed or without an amount is refused; a question or a no ('할인 돼요?') is not a discount.",
  "when_to_use_en": "Adding up a customer's order. Put their whole sentence in question and copy each dish name, price and count word for word; do not convert numbers.",
  "input_aliases": {

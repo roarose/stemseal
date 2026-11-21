@@ -1,7 +1,15 @@
 {
+ "format": 2,
+ "kind": "cell",
  "cell": "currency_convert",
  "version": "1.0",
  "sha256": "8b9085b6ea582216759bbad400fa4d45b88210a36785dd365dc279580b440bd5",
+ "files": {
+  "cell.py": "8b9085b6ea582216759bbad400fa4d45b88210a36785dd365dc279580b440bd5",
+  "contract.json": "f2bdfd0d9a62d4986f3fa1690f2af0c074eee30456b43cb90cd06587a23e8104",
+  "gt_cases.json": "700f5a938543cef741317e0d1c580b100ffe2bfe4d093f2fcce1929f46bce07d"
+ },
+ "policy": 2,
  "gt_total": 24,
  "gt_passed": 24,
  "deterministic": true,

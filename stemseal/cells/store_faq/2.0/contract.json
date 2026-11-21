@@ -30,6 +30,12 @@
   "answer",
   "ask_staff"
  ],
+ "output_schema": {
+  "answer_ready": "boolean",
+  "faq_id": "string?",
+  "answer": "string?",
+  "ask_staff": "boolean"
+ },
  "raw_text": true,
  "description_en": "Finds the store's own prepared answer (spice level, kids' menu, origin, parking...) for a customer's question and returns it word for word. When the store has no answer yet, nothing fits, or two answers fit equally, ask_staff is true.",
  "when_to_use_en": "A customer asks about the store rather than a price. Say the answer as it is; when ask_staff is true, call a person."

@@ -32,6 +32,11 @@
   "minutes_to_close",
   "minutes_to_open"
  ],
+ "output_schema": {
+  "is_open": "boolean",
+  "minutes_to_close": "number?",
+  "minutes_to_open": "number"
+ },
  "description_en": "Given the current time and opening hours (HH:MM, 24h), whether the store is open, minutes until closing, minutes until next opening. Handles hours past midnight.",
  "when_to_use_en": "Is it open now, until when, how many minutes left before closing, when does it open. Convert times to 24h (8:20 pm -> 20:20).",
  "input_aliases": {

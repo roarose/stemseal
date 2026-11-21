@@ -1,7 +1,15 @@
 {
+ "format": 2,
+ "kind": "cell",
  "cell": "monthly_wage_from_hourly",
  "version": "1.0",
  "sha256": "a9f14c93b48a6f243b9730fdaa1d2efde7d51f82537dd3ea5459aaac97c89ac3",
+ "files": {
+  "cell.py": "a9f14c93b48a6f243b9730fdaa1d2efde7d51f82537dd3ea5459aaac97c89ac3",
+  "contract.json": "d08f674fc39d02f92b8e401b1ced7a34e8286c7d5e2d7079fb0616b36967e4f9",
+  "gt_cases.json": "66bd418c5c1865d6b038c52c338f6cab76e88964fbd26aaa3eac66d0a164028e"
+ },
+ "policy": 2,
  "gt_total": 24,
  "gt_passed": 24,
  "deterministic": true,

@@ -1,7 +1,15 @@
 {
+ "format": 2,
+ "kind": "cell",
  "cell": "annual_leave_days",
  "version": "1.0",
  "sha256": "2cf7029ba701c8fb927fd724b57a547e897fca9adb06e66979a5faa5d95d0f46",
+ "files": {
+  "cell.py": "2cf7029ba701c8fb927fd724b57a547e897fca9adb06e66979a5faa5d95d0f46",
+  "contract.json": "4ea8cef88f7ca7725392ce1b1f78961e81d8d2d1b4078660f3bf971285812fb9",
+  "gt_cases.json": "607621becb16a2b14d9f7ec554f466f58f9ca85bdfd4535cb1a1e0db34f6c14e"
+ },
+ "policy": 2,
  "gt_total": 24,
  "gt_passed": 24,
  "deterministic": true,

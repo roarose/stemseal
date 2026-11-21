@@ -1,7 +1,15 @@
 {
+ "format": 2,
+ "kind": "cell",
  "cell": "store_hours",
  "version": "1.0",
  "sha256": "b23e4f8f9efa57f6964fd4220c23f397f26ff435c565dd07e3d4c3e1b5c25810",
+ "files": {
+  "cell.py": "b23e4f8f9efa57f6964fd4220c23f397f26ff435c565dd07e3d4c3e1b5c25810",
+  "contract.json": "592fab77e45693215aae8a724e9a1dbd719b10aa0be61b7c1b6941a3b4f7e749",
+  "gt_cases.json": "1a1940e901b15dbdda1e82336a62d425fc578e6e24761c7f774fc80708273882"
+ },
+ "policy": 2,
  "gt_total": 21,
  "gt_passed": 21,
  "deterministic": true,

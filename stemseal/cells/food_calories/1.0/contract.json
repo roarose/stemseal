@@ -23,6 +23,9 @@
  "output_keys": [
   "kcal"
  ],
+ "output_schema": {
+  "kcal": "number"
+ },
  "description_en": "Calories eaten (kcal) from kcal per 100 g and grams eaten.",
  "when_to_use_en": "When computing the calories of a portion of food.",
  "input_aliases": {

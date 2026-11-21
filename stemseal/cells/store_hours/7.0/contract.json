@@ -45,6 +45,17 @@
   "minutes_to_open",
   "long_hours"
  ],
+ "output_schema": {
+  "answer_ready": "boolean",
+  "ask_customer": "string?",
+  "now_24h": "string?",
+  "open_24h": "string?",
+  "close_24h": "string?",
+  "is_open": "boolean?",
+  "minutes_to_close": "number?",
+  "minutes_to_open": "number?",
+  "long_hours": "boolean?"
+ },
  "description_en": "Open now?, minutes to closing or opening, from the customer's sentence and the time words copied from it unchanged ('밤 7시 반', '새벽 2시'). When only the customer can settle it (am or pm unknown, same open and close, open over 20 hours) it does not compute: answer_ready is false and ask_customer holds the question to ask. Words not in the sentence are refused. If the model adds an am/pm word the customer did not say, the customer's words win (and the customer is asked when there is none). Spoken hours may be passed as digits. Open and close passed in each other's place are refused. Handles one opening and one closing a day. A break time cannot be passed; a store with one must tell customers about it separately. If the customer mentions a break or last order, it does not compute and hands over to staff.",
  "when_to_use_en": "Is it open, until when, minutes left, when it opens. Copy the time words exactly. If ask_customer is set, ask it and do not say a number.",
  "input_aliases": {

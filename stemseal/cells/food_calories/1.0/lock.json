@@ -1,7 +1,15 @@
 {
+ "format": 2,
+ "kind": "cell",
  "cell": "food_calories",
  "version": "1.0",
  "sha256": "f6303f34c4f034a531fa71aa2f75076158e0b0d095c8abbb1586d9bce961c805",
+ "files": {
+  "cell.py": "f6303f34c4f034a531fa71aa2f75076158e0b0d095c8abbb1586d9bce961c805",
+  "contract.json": "578b1cc3f0b74e1e396c8028f80c0610fd62565f86c3eb9a37e89ddef7dc6c36",
+  "gt_cases.json": "a4cef29b83b15c088417f0d5871968d44f1e86168800c68b0d12ecddd57f6348"
+ },
+ "policy": 2,
  "gt_total": 24,
  "gt_passed": 24,
  "deterministic": true,

@@ -112,7 +112,7 @@ def _handle(name, a):
             if isinstance(f, dict): data = {**f, **data}
         cell = str(a.get("cell", ""))
         r = guides.call(cell, data, model=MODEL, caller=CALLER)
-        if r.get("status") == "not_available" and not (hub.re.fullmatch(r"[a-z][a-z0-9_]{2,63}", cell) and hub.load(cell)):
+        if r.get("status") == "not_available" and not (hub.exists(cell)):
             # small models often guess a cell name ("wages") instead of calling find_cell first: show the real ones
             f = find_for_mcp(cell.replace("_", " ") + " " + " ".join(str(k) for k in data), record=False)
             g = guides.guide_for(MODEL)

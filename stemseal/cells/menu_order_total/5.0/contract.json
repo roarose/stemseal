@@ -34,6 +34,13 @@
   "total",
   "qty_assumed"
  ],
+ "output_schema": {
+  "answer_ready": "boolean",
+  "ask_customer": "string?",
+  "lines": "list",
+  "total": "number?",
+  "qty_assumed": "list"
+ },
  "raw_text": true,
  "description_en": "Order total from a customer's dish names and counts, priced only from the store's menu. When the words fit several dishes, miss a size, break a minimum-people rule, or are not on the menu, it does not compute: answer_ready is false and ask_customer holds the question to ask. The cell reads each count itself from the words right after the dish name; numbers inside a dish name are not counts. A dish the customer named but left out of items is refused. Counts are read right after the dish name, else right before it, 1 to 99 only. A range ('한두 개'), 0, over 99, or a count that belongs to no dish ('2인분, 아니 3인분') is asked back. Dishes counted as one because no count was said are listed in qty_assumed. A count said 'each' ('씩', '각각') covers the dishes listed before it; per person or per time ('하나씩 두 명') or '모두 두 개' is asked back. If the sentence has counts but none for a dish, the dish is asked back; only with no count anywhere is it one, listed in qty_assumed. A name that is part of a longer dish name the customer said is read as that dish.",
  "when_to_use_en": "A customer orders or asks a price by dish name. Pass their whole sentence, the store's menu, and their words for every dish; counts are read by the cell.",

@@ -5,7 +5,7 @@ import glob, json, os, subprocess, sys, tempfile, textwrap, unittest
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
 os.environ.setdefault("STEMSEAL_HOME", tempfile.mkdtemp(prefix="stemseal_test_"))
-from stemseal import hub, policy
+from stemseal import hub, policy, seal
 
 RUNNER = os.path.join(ROOT, "stemseal", "_runner.py")
 def read(path, mode="r"):
@@ -289,8 +289,10 @@ class ParentSide(unittest.TestCase):
         d = tempfile.mkdtemp(); base = os.path.join(d, "cells", "bad_cell", "1.0"); os.makedirs(base)
         src = "import os\n" + OK_CELL
         with open(os.path.join(base, "cell.py"), "w", encoding="utf-8", newline="\n") as f: f.write(src)
-        with open(os.path.join(base, "contract.json"), "w", encoding="utf-8") as f: json.dump({"description": "x", "input_schema": {}, "output_keys": ["v"]}, f)
-        with open(os.path.join(base, "lock.json"), "w", encoding="utf-8") as f: json.dump({"cell": "bad_cell", "version": "1.0", "sha256": hub.sha(src), "gt_total": 20, "locked_at": "x"}, f)
+        raw = {"cell.py": src.encode("utf-8"), "contract.json": json.dumps({"description": "x", "input_schema": {}, "output_keys": ["v"]}).encode("utf-8"), "gt_cases.json": b"[]"}
+        for f in ("contract.json", "gt_cases.json"):
+            with open(os.path.join(base, f), "wb") as fh: fh.write(raw[f])
+        seal.write(base, seal.build("bad_cell", "1.0", raw, 2, 20, 20, "x", "t"))
         old = hub.USER_CELLS
         try:
             hub.USER_CELLS = os.path.join(d, "cells")

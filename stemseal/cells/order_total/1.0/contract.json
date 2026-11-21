@@ -42,6 +42,13 @@
   "item_count",
   "discount_capped"
  ],
+ "output_schema": {
+  "subtotal": "number",
+  "discount": "number",
+  "total": "number",
+  "item_count": "number",
+  "discount_capped": "boolean"
+ },
  "description_en": "Order subtotal from items (price x qty), discount, final total and item count. Whole won. Discount order: percent off the subtotal first (won below 1 dropped), then the fixed won discount. A discount larger than the subtotal is cut to the subtotal and discount_capped is true. Price and qty may be numbers or text like '4,500원', '2잔' (one number, one unit). Unknown input names, and a discount put inside an item, are refused, never ignored (discounts go outside items).",
  "when_to_use_en": "Adding up a customer order: several menu items with quantities, total after discount. Read prices from the menu.",
  "input_aliases": {
