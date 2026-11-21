@@ -368,6 +368,9 @@ def _err_for_ledger(err):
     """The exception type and the first characters of its message only."""
     kind, sep, msg = err.partition(": ")
     return (kind + sep + msg[:ERR_TO_LEDGER]) if sep else err[:ERR_TO_LEDGER]
+# A part cell (contract "part": true) is one step of an organ: read on its own it can miss words that change its value, which
+# only the organ's unread-word step catches. Until the organ runner exists, calling one by name is refused (closed by default).
+PART_REFUSED = "this cell is one step of a larger job and cannot be called on its own yet; call find_cell with the customer's question to get the cell for the whole job"
 def call(name, input_data, caller="unknown", version=None, model=None, decorate=None, log=True):
     """status = ok | not_available | invalid_input. A result only ever comes from a locked, untampered cell.
     Every call row carries its token meter (savings.py): what the call cost and, against the cell's baseline, what it saved.
@@ -407,6 +410,7 @@ def call(name, input_data, caller="unknown", version=None, model=None, decorate=
         c = None
         if log: _tamper(name, ver, problem)
         return env("not_available", reason="cell files do not match the lock (%s)" % problem, ver=ver)
+    if c["contract"].get("part"): return env("not_available", reason=PART_REFUSED, ver=ver)   # closed until the organ runner exists
     if not isinstance(input_data, dict): return env("invalid_input", reason="input must be an object", ver=ver)
     missing = [k for k in c["contract"]["input_schema"].get("required", []) if k not in input_data]
     if missing: return env("invalid_input", reason="missing required inputs: %s" % missing, ver=ver)

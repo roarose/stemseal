@@ -3,7 +3,7 @@
   "read.ko.time"
  ],
  "raw_text": true,
- "description": "손님 문장에서 시각 하나를 읽어 자정부터의 분으로 바꾼다('밤 7시 반' 1170). 역할(now, open, close)을 주변 말('열고/부터', '닫/마감/까지')로 확인해 바뀌었으면 거절한다. 모델이 손님이 말하지 않은 오전·오후를 붙이면 손님 말이 이긴다. 오전·오후를 알 수 없으면 값 없이 ask_word에 그 말을 준다. clock 참이면 기기 시계의 'HH:MM'. 시각 뒤의 '전', '후', '쯤', '경', '정도', '11시나 12시', 앞의 '아마', '대략', 문장의 정정('아니고', '말고', '바뀌')이 있으면 값 없이 asks로 되묻는다. 읽은 자리(spans)를 돌려준다. 따로 불러도 조용히 틀리지 않는다: 값의 뜻을 바꾸는 말이 있으면 값을 내지 않고 asks로 되묻는다(answer_ready 거짓). 조립(장기)에서는 '모르는 말 거르기'가 그 뒤의 두 번째 안전망이다.",
+ "description": "손님 문장에서 시각 하나를 읽어 자정부터의 분으로 바꾼다('밤 7시 반' 1170). 역할(now, open, close)을 주변 말('열고/부터', '닫/마감/까지')로 확인해 바뀌었으면 거절한다. 모델이 손님이 말하지 않은 오전·오후를 붙이면 손님 말이 이긴다. 오전·오후를 알 수 없으면 값 없이 ask_word에 그 말을 준다. clock 참이면 기기 시계의 'HH:MM'. 시각 뒤의 '전', '후', '쯤', '경', '정도', '11시나 12시', 앞의 '아마', '대략', 문장의 정정('아니고', '말고', '바뀌')이 있으면 값 없이 asks로 되묻는다. 읽은 자리(spans)를 돌려준다. 이 부품이 아는 말만 보고 되묻는다. 목록 밖의 말('열 명쯤', '3시 반 지나서' 등)은 놓칠 수 있으므로 혼자서는 쓰지 않고 장기 안에서 '모르는 말 거르기'와 함께 쓴다. 장기 실행기 전까지 이름으로 직접 부르면 거절된다.",
  "description_en": "Reads one time from the customer's sentence into minutes after midnight, checks its role (now, open, close) from the words around it, lets the customer's words win over a half-of-day word the model added, and returns the words in ask_word when only the customer can say AM or PM. Asks on '10분 전', '쯤', '11시나 12시', '아마' or a correction; returns the span it read.",
  "when_to_use": "영업시간, 예약, 근무 시간처럼 손님이 말한 시각이 필요할 때.",
  "keywords": [

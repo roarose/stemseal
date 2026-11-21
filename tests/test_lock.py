@@ -74,6 +74,15 @@ class ShippedLocks(unittest.TestCase):
             if not os.path.isdir(os.path.join(SHIPPED, name)): continue
             c = hub.load(name)
             with open(os.path.join(c["dir"], "gt_cases.json"), encoding="utf-8") as f: gt = json.load(f)
+            if c["contract"].get("part"):   # a part cell is refused by name; its sealed code runs in the isolated runner (the organ's way)
+                self.assertEqual(hub.call(name, {}, caller="t", log=False)["reason"], hub.PART_REFUSED)
+                src = open(os.path.join(c["dir"], "cell.py"), encoding="utf-8").read()
+                cases = [x for x in gt if "expected" in x]
+                for case, r in zip(cases, hub.run_isolated(src, hub.sha(src), [x["input"] for x in cases])):
+                    with self.subTest(cell=name, input=case["input"]):
+                        self.assertIs(r.get("ok"), True)
+                        self.assertEqual(json.dumps(r["out"], ensure_ascii=False), json.dumps(case["expected"], ensure_ascii=False))
+                continue
             for case in gt:
                 if "expected" not in case: continue
                 with self.subTest(cell=name, input=case["input"]):

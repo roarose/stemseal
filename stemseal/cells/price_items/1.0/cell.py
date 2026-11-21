@@ -135,6 +135,7 @@ _CHANGE = re.compile(r"빼|빠|취소|제외|말고|아니|대신|반(?!값|찬|
 _NEXT_OK = ("요", "이요", "예요", "이에요", "에요", "입니다", "이랑", "랑", "하고", "이고", "고", "와", "과", "도", "은", "는", "을", "를", "이", "가", "에", "에다", "에다가", "로", "으로", "만", "짜리", "주세요", "주시고", "줘", "주실래요", "할게요", "할께요", "해", "해요", "부탁해요", "부탁드려요", "부탁합니다", "드릴게요", "시킬게요", "주문", "주문할게요", "갈게요", "먹고", "가져갈게요", "그리고", "포장", "포장해", "포장할게요", "그냥", "일단", "우선", "얼마", "얼마예요", "얼마에요", "얼마죠", "얼마인가요", "여기요", "저기요", "사장님", "총", "다해서", "전부해서", "합쳐서", "인데", "인데요", "있어요", "있는데", "있는데요", "있고", "해서", "주문하는데", "주문하는데요")   # the words that may follow a thing said without a count (the priced order's list of plain words)
 _NEXT_RE = re.compile("(?:%s)+" % "|".join(sorted(_NEXT_OK, key=len, reverse=True)))
 _OTHER_STEP = re.compile(r"[\d일이삼사오육칠팔구십백천만,.]+원|할인|쿠폰|깎|반값|반액|\d+%")   # a word the discount step reads, or the next price
+_DISC_SAID = re.compile(r"[\d일이삼사오육칠팔구십백천만,.]+원(?:짜리)?(?:할인|빼|깎)")   # '천원 빼 주세요' is a discount, read by the discount step
 def _next_word(qn, gaps, i):
     """The customer's word starting at i in norm(question): up to the next space."""
     j = i
@@ -277,7 +278,7 @@ def cell_executor(inp):
         c = cnt.get(k); at = max(ps[1], c[1] if c else 0)
         nxt = min([s for s in starts if s > ps[0]] + [at + 12, len(qn)])
         w = _next_word(qn, gaps, _GAP.match(qn, ps[1]).end()) if k in dflt else ""
-        if _CHANGE.search(qn[at:nxt]) or (w and not _NEXT_RE.fullmatch(w) and not _OTHER_STEP.match(w) and not any(x[0] == _GAP.match(qn, ps[1]).end() for x, j in prices if x) and not any(norm(nm) == w or w.startswith(norm(nm)) for nm, j in names)):
+        if _CHANGE.search(_DISC_SAID.sub("|", qn[at:nxt])) or (w and not _NEXT_RE.fullmatch(w) and not _OTHER_STEP.match(w) and not any(x[0] == _GAP.match(qn, ps[1]).end() for x, j in prices if x) and not any(norm(nm) == w or w.startswith(norm(nm)) for nm, j in names)):
             asks = ["주문하신 수량을 품목마다 한 번 더 말씀해 주시겠어요?"]
     if asks:   # no numbers when a count's meaning changed: the caller asks instead of computing
         read = []; dflt = []

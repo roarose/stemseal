@@ -3,7 +3,7 @@
   "read.ko.discount"
  ],
  "raw_text": true,
- "description": "손님 말의 할인을 읽는다: 퍼센트('10%', '반값')와 원('3천원'). 손님이 받는다고 한 할인을 넘기지 않았거나 금액이 없으면 거절하고, '할인 돼요?', '쿠폰 없어요'는 할인으로 보지 않는다. 읽은 자리(spans)를 돌려준다. 범위('10~20%'), 정정('10% 아니고'), '아마', '최대'가 있으면 할인 없이(0) 되묻는다. 따로 불러도 조용히 틀리지 않는다: 값의 뜻을 바꾸는 말이 있으면 값을 내지 않고 asks로 되묻는다(answer_ready 거짓). 조립(장기)에서는 '모르는 말 거르기'가 그 뒤의 두 번째 안전망이다.",
+ "description": "손님 말의 할인을 읽는다: 퍼센트('10%', '반값')와 원('3천원'). 손님이 받는다고 한 할인을 넘기지 않았거나 금액이 없으면 거절하고, '할인 돼요?', '쿠폰 없어요'는 할인으로 보지 않는다. 읽은 자리(spans)를 돌려준다. 범위('10~20%'), 정정('10% 아니고'), '아마', '최대'가 있으면 할인 없이(0) 되묻는다. 이 부품이 아는 말만 보고 되묻는다. 목록 밖의 말('열 명쯤', '3시 반 지나서' 등)은 놓칠 수 있으므로 혼자서는 쓰지 않고 장기 안에서 '모르는 말 거르기'와 함께 쓴다. 장기 실행기 전까지 이름으로 직접 부르면 거절된다.",
  "description_en": "Reads a discount the customer said: percent ('10%', '반값') or won ('3천원'). Refuses a claimed discount left out or without an amount; a question or a no is not a discount. Returns the spans read. Asks on a range, a correction or a maybe about the discount.",
  "when_to_use": "주문 문장에 할인, 쿠폰 말이 있을 때.",
  "keywords": [
