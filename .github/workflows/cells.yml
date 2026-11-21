@@ -1,0 +1,38 @@
+# When a cell release (tag cells-N) is published: check out that tag and verify its cells and release.json.
+# Read-only: it publishes nothing and has no deployment rights.
+name: cells
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    if: startsWith(github.event.release.tag_name, 'cells-')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.release.tag_name }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Verify the cells and release.json of this tag
+        env:
+          TAG: ${{ github.event.release.tag_name }}
+        run: |
+          pip install .
+          stemseal verify
+          python - <<'PY'
+          import hashlib, json, os
+          n = int(os.environ["TAG"].split("-", 1)[1])
+          raw = open("stemseal/cells/release.json", "rb").read()
+          rel = json.loads(raw)
+          assert rel["format"] == 2 and rel["release"] == n, "release.json is not release %d" % n
+          trusted = json.load(open("stemseal/trusted_releases.json"))
+          assert trusted.get(str(n)) == hashlib.sha256(raw).hexdigest(), "trusted_releases.json does not list this release.json"
+          print("cells-%d: %d cells, sha256 %s" % (n, sum(len(v) for v in rel["cells"].values()), hashlib.sha256(raw).hexdigest()))
+          PY

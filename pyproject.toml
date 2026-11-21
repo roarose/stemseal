@@ -19,4 +19,4 @@ stemseal-mcp = "stemseal.mcp:main"
 packages = ["stemseal"]
 
 [tool.setuptools.package-data]
-stemseal = ["guides/*.json", "cells/*/*/*.py", "cells/*/*/*.json"]
+stemseal = ["*.json", "guides/*.json", "cells/*.json", "cells/*/*/*.py", "cells/*/*/*.json"]

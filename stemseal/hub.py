@@ -13,6 +13,7 @@ Stdlib only.
 import hashlib, json, os, re, shutil, sys, tempfile, time
 from datetime import datetime, timedelta, timezone
 from . import savings, policy, limits, seal, shape
+from . import state as _state
 
 PKG = os.path.dirname(os.path.abspath(__file__))
 def _home():
@@ -29,7 +30,7 @@ CELLS = os.environ.get("STEMSEAL_CELLS") or os.path.join(PKG, "cells")   # cells
 USER_CELLS = os.path.join(HOME, "cells")                                    # cells added later by `stemseal update`
 def _dirs(): return [CELLS] + ([USER_CELLS] if os.path.abspath(USER_CELLS) != os.path.abspath(CELLS) else [])
 LEDGER = os.path.join(HOME, "ledger.jsonl")
-STATE = os.path.join(HOME, "state.json")    # this machine's record of cell versions it has held with a format 2 lock
+STATE = os.path.join(HOME, "state.json")    # this machine's state: cell versions held with a format 2 lock, last cell release taken, withdrawn cells
 REPO = "https://github.com/roarose/stemseal"
 MIN_GT = 20                      # a cell needs at least this many ground-truth cases to be locked
 CALL_TIMEOUT = 5                 # seconds per call
@@ -211,15 +212,27 @@ def gt_check(src, gt_cases, schema=None):
 
 # ---------------------------------------------------------------- registry
 def _vkey(v): return [int(x) for x in v.split(".")]
+CELL_NAME = re.compile(r"[a-z][a-z0-9_]{2,63}")        # a cell folder; any other name in a cells folder is not a cell
+CELL_VERSION = re.compile(r"[0-9]{1,4}\.[0-9]{1,4}")   # a version folder inside it
 def _found(name):
-    """{version: dir} over the shipped cells and the ones `stemseal update` added; the shipped copy wins a tie."""
+    """{version: dir} over the shipped cells and the ones `stemseal update` added; the shipped copy wins a tie.
+    Only folders named like a cell and a version are looked at."""
     out = {}
+    if not (isinstance(name, str) and CELL_NAME.fullmatch(name)): return out
     for base in reversed(_dirs()):
         d = os.path.join(base, name)
         if os.path.isdir(d):
             for v in os.listdir(d):
-                if os.path.exists(os.path.join(d, v, "lock.json")): out[v] = os.path.join(d, v)
+                if CELL_VERSION.fullmatch(v) and os.path.exists(os.path.join(d, v, "lock.json")): out[v] = os.path.join(d, v)
     return out
+def cell_names(base):
+    """Folder names in base that are named like a cell (sorted)."""
+    try: return sorted(n for n in os.listdir(base) if CELL_NAME.fullmatch(n) and os.path.isdir(os.path.join(base, n)))
+    except OSError: return []
+def version_names(d):
+    """Version folders in a cell folder that hold a lock.json (sorted by version)."""
+    try: return sorted((v for v in os.listdir(d) if CELL_VERSION.fullmatch(v) and os.path.isfile(os.path.join(d, v, "lock.json"))), key=_vkey)
+    except OSError: return []
 def _versions(name): return sorted(_found(name), key=_vkey)
 def cell_dir(name, version=None):
     f = _found(name)
@@ -237,7 +250,7 @@ def inspect(name, version=None):
     if not d: return None
     v = os.path.basename(d); lock = _json(seal.read_bytes(d, "lock.json")); raw = seal.read_bytes(d, "contract.json")
     problem = seal.problem(lock, {"contract.json": raw}, name, v)
-    if problem == seal.OLD and was_sealed(name, v): problem = "lock.json"    # held here with a format 2 lock before
+    if problem == seal.OLD and was_sealed(name, v) is True: problem = "lock.json"    # held here with a format 2 lock before
     contract = _json(raw)
     if problem is None and not (isinstance(contract, dict) and isinstance(contract.get("description"), str) and isinstance(contract.get("input_schema"), dict)):
         problem = "contract.json"
@@ -246,19 +259,33 @@ def load(name, version=None):
     """A cell whose lock holds (see inspect), or None."""
     c = inspect(name, version)
     return c if c and c["seal"] is None else None
-def exists(name): return bool(isinstance(name, str) and re.fullmatch(r"[a-z][a-z0-9_]{2,63}", name) and cell_dir(name))
-def _names(): return sorted({n for b in _dirs() if os.path.isdir(b) for n in os.listdir(b) if os.path.isdir(os.path.join(b, n))})
+def exists(name): return bool(isinstance(name, str) and CELL_NAME.fullmatch(name) and cell_dir(name))
+def _names(): return sorted({n for b in _dirs() for n in cell_names(b)})
 _TAMPER_SEEN = set()
 def _tamper(name, version, file, once=False):
     if once:
         if (name, version, file) in _TAMPER_SEEN: return
         _TAMPER_SEEN.add((name, version, file))
     _log({"type": "tamper", "cell": name, "version": version, "file": file})
+RELEASE_UNKNOWN = "cell needs stemseal update on this machine"
+def _release_view():
+    from . import update as _u                 # update imports hub; read lazily
+    try: return _u.release_view()
+    except Exception: return {"withdrawn": set(), "unknown": True}
+def withdrawn():
+    """{(cell, version)} that a cell release withdrew: state.json and the kept copy of the last release, together. Not used."""
+    return _release_view()["withdrawn"]
+def _from_release(d): return os.path.isfile(os.path.join(d, "from_release.json"))
+def release_unknown(c):
+    """True for a cell that update installed while this machine cannot tell which release it last took (see update.release_view)."""
+    return bool(c) and _from_release(c["dir"]) and _release_view()["unknown"]
 def _sealed():
-    """(name, cell) for every cell whose newest version's lock holds. A cell whose files do not match is left out and recorded once."""
+    """(name, cell) for every cell whose newest version's lock holds and that is not withdrawn. A cell whose files do not
+    match is left out and recorded once."""
+    view = _release_view(); gone = view["withdrawn"]
     for name in _names():
         c = inspect(name)
-        if not c: continue
+        if not c or (name, c["version"]) in gone or (view["unknown"] and _from_release(c["dir"])): continue
         if c["seal"] is None: yield name, c
         elif c["seal"] != seal.OLD: _tamper(name, c["version"], c["seal"], once=True)
 def list_cells():
@@ -268,25 +295,24 @@ def list_cells():
                     "description_en": c["contract"].get("description_en", ""), "when_to_use_en": c["contract"].get("when_to_use_en", ""),
                     "required_inputs": c["contract"]["input_schema"].get("required", []), "gt_cases": c["lock"]["gt_total"], "locked_at": c["lock"]["locked_at"]})
     return out
-def _state():
-    try:
-        with open(STATE, encoding="utf-8") as f: s = json.load(f)
-        return s if isinstance(s, dict) else {}
-    except (OSError, ValueError): return {}
 def mark_sealed(name, version, sha256):
-    """Record that this machine holds name/version with a format 2 lock (kept outside the cell folder, in state.json).
-    Such a version is never taken for a format 1 cell again: reseal refuses it and its use is refused."""
-    try:
-        s = _state(); rec = s.get("sealed") if isinstance(s.get("sealed"), dict) else {}
-        rec["%s/%s" % (name, version)] = sha256; s["sealed"] = rec
-        os.makedirs(os.path.dirname(STATE), exist_ok=True)
-        fd, tmp = tempfile.mkstemp(dir=os.path.dirname(STATE), prefix=".state_", suffix=".tmp")
-        with os.fdopen(fd, "w", encoding="utf-8") as f: json.dump(s, f, ensure_ascii=False, indent=1)
-        os.replace(tmp, STATE)
-    except Exception: pass
+    """Record, before its format 2 lock is written, that this machine holds name/version with a format 2 lock (state.json,
+    outside the cell folder). Such a version is never taken for a format 1 cell again. Raises state.Unavailable when the
+    record cannot be written; the lock is then not written either."""
+    def add(s): s.setdefault("sealed", {})["%s/%s" % (name, version)] = sha256
+    _state.change(STATE, add)
 def was_sealed(name, version):
-    s = _state().get("sealed")
-    return isinstance(s, dict) and "%s/%s" % (name, version) in s
+    """True when this machine's record has name/version, None when the record cannot be read (unknown), False otherwise."""
+    s, how = _state.read(STATE)
+    if how == "unreadable": return None
+    if "%s/%s" % (name, version) in s.get("sealed", {}): return True
+    return None if "damaged" in s else False
+STATE_DAMAGED = ("this machine's record (%s) could not be read and was kept aside; check it, then delete %s to start a new record"
+                 " (versions held before are then not known to this machine)")
+def state_problem():
+    """None when state.json can be trusted; otherwise what a person should do."""
+    return None if _state.status(STATE) == "ok" else STATE_DAMAGED % (STATE, STATE)
+HELD_BEFORE = "this machine held this version with a format 2 lock; bring back that copy, or register the cell as a new version"
 def _from_update(name, version, lock):
     """True when this machine's ledger says `stemseal update` installed this very cell file."""
     return any(r.get("cell") == name and r.get("version") == version and r.get("sha256") == lock.get("sha256") for r in _rows("update"))
@@ -301,6 +327,10 @@ def unsealed():
         c = inspect(name)
         if c and c["seal"] is not None:
             why = old_lock_text(name, c["version"], c["lock"]) if c["seal"] == seal.OLD else "cell files do not match the lock (%s)" % c["seal"]
+            if c["seal"] == "lock.json" and seal.is_v1(c["lock"]) and was_sealed(name, c["version"]) is True: why += "; " + HELD_BEFORE
+            out.append({"cell": name, "version": c["version"], "why": why})
+        elif c and release_unknown(c):
+            why = "this machine cannot tell which cell release it took (state.json and its kept copy are missing or cannot be read); run: stemseal update"
             out.append({"cell": name, "version": c["version"], "why": why})
     return out
 
@@ -331,7 +361,15 @@ def register(name, src, contract, gt_cases, locked_by="unknown", base=None):
     for f in ("contract.json", "gt_cases.json"):
         with open(os.path.join(d, f), "wb") as fh: fh.write(raw[f])
     lock = seal.build(name, version, raw, policy.POLICY_VERSION, rep["total"], rep["passed"], now(), locked_by)
-    seal.write(d, lock); mark_sealed(name, version, lock["sha256"])
+    try: mark_sealed(name, version, lock["sha256"])          # the record first: a version recorded but not locked stays unused
+    except _state.Unavailable as e:
+        for f in ("cell.py", "contract.json", "gt_cases.json"):
+            try: os.remove(os.path.join(d, f))
+            except OSError: pass
+        try: os.rmdir(d)
+        except OSError: pass
+        return {"locked": False, "reason": "cannot record the lock on this machine: %s" % e}
+    seal.write(d, lock)
     _log({"type": "lock", "cell": name, "version": version, "sha256": lock["sha256"], "gt": rep["total"], "by": locked_by})
     return {"locked": True, "cell": name, "version": version, "sha256": lock["sha256"], "report": rep}
 
@@ -393,6 +431,8 @@ def call(name, input_data, caller="unknown", version=None, model=None, decorate=
     c = inspect(name, version) if exists(name) else None
     if not c: return env("not_available", reason="no locked cell with this name")
     ver = c["version"]
+    if (name, ver) in withdrawn(): c = None; return env("not_available", reason="this cell was withdrawn", ver=ver)
+    if release_unknown(c): c = None; return env("not_available", reason=RELEASE_UNKNOWN, ver=ver)
     raw = seal.read_bytes(c["dir"], "cell.py")   # read once: the bytes whose hash is checked are the bytes that run
     problem = c["seal"] or seal.problem(c["lock"], {"cell.py": raw}, name, ver) or (None if seal.kind(c["lock"]) == "cell" else "lock.json")
     if problem == seal.OLD:

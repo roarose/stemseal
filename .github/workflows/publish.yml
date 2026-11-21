@@ -1,4 +1,4 @@
-# Publish to PyPI when a GitHub Release is published.
+# Publish to PyPI when a package Release (tag v*) is published. A cell release (tag cells-N) starts nothing here.
 # Uses PyPI Trusted Publishing (OIDC): no API token is stored anywhere.
 # PyPI side: project "stemseal" -> publisher roarose/stemseal, workflow publish.yml, environment pypi.
 name: publish
@@ -7,8 +7,12 @@ on:
   release:
     types: [published]
 
+permissions:
+  contents: read
+
 jobs:
   build:
+    if: startsWith(github.event.release.tag_name, 'v')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

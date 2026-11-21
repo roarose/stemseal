@@ -74,9 +74,9 @@ def baseline_for(cell, version, model):
 
 DEFAULT_RATIO = 3.0   # real tokens per estimated token when nothing is measured; EXAONE 3.5 measured 2.46-2.58 (11-19)
 def _all_baselines():
-    hub = _hub(); names = {n for b in hub._dirs() if os.path.isdir(b) for n in os.listdir(b) if os.path.isdir(os.path.join(b, n))}
+    hub = _hub(); names = set(hub._names())
     ud = os.path.join(hub.HOME, "baselines")
-    if os.path.isdir(ud): names |= set(os.listdir(ud))
+    if os.path.isdir(ud): names |= {n for n in os.listdir(ud) if hub.CELL_NAME.fullmatch(n)}
     return [e for n in names for ms in baselines(n).values() for e in ms.items()]
 def cost_ratio(model):
     """How many real tokens one estimated token is, so the estimate never undercounts cost.

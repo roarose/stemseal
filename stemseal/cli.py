@@ -15,7 +15,7 @@
   stemseal demand --all | --json     include needs a cell now answers | raw groups as JSON
   stemseal ledger [--minimize]       where this machine's ledger is and what it keeps; --minimize rewrites the rows already
                                      there as STEMSEAL_LOG=minimal keeps them (sentences become a hash and a few words)
-  stemseal update [--check]          bring cells made since this install (each is re-verified here before use)
+  stemseal update [--check]          bring cells from the newest signed cell release (each is re-verified here before use)
   stemseal savings [--days N]        tokens the cells saved, from this machine's ledger (measured and estimated kept apart)
   stemseal measure <cell> <model> [--n 5] [--url http://127.0.0.1:11434] [--ship]
                                      measure a cell's baseline (tokens without the cell) with a local Ollama model
@@ -68,6 +68,7 @@ def main(argv=None):
     if cmd == "list":
         _p([{k: c[k] for k in ("cell", "version", "description", "required_inputs")} for c in hub.list_cells()])
         for u in hub.unsealed(): print("not usable: %s %s: %s" % (u["cell"], u["version"], u["why"]), file=sys.stderr)
+        if hub.state_problem(): print("note: " + hub.state_problem(), file=sys.stderr)
     elif cmd == "find": _p(hub.find(" ".join(rest), caller="cli"))
     elif cmd == "call":
         if len(rest) != 2: print(__doc__); return 2
@@ -79,6 +80,7 @@ def main(argv=None):
         for k in bad:
             if r[k].get("seal"): print("%s: %s" % (k, r[k]["seal"]))
         print("all %d cells verified" % len(r) if not bad else "FAILED: %s" % bad)
+        if hub.state_problem(): print("note: " + hub.state_problem())
         if not limits.MEMORY_ENFORCED: print("note: this system does not enforce the memory limit; cells are limited by time only")
         if not limits.PROCESS_LIMIT_ENFORCED: print("note: running as root, so the system does not enforce the one-process limit; run stemseal as a regular user")
         return 1 if bad else 0
@@ -113,6 +115,17 @@ def main(argv=None):
         r = _r.reseal(names or None, dry_run=dry, confirm=confirm); _p(r)
         return 1 if r["failed"] or (r["plan"] and not dry and not r["confirmed"]) else 0
     elif cmd == "index": _p({k: list(v) for k, v in upd.build_index()["cells"].items()})
+    elif cmd == "release":        # maintainers: stemseal release <N> [--min-client X.Y.Z] [--revoke cell@version:reason ...]
+        try: n = int(rest[0])
+        except (IndexError, ValueError): print("stemseal release <N>: N is the cell release number"); return 2
+        opt = lambda k: rest[rest.index(k) + 1] if k in rest and rest.index(k) + 1 < len(rest) else None
+        rev = []
+        for i, x in enumerate(rest):
+            if x == "--revoke" and i + 1 < len(rest):
+                cv, _, why = rest[i + 1].partition(":"); c, _, v = cv.partition("@"); rev.append({"cell": c, "version": v, "reason": why})
+        try: rel, digest = upd.build_release(n, min_client=opt("--min-client"), revoke=rev)
+        except ValueError as e: print("not written: %s" % e); return 1
+        print("release.json for cells-%d written: %d cells, sha256 %s (fingerprint %s)" % (n, sum(len(v) for v in rel["cells"].values()), digest, digest[:8]))
     elif cmd == "mcp":
         from . import mcp as _m; _m.main(); return 0
     elif cmd == "savings":
