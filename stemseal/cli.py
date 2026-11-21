@@ -18,7 +18,7 @@
   stemseal bench [--n 30] [--warmup 5] how long a cell call takes on this machine (saved to ~/.stemseal/bench-*.json)
   stemseal mcp                       run the MCP server on stdio (same as stemseal-mcp)"""
 import json, sys
-from . import hub, guides, savings, update as upd
+from . import hub, guides, savings, limits, update as upd
 
 def _p(o): print(json.dumps(o, ensure_ascii=False, indent=1))
 
@@ -69,7 +69,9 @@ def main(argv=None):
     elif cmd == "verify":
         r = hub.verify_all(); _p(r)
         bad = [k for k, v in r.items() if not (v["hash_ok"] and v.get("policy_ok") and v.get("gt_ok") and v["deterministic"])]
-        print("all %d cells verified" % len(r) if not bad else "FAILED: %s" % bad); return 1 if bad else 0
+        print("all %d cells verified" % len(r) if not bad else "FAILED: %s" % bad)
+        if not limits.MEMORY_ENFORCED: print("note: this system does not enforce the memory limit; cells are limited by time only")
+        return 1 if bad else 0
     elif cmd == "request":
         ex = None
         if "--example" in rest:
