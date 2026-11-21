@@ -44,9 +44,8 @@ def _check(name, d, lock):
     return None, {"raw": raw, "rep": rep}
 
 def _versions(base, name):
-    d = os.path.join(base, name)
-    if not os.path.isdir(d): return []
-    return sorted((v for v in os.listdir(d) if os.path.isfile(os.path.join(d, v, "lock.json"))), key=hub._vkey)
+    if not (isinstance(name, str) and hub.CELL_NAME.fullmatch(name)): return []
+    return hub.version_names(os.path.join(base, name))
 
 def _lock(d):
     try:
@@ -66,7 +65,7 @@ def reseal(names=None, dry_run=False, base=None, confirm=None):
     version this machine has held with a format 2 lock, is never in the plan. Returns
     {"resealed", "failed", "skipped", "plan", "dry_run", "confirmed"}."""
     base = base or hub.USER_CELLS
-    every = sorted(n for n in os.listdir(base) if os.path.isdir(os.path.join(base, n))) if os.path.isdir(base) else []
+    every = hub.cell_names(base)
     out = {"resealed": [], "failed": [], "skipped": [], "plan": [], "dry_run": bool(dry_run), "confirmed": False, "where": base}
     todo = []
     for name in (names if names else every):
@@ -108,7 +107,7 @@ def relock(dry_run=False, base=None):
     """Every shipped cell version, at the same version. Writes nothing unless all of them pass. Returns {"ok", "changed", "failed"}."""
     base = base or hub.CELLS
     plan, failed = [], []
-    for name in sorted(n for n in os.listdir(base) if os.path.isdir(os.path.join(base, n))):
+    for name in hub.cell_names(base):
         for v in _versions(base, name):
             d = os.path.join(base, name, v); lock = _lock(d); p = seal.problem(lock, {})
             if p is not None and p != seal.OLD:

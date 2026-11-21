@@ -212,15 +212,27 @@ def gt_check(src, gt_cases, schema=None):
 
 # ---------------------------------------------------------------- registry
 def _vkey(v): return [int(x) for x in v.split(".")]
+CELL_NAME = re.compile(r"[a-z][a-z0-9_]{2,63}")        # a cell folder; any other name in a cells folder is not a cell
+CELL_VERSION = re.compile(r"[0-9]{1,4}\.[0-9]{1,4}")   # a version folder inside it
 def _found(name):
-    """{version: dir} over the shipped cells and the ones `stemseal update` added; the shipped copy wins a tie."""
+    """{version: dir} over the shipped cells and the ones `stemseal update` added; the shipped copy wins a tie.
+    Only folders named like a cell and a version are looked at."""
     out = {}
+    if not (isinstance(name, str) and CELL_NAME.fullmatch(name)): return out
     for base in reversed(_dirs()):
         d = os.path.join(base, name)
         if os.path.isdir(d):
             for v in os.listdir(d):
-                if os.path.exists(os.path.join(d, v, "lock.json")): out[v] = os.path.join(d, v)
+                if CELL_VERSION.fullmatch(v) and os.path.exists(os.path.join(d, v, "lock.json")): out[v] = os.path.join(d, v)
     return out
+def cell_names(base):
+    """Folder names in base that are named like a cell (sorted)."""
+    try: return sorted(n for n in os.listdir(base) if CELL_NAME.fullmatch(n) and os.path.isdir(os.path.join(base, n)))
+    except OSError: return []
+def version_names(d):
+    """Version folders in a cell folder that hold a lock.json (sorted by version)."""
+    try: return sorted((v for v in os.listdir(d) if CELL_VERSION.fullmatch(v) and os.path.isfile(os.path.join(d, v, "lock.json"))), key=_vkey)
+    except OSError: return []
 def _versions(name): return sorted(_found(name), key=_vkey)
 def cell_dir(name, version=None):
     f = _found(name)
@@ -247,25 +259,33 @@ def load(name, version=None):
     """A cell whose lock holds (see inspect), or None."""
     c = inspect(name, version)
     return c if c and c["seal"] is None else None
-def exists(name): return bool(isinstance(name, str) and re.fullmatch(r"[a-z][a-z0-9_]{2,63}", name) and cell_dir(name))
-def _names(): return sorted({n for b in _dirs() if os.path.isdir(b) for n in os.listdir(b) if os.path.isdir(os.path.join(b, n))})
+def exists(name): return bool(isinstance(name, str) and CELL_NAME.fullmatch(name) and cell_dir(name))
+def _names(): return sorted({n for b in _dirs() for n in cell_names(b)})
 _TAMPER_SEEN = set()
 def _tamper(name, version, file, once=False):
     if once:
         if (name, version, file) in _TAMPER_SEEN: return
         _TAMPER_SEEN.add((name, version, file))
     _log({"type": "tamper", "cell": name, "version": version, "file": file})
+RELEASE_UNKNOWN = "cell needs stemseal update on this machine"
+def _release_view():
+    from . import update as _u                 # update imports hub; read lazily
+    try: return _u.release_view()
+    except Exception: return {"withdrawn": set(), "unknown": True}
 def withdrawn():
-    """{(cell, version)} that a cell release withdrew (state.json, written by stemseal update). These are not used."""
-    s, _ = _state.read(STATE)
-    return {(r["cell"], r["version"]) for r in s.get("revoked", []) if isinstance(r.get("cell"), str) and isinstance(r.get("version"), str)}
+    """{(cell, version)} that a cell release withdrew: state.json and the kept copy of the last release, together. Not used."""
+    return _release_view()["withdrawn"]
+def _from_release(d): return os.path.isfile(os.path.join(d, "from_release.json"))
+def release_unknown(c):
+    """True for a cell that update installed while this machine cannot tell which release it last took (see update.release_view)."""
+    return bool(c) and _from_release(c["dir"]) and _release_view()["unknown"]
 def _sealed():
     """(name, cell) for every cell whose newest version's lock holds and that is not withdrawn. A cell whose files do not
     match is left out and recorded once."""
-    gone = withdrawn()
+    view = _release_view(); gone = view["withdrawn"]
     for name in _names():
         c = inspect(name)
-        if not c or (name, c["version"]) in gone: continue
+        if not c or (name, c["version"]) in gone or (view["unknown"] and _from_release(c["dir"])): continue
         if c["seal"] is None: yield name, c
         elif c["seal"] != seal.OLD: _tamper(name, c["version"], c["seal"], once=True)
 def list_cells():
@@ -308,6 +328,9 @@ def unsealed():
         if c and c["seal"] is not None:
             why = old_lock_text(name, c["version"], c["lock"]) if c["seal"] == seal.OLD else "cell files do not match the lock (%s)" % c["seal"]
             if c["seal"] == "lock.json" and seal.is_v1(c["lock"]) and was_sealed(name, c["version"]) is True: why += "; " + HELD_BEFORE
+            out.append({"cell": name, "version": c["version"], "why": why})
+        elif c and release_unknown(c):
+            why = "this machine cannot tell which cell release it took (state.json and its kept copy are missing or cannot be read); run: stemseal update"
             out.append({"cell": name, "version": c["version"], "why": why})
     return out
 
@@ -409,6 +432,7 @@ def call(name, input_data, caller="unknown", version=None, model=None, decorate=
     if not c: return env("not_available", reason="no locked cell with this name")
     ver = c["version"]
     if (name, ver) in withdrawn(): c = None; return env("not_available", reason="this cell was withdrawn", ver=ver)
+    if release_unknown(c): c = None; return env("not_available", reason=RELEASE_UNKNOWN, ver=ver)
     raw = seal.read_bytes(c["dir"], "cell.py")   # read once: the bytes whose hash is checked are the bytes that run
     problem = c["seal"] or seal.problem(c["lock"], {"cell.py": raw}, name, ver) or (None if seal.kind(c["lock"]) == "cell" else "lock.json")
     if problem == seal.OLD:

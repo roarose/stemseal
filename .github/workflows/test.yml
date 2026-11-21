@@ -26,6 +26,18 @@ jobs:
       - name: Verify shipped cells
         run: uv run --no-project --python ${{ matrix.python }} python -m stemseal verify
 
+  signer:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - name: Signer with keys made for this run (make keys, sign, check with stemseal)
+        run: uv run --no-project --python 3.12 --with cryptography python -m unittest tests.test_signer -v
+
   install:
     strategy:
       fail-fast: false

@@ -55,6 +55,12 @@ def _expand(secret):
     a = int.from_bytes(h[:32], "little"); a &= (1 << 254) - 8; a |= 1 << 254
     return a, h[32:]
 
+def small_order(public):
+    """True for a public key that is not a valid point, or whose point times 8 is the identity (it would accept any
+    signature). Such a key is never used."""
+    A = _decompress(bytes(public)) if isinstance(public, (bytes, bytearray)) else None
+    return A is None or _equal(_mul(8, A), (0, 1, 1, 0))
+
 def public_key(secret):
     a, _ = _expand(secret); return _compress(_mul(a, G))
 

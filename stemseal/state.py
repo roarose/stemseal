@@ -35,13 +35,13 @@ def _form_ok(s):
 
 def read(path):
     """(state, "ok" | "missing" | "unreadable"). An unreadable state is returned as {}."""
-    for i in range(20):                     # Windows: the file being replaced answers PermissionError for a moment
+    for i in range(20):                     # Windows only: the file being replaced answers PermissionError for a moment
         try:
             with open(path, "rb") as f: data = f.read()
             break
         except FileNotFoundError: return {}, "missing"
         except PermissionError:
-            if i == 19 or os.path.isdir(path): return {}, "unreadable"
+            if os.name != "nt" or i == 19 or os.path.isdir(path): return {}, "unreadable"
             time.sleep(0.05)
         except OSError: return {}, "unreadable"
     try: s = json.loads(data.decode("utf-8"))

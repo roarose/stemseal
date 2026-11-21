@@ -112,6 +112,116 @@ class Update(unittest.TestCase):
             r = update.update()
         self.assertEqual(self.installed(), []); self.assertIn("cannot record", r["refused"][0]["reason"])
 
+    def test_folders_that_are_not_cells_are_never_looked_at(self):
+        self.first({"double_cell": {"1.0": cell_files("double_cell")}}); update.update()
+        junk = {".replaced/double_cell-1.0-t": cell_files("double_cell"), ".incoming_x": cell_files("double_cell"),
+                "Bad-Name/1.0": cell_files("double_cell"), "odd_cell/not_a_version": cell_files("odd_cell"), "x/1.0": cell_files("x")}
+        for rel, files in junk.items():
+            d = os.path.join(self.user, *rel.split("/")); os.makedirs(d)
+            for f, data in files.items():
+                with open(os.path.join(d, f), "wb") as fh: fh.write(data)
+        self.assertEqual([c["cell"] for c in hub.list_cells() if c["cell"] in ("double_cell", "odd_cell")], ["double_cell"])
+        hub.find("double x", caller="t"); hub.verify_all(); hub.unsealed()
+        from stemseal import savings; savings._all_baselines()
+        for name in (".replaced", ".incoming_x", "Bad-Name", "x", "odd_cell"):
+            self.assertEqual(hub.call(name, {"x": 1}, caller="t")["status"], "not_available")
+        self.assertEqual(hub.call("double_cell", {"x": 1}, caller="t")["result"], {"v": 2})
+
+    def test_a_0_2_3_machine_takes_its_first_release(self):
+        """As on the store laptop: cells that 0.2.3's update installed (format 1 lock), one made there, then cells-1."""
+        for name in ("double_cell", "triple_cell"):
+            old = cell_files(name, fmt=1); d = os.path.join(self.user, name, "1.0"); os.makedirs(d)
+            for f, data in old.items():
+                with open(os.path.join(d, f), "wb") as fh: fh.write(data)
+            hub._log({"type": "update", "cell": name, "version": "1.0", "sha256": seal.sha(old["cell.py"])})
+        own = cell_files("own_cell", fmt=1); d = os.path.join(self.user, "own_cell", "1.0"); os.makedirs(d)
+        for f, data in own.items():
+            with open(os.path.join(d, f), "wb") as fh: fh.write(data)
+        self.assertEqual(hub.call("double_cell", {"x": 1}, caller="t")["reason"], "old lock format; run stemseal update")
+        self.first({"double_cell": {"1.0": cell_files("double_cell")}, "triple_cell": {"1.0": cell_files("triple_cell")}})
+        r = update.update(); self.assertEqual(sorted(c["cell"] for c in r["installed"]), ["double_cell", "triple_cell"])
+        self.assertEqual(sorted(os.listdir(self.user)), ["double_cell", "own_cell", "triple_cell"])
+        self.assertEqual(len(os.listdir(update.replaced_dir())), 2)
+        self.assertEqual(sorted(c["cell"] for c in hub.list_cells() if c["cell"].endswith("_cell")), ["double_cell", "triple_cell"])
+        self.assertTrue(hub.find("double x", caller="t") is not None); hub.verify_all()
+        self.assertEqual(hub.call("double_cell", {"x": 2}, caller="t")["result"], {"v": 4})
+        self.assertEqual(hub.call("own_cell", {"x": 2}, caller="t")["reason"], "cell needs re-sealing on this machine")
+        self.assertEqual(update.update()["installed"], [])
+
+    def test_withdrawals_hold_without_state_and_when_a_release_leaves_them_out(self):
+        self.first({"double_cell": {"1.0": cell_files("double_cell")}, "triple_cell": {"1.0": cell_files("triple_cell")}}); update.update()
+        self.site.release(2, {"triple_cell": {"1.0": cell_files("triple_cell")}}, revoked=[{"cell": "double_cell", "version": "1.0", "reason": "wrong"}])
+        update.update()
+        gone = lambda: hub.call("double_cell", {"x": 1}, caller="t")["reason"]
+        self.assertEqual(gone(), "this cell was withdrawn")
+        self.site.release(3, {"triple_cell": {"1.0": cell_files("triple_cell")}})                 # leaves the withdrawal out
+        self.assertEqual(update.update()["release"], 3); self.assertEqual(gone(), "this cell was withdrawn")
+        self.assertIn({"cell": "double_cell", "version": "1.0", "reason": "wrong"}, update.read_state()["revoked"])
+        with open(hub.STATE, "w") as f: f.write("{")                                             # broken: the kept copy holds
+        self.assertEqual(gone(), "this cell was withdrawn"); self.assertNotIn("double_cell", [c["cell"] for c in hub.list_cells()])
+        os.remove(hub.STATE)                                                                       # gone: the kept copy holds
+        self.assertEqual(gone(), "this cell was withdrawn")
+        self.assertEqual(hub.call("triple_cell", {"x": 1}, caller="t")["result"], {"v": 2})
+
+    def test_without_state_or_copy_update_cells_wait_for_update(self):
+        self.first({"double_cell": {"1.0": cell_files("double_cell")}}); update.update()
+        self.site.release(2, {"triple_cell": {"1.0": cell_files("triple_cell")}}, revoked=[{"cell": "double_cell", "version": "1.0", "reason": "wrong"}])
+        update.update()
+        rp, sp = update._copy_paths(); os.remove(rp); os.remove(hub.STATE)
+        self.assertEqual(hub.call("triple_cell", {"x": 1}, caller="t")["reason"], hub.RELEASE_UNKNOWN)
+        self.assertEqual(hub.call("double_cell", {"x": 1}, caller="t")["status"], "not_available")
+        self.assertNotIn("triple_cell", [c["cell"] for c in hub.list_cells()])
+        self.assertIn("vat_supply_price", [c["cell"] for c in hub.list_cells()])                   # shipped cells go on
+        self.assertIn("run: stemseal update", {u["cell"]: u["why"] for u in hub.unsealed()}["triple_cell"])
+        self.assertTrue(update.update()["ok"])
+        self.assertEqual(hub.call("triple_cell", {"x": 1}, caller="t")["result"], {"v": 2})
+        self.assertEqual(hub.call("double_cell", {"x": 1}, caller="t")["reason"], "this cell was withdrawn")
+
+    def test_broken_state_and_no_copy_takes_nothing(self):
+        self.first({"double_cell": {"1.0": cell_files("double_cell")}}); update.update()
+        rp, _ = update._copy_paths(); os.remove(rp)
+        with open(hub.STATE, "w") as f: f.write("{")
+        r = update.update(); self.assertFalse(r["ok"]); self.assertIn("could not be read", r["reason"])
+
+    def test_broken_state_with_copy_keeps_the_release_order(self):
+        self.first({"double_cell": {"1.0": cell_files("double_cell")}}); update.update()
+        self.site.release(2, {"double_cell": {"1.0": cell_files("double_cell")}}); update.update()
+        with open(hub.STATE, "w") as f: f.write("{")
+        self.site.tags = [1]; self.site.tag(1); self.site.tags = [1]
+        r = update.update(); self.assertFalse(r["ok"]); self.assertIn("older than the one this machine took (cells-2)", r["reason"])
+
+    def test_same_number_other_content_is_refused(self):
+        self.first({"double_cell": {"1.0": cell_files("double_cell")}})
+        self.site.release(2, {"double_cell": {"1.0": cell_files("double_cell")}}); self.assertEqual(update.update()["release"], 2)
+        self.site.tags.remove(2)
+        self.site.release(2, {"triple_cell": {"1.0": cell_files("triple_cell")}})
+        r = update.update(); self.assertFalse(r["ok"]); self.assertIn("not the release this machine took under that number", r["reason"])
+        self.assertNotIn("triple_cell", self.installed())
+
+    def test_empty_or_odd_tag_list_after_a_release(self):
+        self.first({"double_cell": {"1.0": cell_files("double_cell")}}); update.update()
+        self.site.put("refs", b"[]")
+        r = update.update(); self.assertFalse(r["ok"]); self.assertIn("this machine took cells-1", r["reason"])
+        self.site.put("refs", j({"message": "API rate limit exceeded"}))
+        r = update.update(); self.assertFalse(r["ok"]); self.assertIn("not a list", r["reason"])
+
+    def test_an_unsigned_newer_tag_is_skipped(self):
+        self.first({"double_cell": {"1.0": cell_files("double_cell")}})
+        self.site.release(99, {"triple_cell": {"1.0": cell_files("triple_cell")}}, sign=False)
+        r = update.update(); self.assertTrue(r["ok"], r); self.assertEqual(r["release"], 1)
+        self.assertEqual(r["skipped"], [{"release": 99, "reason": "cells-99 has no signature"}])
+        self.assertEqual(self.installed(), [os.path.join("double_cell", "1.0")])
+
+    @unittest.skipIf(os.name == "nt" or not hasattr(os, "geteuid") or os.geteuid() == 0, "file modes are not enforced here")
+    def test_state_without_read_permission_does_not_slow_calls(self):
+        self.first({"double_cell": {"1.0": cell_files("double_cell")}}); update.update()
+        os.chmod(hub.STATE, 0)
+        try:
+            import time
+            t = time.time(); [hub.call("vat_supply_price", {"price": 1100}, caller="t") for _ in range(3)]
+            self.assertLess(time.time() - t, 2.0)
+        finally: os.chmod(hub.STATE, 0o600)
+
     def test_names_that_are_not_allowed(self):
         before = tree(self.outside)
         names = ["..", "a/b", "a\\b", "/abs_cell", "C:cell", "Upper_cell", "", "ab", "../outside"]
@@ -174,9 +284,11 @@ class Update(unittest.TestCase):
         self.site.release(3, {"triple_cell": {"1.0": cell_files("triple_cell")}})
         r = update.update(); self.assertTrue(r["ok"], r); self.assertEqual(r["release"], 3)
         self.site.release(4, {"double_cell": {"1.0": cell_files("double_cell")}}, extra={"previous_index_sha256": "1" * 64})
-        r = update.update(); self.assertFalse(r["ok"]); self.assertIn("does not hold", r["reason"])
+        r = update.update(); self.assertTrue(r["ok"], r); self.assertEqual(r["release"], 3)       # the newest that checks
+        self.assertIn("does not hold", r["skipped"][0]["reason"])
         self.site.release(5, {"double_cell": {"1.0": cell_files("double_cell")}}, previous=False)
-        r = update.update(); self.assertFalse(r["ok"]); self.assertIn("do not link", r["reason"])
+        r = update.update(); self.assertEqual(r["release"], 3); self.assertEqual([x["release"] for x in r["skipped"]], [5, 4])
+        self.assertIn("do not link", r["skipped"][0]["reason"])
 
     def test_withdrawn_cells(self):
         self.first({"double_cell": {"1.0": cell_files("double_cell")}, "triple_cell": {"1.0": cell_files("triple_cell")}})
@@ -249,7 +361,8 @@ class Update(unittest.TestCase):
         self.first({"double_cell": {"1.0": cell_files("double_cell")}})
         r = update.update(); self.assertEqual(len(r["installed"]), 1)
         self.assertEqual(hub.call("double_cell", {"x": 2}, caller="t")["result"], {"v": 4})
-        self.assertEqual(len(os.listdir(os.path.join(self.user, ".replaced"))), 1)
+        self.assertEqual(len(os.listdir(update.replaced_dir())), 1)
+        self.assertEqual(sorted(os.listdir(self.user)), ["double_cell"])                 # nothing else in the cells folder
 
     def test_test_server_is_announced(self):
         self.first({"double_cell": {"1.0": cell_files("double_cell")}})
@@ -267,10 +380,21 @@ class BuildRelease(unittest.TestCase):
         self.assertEqual(rel2["previous_index_sha256"], digest)
         rel3, _ = update.build_release(3, base=cells)
         self.assertEqual(rel3["revoked"], [{"cell": "x", "version": "1.0", "reason": "r"}])
+        with open(os.path.join(cells, "release.json"), "ab") as f: f.write(b" ")                  # not cells-3 as listed
+        with self.assertRaises(ValueError): update.build_release(4, base=cells)
+        os.remove(os.path.join(cells, "release.json"))
+        with self.assertRaises(ValueError): update.build_release(4, base=cells)
         with open(os.path.join(cells, "trusted_releases.json")) as f: self.assertEqual(set(json.load(f)), {"1", "2", "3"})
         for name, vers in rel["cells"].items():
             for v, meta in vers.items():
                 self.assertEqual(meta["tier"], "sealed"); self.assertTrue(set(update.NEEDED) <= set(meta["files"]))
+
+    def test_small_order_keys_are_not_used(self):
+        identity = bytes([1]) + bytes(31)
+        self.assertTrue(ed25519.small_order(identity)); self.assertTrue(ed25519.small_order(b"\x00" * 31))
+        self.assertFalse(ed25519.small_order(ed25519.public_key(KEY)))
+        with mock.patch.object(update, "_load_pkg", lambda name, default: {"keys": [identity.hex(), ed25519.public_key(KEY).hex()]}):
+            self.assertEqual(update.release_keys(), [ed25519.public_key(KEY)])
 
     def test_shipped_release_keys_hold_no_secret(self):
         with open(os.path.join(update.PKG, "release_keys.json"), encoding="utf-8") as f: keys = json.load(f)

@@ -25,6 +25,24 @@ What users get with `stemseal update`. N starts at 1 and goes up by one.
 A release that is not signed with a key in `stemseal/release_keys.json` is not taken by anyone. That file holds public
 keys only.
 
+Withdrawn cells: each `release.json` carries every withdrawal of the releases before it; `stemseal release` refuses to
+write release N when `stemseal/cells/release.json` is not release N-1 as `trusted_releases.json` lists it. Clients also
+keep every withdrawal they have taken, so a release that leaves one out does not bring a cell back.
+
+## When a release key is lost or stolen
+
+The trusted public keys are inside each stemseal version, so a key is retired by a new version:
+
+1. The owner tells the working thread at once (what and when; never the passphrase or the key file).
+2. A pull request removes that key from `stemseal/release_keys.json` and raises the version; the owner publishes it.
+3. The next cell release is signed with the remaining key and sets `min_client` to that version. Clients on the new
+   version no longer accept the retired key; older clients refuse this release and are told to update stemseal.
+4. Users are told to update stemseal (README, release notes, an issue).
+
+Limit: a client that stays on an older version keeps trusting the retired key, and so keeps accepting releases signed
+with it. Step 4 is what reaches those users. Signing a release that withdraws cells with the spare key withdraws cells
+only; it does not retire a key.
+
 ## Package release (tag `v*`)
 
 1. Pull request raising the version in `pyproject.toml` and `stemseal/__init__.py`, with `release_keys.json` and
