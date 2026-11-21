@@ -4,8 +4,9 @@
   stemseal find <need words...>      cells that fit a need
   stemseal call <cell> '<json>'      run a cell (or @file.json)
   stemseal verify                    re-check every lock (all files it covers), the checker and every ground-truth case
-  stemseal reseal <cell ...> | --all [--dry-run]
-                                     give your own cells (format 1 lock) a format 2 lock at the same version, after re-checking them here
+  stemseal reseal <cell ...> | --all [--dry-run] [--yes]
+                                     give your own cells (format 1 lock) a format 2 lock at the same version, after re-checking them
+                                     here; it seals contract.json and gt_cases.json as they are now, and shows them before writing
   stemseal request <need words...> [--example "<input -> answer>"]
                                      record a cell you needed; prints a link you can open to ask for it
   stemseal demand                    your unmet needs, alike requests grouped and counted (kept only on this machine)
@@ -100,7 +101,17 @@ def main(argv=None):
         dry = "--dry-run" in rest; names = [x for x in rest if not x.startswith("--")]
         if cmd == "relock": r = _r.relock(dry_run=dry); _p(r); return 0 if r["ok"] else 1
         if not names and "--all" not in rest: print(__doc__); return 2
-        r = _r.reseal(names or None, dry_run=dry); _p(r); return 1 if r["failed"] else 0
+        def confirm(plan):
+            print("These cells will be sealed as their files are now (contract.json and gt_cases.json included):", file=sys.stderr)
+            for x in plan:
+                print("  %s %s  %s" % (x["cell"], x["version"], x["description"]), file=sys.stderr)
+                for f, h in x["files"].items(): print("      %-14s %s" % (f, h), file=sys.stderr)
+            if "--yes" in rest: return True
+            if not sys.stdin.isatty(): print("Not sealed: add --yes to agree without a prompt.", file=sys.stderr); return False
+            try: return input("Seal these %d cell(s)? [y/N] " % len(plan)).strip().lower() in ("y", "yes")
+            except EOFError: return False
+        r = _r.reseal(names or None, dry_run=dry, confirm=confirm); _p(r)
+        return 1 if r["failed"] or (r["plan"] and not dry and not r["confirmed"]) else 0
     elif cmd == "index": _p({k: list(v) for k, v in upd.build_index()["cells"].items()})
     elif cmd == "mcp":
         from . import mcp as _m; _m.main(); return 0

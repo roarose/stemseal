@@ -79,6 +79,7 @@ def update(check_only=False):
             dest = os.path.join(hub.USER_CELLS, name, v)
             if os.path.isdir(dest): shutil.rmtree(dest)
             shutil.copytree(tmp, dest)
+            if seal.problem(lock, {}) is None: hub.mark_sealed(name, v, meta["sha256"])
             hub._log({"type": "update", "cell": name, "version": v, "sha256": meta["sha256"]})
             for t in meta.get("answers", []): hub._log({"type": "fulfilled", "ticket": t, "cell": name})
             done.append({"cell": name, "version": v, "description": meta.get("description")})

@@ -35,7 +35,8 @@ class Place(unittest.TestCase):
         self.cells = os.path.join(self.tmp, "shipped"); shutil.copytree(SHIPPED, self.cells)
         self.user = os.path.join(self.tmp, "user"); os.makedirs(self.user)
         self.patches = [mock.patch.object(hub, "CELLS", self.cells), mock.patch.object(hub, "USER_CELLS", self.user),
-                        mock.patch.object(hub, "LEDGER", os.path.join(self.tmp, "ledger.jsonl")), mock.patch.object(hub, "_TAMPER_SEEN", set())]
+                        mock.patch.object(hub, "LEDGER", os.path.join(self.tmp, "ledger.jsonl")), mock.patch.object(hub, "_TAMPER_SEEN", set()),
+                        mock.patch.object(hub, "STATE", os.path.join(self.tmp, "state.json"))]
         for p in self.patches: p.start()
     def tearDown(self):
         for p in self.patches: p.stop()
@@ -183,9 +184,13 @@ class Reseal(Place):
 
         dry = reseal.reseal(dry_run=True)
         self.assertEqual({p: open(p, "rb").read() for p in glob.glob(os.path.join(self.user, "*", "*", "*"))}, before)
-        self.assertEqual([x["cell"] for x in dry["resealed"]], ["good_cell"])
+        self.assertEqual(dry["resealed"], [])
 
-        r = reseal.reseal()
+        self.assertEqual([x["cell"] for x in dry["plan"]], ["good_cell"])
+        no = reseal.reseal()                                       # nothing is written without agreement
+        self.assertEqual((no["resealed"], no["confirmed"]), ([], False))
+        self.assertEqual({p: open(p, "rb").read() for p in glob.glob(os.path.join(self.user, "*", "*", "*"))}, before)
+        r = reseal.reseal(confirm=lambda plan: True)
         self.assertEqual([x["cell"] for x in r["resealed"]], ["good_cell"])
         why = {x["cell"]: x["why"] for x in r["failed"]}
         self.assertEqual(set(why), {"changed_cell", "import_cell", "few_cases", "wrong_case"})
@@ -202,14 +207,147 @@ class Reseal(Place):
 
     def test_reseal_by_name(self):
         make(self.user, "one_cell", fmt=1); make(self.user, "two_cell", fmt=1)
-        r = reseal.reseal(["two_cell", "not_here"])
+        r = reseal.reseal(["two_cell", "not_here"], confirm=lambda plan: True)
         self.assertEqual([x["cell"] for x in r["resealed"]], ["two_cell"])
         self.assertEqual([x["cell"] for x in r["skipped"]], ["not_here"])
         self.assertIsNone(self.lock_of("one_cell").get("format"))
 
     def test_reseal_does_not_touch_shipped_cells(self):
-        r = reseal.reseal(["vat_supply_price"])
+        r = reseal.reseal(["vat_supply_price"], confirm=lambda plan: True)
         self.assertEqual(r["resealed"], []); self.assertEqual(len(r["skipped"]), 1)
+
+def make_v1_as_written(base, name, contract, crlf=False, locked_by="t"):
+    """A format 1 cell written the way format 1 register wrote it (json.dump, indent=1, ensure_ascii=False); crlf: as on Windows,
+    where contract.json and lock.json were written in text mode. cell.py was always written with \n."""
+    d = os.path.join(base, name, "1.0"); os.makedirs(d)
+    nl = "\r\n" if crlf else "\n"
+    def text(o, indent=1): return json.dumps(o, ensure_ascii=False, indent=indent).replace("\n", nl).encode("utf-8")
+    with open(os.path.join(d, "cell.py"), "wb") as f: f.write(OK_CELL.encode("utf-8"))
+    with open(os.path.join(d, "contract.json"), "wb") as f: f.write(text(contract))
+    with open(os.path.join(d, "gt_cases.json"), "wb") as f: f.write(json.dumps(GT, ensure_ascii=False).encode("utf-8"))
+    lock = {"cell": name, "version": "1.0", "sha256": seal.sha(OK_CELL.encode("utf-8")), "gt_total": 20, "gt_passed": 20,
+            "deterministic": True, "locked_at": "2026-11-18T06:59:09+00:00", "locked_by": locked_by}
+    with open(os.path.join(d, "lock.json"), "wb") as f: f.write(text(lock))
+    return d
+
+class ResealOnlyFormat1(Place):
+    """reseal seals a cell that has only ever had a format 1 lock on this machine, and only after the person agrees."""
+    YES = staticmethod(lambda plan: True)
+    def sealed_then_changed(self, name):
+        r = hub.register(name, OK_CELL, dict(CONTRACT), GT, base=self.user); self.assertTrue(r["locked"])
+        d = os.path.join(self.user, name, "1.0")
+        with open(os.path.join(d, "contract.json"), "rb") as f: data = f.read()
+        with open(os.path.join(d, "contract.json"), "wb") as f: f.write(data.replace(b"doubles x", b"doubles x again"))
+        return d, json.loads(seal.read_bytes(d, "lock.json"))
+    def put_lock(self, d, lock):
+        with open(os.path.join(d, "lock.json"), "wb") as f: f.write(b(lock))
+    def files(self): return {p: open(p, "rb").read() for p in glob.glob(os.path.join(self.user, "*", "*", "*"))}
+
+    def test_a_format_2_lock_is_never_taken_for_format_1(self):
+        variants = {"no format": lambda L: {k: v for k, v in L.items() if k != "format"},
+                    "format 1": lambda L: dict(L, format=1), "format true": lambda L: dict(L, format=True),
+                    "format 1.0": lambda L: dict(L, format=1.0), "format text": lambda L: dict(L, format="1"),
+                    "extra key": lambda L: dict({k: v for k, v in L.items() if k not in ("format", "kind", "files", "policy")}, note="x")}
+        for label, change in variants.items():
+            with self.subTest(variant=label):
+                name = "v_" + label.replace(" ", "_").replace(".", "_")
+                d, lock = self.sealed_then_changed(name); self.put_lock(d, change(lock))
+                self.assertEqual(seal.problem(change(lock), {}), "lock.json")
+                r = hub.call(name, {"x": 1}, caller="t")
+                self.assertEqual(r["reason"], "cell files do not match the lock (lock.json)")
+                before = self.files()
+                for args in ([name], None):
+                    out = reseal.reseal(args, confirm=self.YES)
+                    self.assertEqual(out["resealed"], []); self.assertNotIn(name, [x["cell"] for x in out["plan"]])
+                self.assertEqual(self.files(), before)
+                shutil.rmtree(os.path.join(self.user, name))
+
+    def test_a_version_held_with_format_2_stays_refused_with_a_plain_format_1_lock(self):
+        d, lock = self.sealed_then_changed("held_cell")
+        self.put_lock(d, {k: v for k, v in lock.items() if k in seal.V1_KEYS})
+        self.assertEqual(hub.inspect("held_cell")["seal"], "lock.json")
+        self.assertEqual(hub.call("held_cell", {"x": 1}, caller="t")["reason"], "cell files do not match the lock (lock.json)")
+        self.assertEqual({u["cell"]: u["why"] for u in hub.unsealed()}["held_cell"], "cell files do not match the lock (lock.json)")
+        before = self.files()
+        for args in (["held_cell"], None):
+            out = reseal.reseal(args, confirm=self.YES)
+            self.assertEqual(out["resealed"], []); self.assertEqual(out["plan"], [])
+            self.assertIn("format 2", {x["cell"]: x["why"] for x in out["failed"]}["held_cell"])
+        self.assertEqual(self.files(), before)
+
+    def test_a_cell_update_installed_is_left_to_update(self):
+        d = make(self.user, "got_cell", fmt=1)
+        hub._log({"type": "update", "cell": "got_cell", "version": "1.0", "sha256": seal.sha(seal.read_bytes(d, "cell.py"))})
+        before = self.files()
+        for args in (["got_cell"], None):
+            out = reseal.reseal(args, confirm=self.YES)
+            self.assertEqual(out["resealed"], [])
+            self.assertEqual({x["cell"]: x["why"] for x in out["failed"]}["got_cell"], "installed by stemseal update; run: stemseal update")
+        self.assertEqual(self.files(), before)
+
+    def test_what_is_shown_before_sealing(self):
+        d = make(self.user, "shown_cell", contract=dict(CONTRACT, description="첫 줄 설명\n둘째 줄"), fmt=1)
+        seen = []
+        out = reseal.reseal(["shown_cell"], confirm=lambda plan: seen.append(plan) or False)
+        self.assertEqual((out["resealed"], out["confirmed"]), ([], False)); self.assertIsNone(json.loads(seal.read_bytes(d, "lock.json")).get("format"))
+        (x,), = seen
+        self.assertEqual((x["cell"], x["version"], x["description"]), ("shown_cell", "1.0", "첫 줄 설명"))
+        self.assertEqual(x["files"], {f: seal.sha(seal.read_bytes(d, f)) for f in seal.SEALED})
+        out = reseal.reseal(["shown_cell"], confirm=self.YES)
+        self.assertEqual(out["resealed"], [{"cell": "shown_cell", "version": "1.0"}])
+        self.assertEqual(json.loads(seal.read_bytes(d, "lock.json"))["files"], x["files"])
+        self.assertTrue(hub.was_sealed("shown_cell", "1.0"))
+
+    def test_cells_in_the_format_of_the_store_laptop_and_rose_pc(self):
+        store = dict(CONTRACT, description="메뉴 주문 합계. 메뉴 이름과 수량으로 합계 금액을 낸다.", when_to_use="손님이 여러 메뉴를 주문했을 때",
+                     description_en="Order total from menu names and counts.")
+        rose = dict(CONTRACT, description="일일 정산. 주문 목록에 할인과 부가세 규칙을 적용해 합계를 낸다. Daily settlement.")
+        d1 = make_v1_as_written(self.user, "store_menu_total", store, crlf=True, locked_by="store laptop (boss 2026-11-20)")
+        d2 = make_v1_as_written(self.user, "rose_settlement", rose, crlf=False, locked_by="exp11-demand (boss 2026-11-18)")
+        for d in (d1, d2): self.assertEqual(seal.problem(json.loads(seal.read_bytes(d, "lock.json")), {}), seal.OLD)
+        self.assertEqual(hub.call("store_menu_total", {"x": 1}, caller="t")["reason"], "cell needs re-sealing on this machine")
+        out = reseal.reseal(None, confirm=self.YES)
+        self.assertEqual(sorted(x["cell"] for x in out["resealed"]), ["rose_settlement", "store_menu_total"])
+        for name, d in (("store_menu_total", d1), ("rose_settlement", d2)):
+            self.assertIsNone(seal.problem_all(json.loads(seal.read_bytes(d, "lock.json")), d, name, "1.0"))
+            self.assertEqual(hub.call(name, {"x": 3}, caller="t")["result"], {"v": 6})
+        self.assertIn(b"\r\n", seal.read_bytes(d1, "lock.v1.json"))
+
+class DeepResults(Place):
+    def test_deep_result_without_schema_is_refused_and_logged(self):
+        for depth in (65, 1500, 5000):
+            with self.subTest(depth=depth):
+                shutil.rmtree(os.path.join(self.user, "deep_cell"), ignore_errors=True)
+                src = "def cell_executor(input_data):\n    v = 1\n    for i in range(%d):\n        v = [v]\n    return {\"v\": v}\n" % depth
+                make(self.user, "deep_cell", src=src)
+                r = hub.call("deep_cell", {"x": 1}, caller="t")
+                self.assertEqual(r["status"], "not_available"); self.assertIsNone(r["result"])
+        rows = [x for x in hub._rows("call") if x.get("cell") == "deep_cell"]
+        self.assertEqual(len(rows), 3); self.assertTrue(all(x["status"] == "not_available" for x in rows))
+
+    def test_nesting_up_to_the_limit_still_passes(self):
+        src = "def cell_executor(input_data):\n    v = 1\n    for i in range(%d):\n        v = [v]\n    return {\"v\": v}\n" % (shape.HARD_DEPTH - 1)
+        make(self.user, "deep_cell", src=src)
+        self.assertEqual(hub.call("deep_cell", {"x": 1}, caller="t")["status"], "ok")
+
+class MinimalLedgerKeys(Place):
+    def test_minimal_keeps_only_declared_key_names(self):
+        src = "def cell_executor(input_data):\n    return {\"v\": 1, \"홍길동 010-1234\": 2}\n"
+        make(self.user, "keys_cell", src=src, contract=dict(CONTRACT, output_schema={"v": "number"}))
+        with mock.patch.dict(os.environ, {"STEMSEAL_LOG": "minimal"}):
+            r = hub.call("keys_cell", {"x": 1}, caller="t")
+            self.assertEqual(r["reason"], "cell returned an unexpected result")
+            hub.call("keys_cell", {"김철수 고객": 1}, caller="t")
+        with open(hub.LEDGER, encoding="utf-8") as f: text = f.read()
+        for word in ("홍길동", "010-", "김철수"): self.assertNotIn(word, text)
+        rows = [x for x in hub._rows("call") if x.get("cell") == "keys_cell"]
+        self.assertIn("1 other", rows[0]["reason"])
+        self.assertEqual((rows[1]["input_keys"], rows[1]["input_other"]), ([], 1))
+
+    def test_full_mode_keeps_input_key_names(self):
+        make(self.user, "keys_cell")
+        with mock.patch.dict(os.environ, {"STEMSEAL_LOG": "full"}): hub.call("keys_cell", {"y": 1}, caller="t")
+        self.assertEqual([x for x in hub._rows("call") if x.get("cell") == "keys_cell"][0]["input_keys"], ["y"])
 
 class Relock(Place):
     def test_relock_does_not_reissue_a_changed_cell(self):
@@ -218,8 +356,24 @@ class Relock(Place):
         before = {p: open(p, "rb").read() for p in glob.glob(os.path.join(self.cells, "*", "*", "lock.json"))}
         r = reseal.relock(base=self.cells)
         self.assertFalse(r["ok"]); self.assertFalse(r["written"])
-        self.assertEqual([x["cell"] for x in r["failed"]], ["vat_supply_price"])
+        why = {x["cell"]: x["why"] for x in r["failed"]}
+        self.assertEqual(sorted(why), ["food_calories", "vat_supply_price"])
+        self.assertIn("contract.json", why["food_calories"])
         self.assertEqual({p: open(p, "rb").read() for p in glob.glob(os.path.join(self.cells, "*", "*", "lock.json"))}, before)
+
+    def test_relock_keeps_a_format_2_lock_whose_files_match(self):
+        d = os.path.join(self.cells, "vat_supply_price/1.0"); lock = json.loads(seal.read_bytes(d, "lock.json"))
+        lock["policy"] = lock["policy"] - 1 if lock["policy"] > 0 else lock["policy"] + 1          # only the policy number differs
+        with open(os.path.join(d, "lock.json"), "wb") as f: f.write(seal.dumps(lock))
+        r = reseal.relock(base=self.cells)
+        self.assertEqual((r["ok"], r["changed"]), (True, [os.path.join("vat_supply_price", "1.0")]))
+
+    def test_relock_refuses_a_lock_that_is_neither_format(self):
+        d = os.path.join(self.cells, "vat_supply_price/1.0"); lock = json.loads(seal.read_bytes(d, "lock.json"))
+        del lock["format"]
+        with open(os.path.join(d, "lock.json"), "wb") as f: f.write(b(lock))
+        r = reseal.relock(base=self.cells)
+        self.assertFalse(r["ok"]); self.assertEqual([x["cell"] for x in r["failed"]], ["vat_supply_price"])
 
     def test_relock_from_format_1(self):
         d = os.path.join(self.cells, "vat_supply_price/1.0")
@@ -298,9 +452,21 @@ class Shape(unittest.TestCase):
         self.assertIsNotNone(shape.problem({"a": 1}, {"a": "number", "b": "number"}))
         self.assertIsNotNone(shape.problem({"a": 1, "b": 1}, {"a": "number"}))
 
-    def test_without_schema_only_strings_are_limited(self):
+    def test_without_schema_only_strings_and_nesting_are_limited(self):
         self.assertIsNone(shape.problem({"k": [[[[[1]]]]], "n": list(range(500))}))
         self.assertIsNotNone(shape.problem({"k": [{"a": "x" * 201}]}))
+        def nest(n):
+            v = 1
+            for _ in range(n): v = [v]
+            return {"k": v}
+        self.assertIsNone(shape.problem(nest(shape.HARD_DEPTH - 1)))
+        for n in (shape.HARD_DEPTH, 100000):
+            self.assertEqual(shape.problem(nest(n)), "nested deeper than %d levels" % shape.HARD_DEPTH)
+        self.assertEqual(shape.problem(nest(100000), {"k": "list"}), "nested deeper than %d levels" % shape.MAX_DEPTH)
+
+    def test_key_names_outside_the_schema_are_not_repeated(self):
+        p = shape.problem({"a": 1, "홍길동 010-1234": 2, "x": 3}, {"a": "number", "b": "number"})
+        self.assertNotIn("홍길동", p); self.assertNotIn("x'", p); self.assertIn("'b'", p); self.assertIn("2 other", p)
 
 if __name__ == "__main__":
     unittest.main()

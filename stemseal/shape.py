@@ -15,7 +15,7 @@ a result is then not passed on.
     a string                at most MAX_STR characters, anywhere in the result, keys included
     the whole result        at most MAX_BYTES bytes as JSON
 
-Without output_schema only the string rule applies. Standard library only."""
+Without output_schema only the string rule and a nesting limit of HARD_DEPTH levels apply. Standard library only."""
 import json, math
 
 MAX_DEPTH = 4
@@ -23,6 +23,7 @@ MAX_ITEMS = 100
 MAX_KEYS = 32
 MAX_STR = 200
 MAX_BYTES = 16 * 1024
+HARD_DEPTH = 64          # nesting limit for every result, with or without output_schema
 SCALAR = ("number", "integer", "boolean", "string")
 SHALLOW = ("list", "object")
 
@@ -58,11 +59,20 @@ def _fits(v, parsed):
     return isinstance(v, dict)
 
 def _walk(v, depth, bounds):
-    """What in v is outside the bounds, or None."""
-    if v is None or isinstance(v, bool) or isinstance(v, int): return None
-    if isinstance(v, float): return None if math.isfinite(v) else "a number that is not finite"
-    if isinstance(v, str): return None if len(v) <= MAX_STR else "a string longer than %d characters" % MAX_STR
-    if isinstance(v, (list, dict)):
+    """What in v is outside the bounds, or None. Walked with a list, not by recursion; deeper than HARD_DEPTH is refused
+    with or without a schema."""
+    stack = [(v, depth)]
+    while stack:
+        v, depth = stack.pop()
+        if v is None or isinstance(v, bool) or isinstance(v, int): continue
+        if isinstance(v, float):
+            if math.isfinite(v): continue
+            return "a number that is not finite"
+        if isinstance(v, str):
+            if len(v) <= MAX_STR: continue
+            return "a string longer than %d characters" % MAX_STR
+        if not isinstance(v, (list, dict)): return "a value that is not plain JSON"
+        if depth > HARD_DEPTH: return "nested deeper than %d levels" % HARD_DEPTH
         if bounds and depth > MAX_DEPTH: return "nested deeper than %d levels" % MAX_DEPTH
         if isinstance(v, list):
             if bounds and len(v) > MAX_ITEMS: return "a list longer than %d items" % MAX_ITEMS
@@ -72,12 +82,9 @@ def _walk(v, depth, bounds):
             for k in v:
                 if not isinstance(k, str): return "an object key that is not a string"
                 if len(k) > MAX_STR: return "a string longer than %d characters" % MAX_STR
-            items = v.values()
-        for x in items:
-            p = _walk(x, depth + 1, bounds)
-            if p: return p
-        return None
-    return "a value that is not plain JSON"
+            items = list(v.values())
+        stack.extend((x, depth + 1) for x in reversed(items))
+    return None
 
 def problem(out, schema=None):
     """None when the result fits; otherwise a short description of the first thing that does not."""
@@ -87,7 +94,7 @@ def problem(out, schema=None):
     if bad: return bad
     if set(out) != set(schema):
         missing, extra = sorted(set(schema) - set(out)), sorted(set(out) - set(schema))
-        return "keys differ from output_schema (missing %s, extra %s)" % (missing[:5], [k[:40] for k in extra[:5]])
+        return "keys differ from output_schema (missing %s, %d other)" % (missing[:5], len(extra))   # only the schema's own key names
     p = _walk(out, 1, True)
     if p: return p
     for k, spec in schema.items():

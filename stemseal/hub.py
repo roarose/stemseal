@@ -29,6 +29,7 @@ CELLS = os.environ.get("STEMSEAL_CELLS") or os.path.join(PKG, "cells")   # cells
 USER_CELLS = os.path.join(HOME, "cells")                                    # cells added later by `stemseal update`
 def _dirs(): return [CELLS] + ([USER_CELLS] if os.path.abspath(USER_CELLS) != os.path.abspath(CELLS) else [])
 LEDGER = os.path.join(HOME, "ledger.jsonl")
+STATE = os.path.join(HOME, "state.json")    # this machine's record of cell versions it has held with a format 2 lock
 REPO = "https://github.com/roarose/stemseal"
 MIN_GT = 20                      # a cell needs at least this many ground-truth cases to be locked
 CALL_TIMEOUT = 5                 # seconds per call
@@ -236,6 +237,7 @@ def inspect(name, version=None):
     if not d: return None
     v = os.path.basename(d); lock = _json(seal.read_bytes(d, "lock.json")); raw = seal.read_bytes(d, "contract.json")
     problem = seal.problem(lock, {"contract.json": raw}, name, v)
+    if problem == seal.OLD and was_sealed(name, v): problem = "lock.json"    # held here with a format 2 lock before
     contract = _json(raw)
     if problem is None and not (isinstance(contract, dict) and isinstance(contract.get("description"), str) and isinstance(contract.get("input_schema"), dict)):
         problem = "contract.json"
@@ -266,6 +268,25 @@ def list_cells():
                     "description_en": c["contract"].get("description_en", ""), "when_to_use_en": c["contract"].get("when_to_use_en", ""),
                     "required_inputs": c["contract"]["input_schema"].get("required", []), "gt_cases": c["lock"]["gt_total"], "locked_at": c["lock"]["locked_at"]})
     return out
+def _state():
+    try:
+        with open(STATE, encoding="utf-8") as f: s = json.load(f)
+        return s if isinstance(s, dict) else {}
+    except (OSError, ValueError): return {}
+def mark_sealed(name, version, sha256):
+    """Record that this machine holds name/version with a format 2 lock (kept outside the cell folder, in state.json).
+    Such a version is never taken for a format 1 cell again: reseal refuses it and its use is refused."""
+    try:
+        s = _state(); rec = s.get("sealed") if isinstance(s.get("sealed"), dict) else {}
+        rec["%s/%s" % (name, version)] = sha256; s["sealed"] = rec
+        os.makedirs(os.path.dirname(STATE), exist_ok=True)
+        fd, tmp = tempfile.mkstemp(dir=os.path.dirname(STATE), prefix=".state_", suffix=".tmp")
+        with os.fdopen(fd, "w", encoding="utf-8") as f: json.dump(s, f, ensure_ascii=False, indent=1)
+        os.replace(tmp, STATE)
+    except Exception: pass
+def was_sealed(name, version):
+    s = _state().get("sealed")
+    return isinstance(s, dict) and "%s/%s" % (name, version) in s
 def _from_update(name, version, lock):
     """True when this machine's ledger says `stemseal update` installed this very cell file."""
     return any(r.get("cell") == name and r.get("version") == version and r.get("sha256") == lock.get("sha256") for r in _rows("update"))
@@ -310,7 +331,7 @@ def register(name, src, contract, gt_cases, locked_by="unknown", base=None):
     for f in ("contract.json", "gt_cases.json"):
         with open(os.path.join(d, f), "wb") as fh: fh.write(raw[f])
     lock = seal.build(name, version, raw, policy.POLICY_VERSION, rep["total"], rep["passed"], now(), locked_by)
-    seal.write(d, lock)
+    seal.write(d, lock); mark_sealed(name, version, lock["sha256"])
     _log({"type": "lock", "cell": name, "version": version, "sha256": lock["sha256"], "gt": rep["total"], "by": locked_by})
     return {"locked": True, "cell": name, "version": version, "sha256": lock["sha256"], "report": rep}
 
@@ -351,7 +372,15 @@ def call(name, input_data, caller="unknown", version=None, model=None, decorate=
         rec = {"type": "call", "cell": name, "version": ver, "status": status, "caller": caller, "ms": round((time.time() - t0) * 1000, 1),
                "input_sha": sha(json.dumps(input_data, sort_keys=True, ensure_ascii=False))[:16] if isinstance(input_data, dict) else None,
                "reason": reason if log_reason is None else log_reason}
-        if status != "ok" and isinstance(input_data, dict): rec["input_keys"] = sorted(str(k) for k in input_data)[:12]   # names only, never values
+        if status != "ok" and isinstance(input_data, dict):
+            keys = sorted(str(k) for k in input_data)        # names only, never values
+            if log_mode() == "minimal":                      # minimal: only names the cell's contract declares, others counted
+                sch = c["contract"].get("input_schema", {}) if c else {}
+                declared = set(sch.get("properties", {})) | set(sch.get("required", [])) if isinstance(sch, dict) else set()
+                kept = [k for k in keys if k in declared]
+                if len(kept) < len(keys): rec["input_other"] = len(keys) - len(kept)
+                keys = kept
+            rec["input_keys"] = keys[:12]
         out = {"status": status, "cell": name, "version": ver, "verified": status == "ok", "result": result, "reason": reason}
         if status == "invalid_input" and c: out["how_to_fix"] = input_help(c)
         if decorate: decorate(out)

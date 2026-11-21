@@ -16,11 +16,18 @@ FORMAT = 2
 SEALED = ("cell.py", "contract.json", "gt_cases.json")      # what a cell's lock lists
 KINDS = {"cell": SEALED}                                    # kind -> files its lock must list; any other kind is not used
 OLD = "old lock format"
+V1_KEYS = {"cell", "version", "sha256", "gt_total", "gt_passed", "deterministic", "locked_at", "locked_by"}   # all a format 1 lock has
 _HEX = re.compile(r"[0-9a-f]{64}")
 _NAME = re.compile(r"[a-z0-9_][a-z0-9_.-]{0,63}")
 def kind(lock): return lock.get("kind", "cell") if isinstance(lock, dict) else None
 
 def sha(b): return hashlib.sha256(b).hexdigest()
+
+def is_v1(lock):
+    """True only for a format 1 lock as format 1 wrote it: no "format", or the whole number 1, and no other keys than V1_KEYS."""
+    if not isinstance(lock, dict): return False
+    f = lock.get("format", 1)
+    return type(f) is int and f == 1 and set(lock) <= V1_KEYS | {"format"}
 
 def read_bytes(d, name):
     try:
@@ -30,9 +37,9 @@ def read_bytes(d, name):
 def problem(lock, raw, name=None, version=None):
     """None when the lock is a well-formed format 2 lock for this cell and every file in raw ({file name: bytes}) is listed
     in it and matches it. Otherwise OLD for a format 1 lock, or the name of the first file that does not match ("lock.json"
-    when the lock itself is not in order)."""
+    when the lock itself is not in order). A lock is format 1 only as is_v1() says; anything else not in order is "lock.json"."""
     if not isinstance(lock, dict): return "lock.json"
-    if "format" not in lock or lock.get("format") == 1: return OLD
+    if is_v1(lock): return OLD
     if lock.get("format") != FORMAT or kind(lock) not in KINDS: return "lock.json"
     files = lock.get("files")
     if not (isinstance(files, dict) and all(isinstance(f, str) and _NAME.fullmatch(f) and f != "lock.json" and isinstance(h, str) and _HEX.fullmatch(h)
