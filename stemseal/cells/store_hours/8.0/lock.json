@@ -1,0 +1,18 @@
+{
+ "format": 2,
+ "kind": "cell",
+ "cell": "store_hours",
+ "version": "8.0",
+ "sha256": "d3a114be6e421439d2013de00eb588090f54f9b77cdf494be56ddde255a83217",
+ "files": {
+  "cell.py": "d3a114be6e421439d2013de00eb588090f54f9b77cdf494be56ddde255a83217",
+  "contract.json": "1426dbb6f2d4c96bf2f9a7aae8b1be0ae5fcd0b954f928dd692dcf0ad4b06b64",
+  "gt_cases.json": "66762d7b1c7eb4e3831fb0edecb2196721b74e7de1fa591c4f17e14936b97503"
+ },
+ "policy": 2,
+ "gt_total": 52,
+ "gt_passed": 52,
+ "deterministic": true,
+ "locked_at": "2026-11-21T09:21:12+00:00",
+ "locked_by": "claude-store-review-20261121"
+}

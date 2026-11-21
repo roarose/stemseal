@@ -1,0 +1,18 @@
+{
+ "format": 2,
+ "kind": "cell",
+ "cell": "party_set",
+ "version": "5.0",
+ "sha256": "d2fc316e2684d1f16cddb5da304f7819ea3621404cbb54c638d2c18ee6e8a505",
+ "files": {
+  "cell.py": "d2fc316e2684d1f16cddb5da304f7819ea3621404cbb54c638d2c18ee6e8a505",
+  "contract.json": "15ab5936dedfd034ad3a496601bb1fb1d070a6bb3eb6a906f979e58369bd041e",
+  "gt_cases.json": "f95501ee0d5722cf12158bf8c5916ba8c5a697102c26dfbadfdb8653cb77a438"
+ },
+ "policy": 2,
+ "gt_total": 62,
+ "gt_passed": 62,
+ "deterministic": true,
+ "locked_at": "2026-11-21T09:21:12+00:00",
+ "locked_by": "claude-store-review-20261121"
+}
