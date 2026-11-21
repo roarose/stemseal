@@ -10,7 +10,7 @@ Only runs when you type it; nothing else in stemseal touches the network. Nothin
   stemseal update --check  only list what is new
 Maintainers: `stemseal index` rewrites stemseal/cells/index.json from the shipped cells before a push."""
 import json, os, shutil, tempfile, urllib.request
-from . import hub
+from . import hub, seal
 
 RAW = os.environ.get("STEMSEAL_INDEX_URL", "https://raw.githubusercontent.com/roarose/stemseal/main/stemseal/cells")
 FILES = ("cell.py", "contract.json", "gt_cases.json", "lock.json")
@@ -35,12 +35,16 @@ def _get(url, timeout=20):
     with urllib.request.urlopen(req, timeout=timeout) as r: return r.read()
 
 def new_cells(index):
-    have = {}
-    for c in hub.list_cells(): have[c["cell"]] = hub._versions(c["cell"])
+    """Versions this machine lacks, and versions `update` installed earlier that still have a format 1 lock (same cell file)."""
     todo = []
     for name, vers in index.get("cells", {}).items():
+        found = hub._found(name)
         for v, meta in sorted(vers.items(), key=lambda x: hub._vkey(x[0])):
-            if v not in have.get(name, []): todo.append((name, v, meta))
+            if v not in found: todo.append((name, v, meta)); continue
+            c = hub.inspect(name, v)
+            if c and c["seal"] == seal.OLD and os.path.dirname(os.path.dirname(c["dir"])) == os.path.abspath(hub.USER_CELLS) \
+                    and hub._from_update(name, v, c["lock"]) and c["lock"].get("sha256") == meta.get("sha256"):
+                todo.append((name, v, meta))
     return todo
 
 def update(check_only=False):
@@ -59,10 +63,14 @@ def update(check_only=False):
             why = None
             if hub.sha(src) != meta["sha256"] or lock.get("sha256") != meta["sha256"]: why = "sha256 does not match the index"
             if not why:
+                p = seal.problem_all(lock, tmp, name, v)
+                if p: why = "lock: %s" % p
+            if not why:
                 problems = hub.purity_check(src)
                 if problems: why = "policy gate: %s" % problems
             if not why:
-                rep = hub.gt_check(src, json.load(open(os.path.join(tmp, "gt_cases.json"), encoding="utf-8")))
+                schema = json.load(open(os.path.join(tmp, "contract.json"), encoding="utf-8")).get("output_schema")
+                rep = hub.gt_check(src, json.load(open(os.path.join(tmp, "gt_cases.json"), encoding="utf-8")), schema)
                 if rep["passed"] != rep["total"] or rep["total"] < hub.MIN_GT or not rep["deterministic"]:
                     why = "ground-truth gate on this machine: %d/%d" % (rep["passed"], rep["total"])
             if why: refused.append({"cell": name, "version": v, "reason": why}); continue
@@ -71,6 +79,7 @@ def update(check_only=False):
             dest = os.path.join(hub.USER_CELLS, name, v)
             if os.path.isdir(dest): shutil.rmtree(dest)
             shutil.copytree(tmp, dest)
+            if seal.problem(lock, {}) is None: hub.mark_sealed(name, v, meta["sha256"])
             hub._log({"type": "update", "cell": name, "version": v, "sha256": meta["sha256"]})
             for t in meta.get("answers", []): hub._log({"type": "fulfilled", "ticket": t, "cell": name})
             done.append({"cell": name, "version": v, "description": meta.get("description")})

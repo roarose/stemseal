@@ -1,7 +1,15 @@
 {
+ "format": 2,
+ "kind": "cell",
  "cell": "price_for_target_margin",
  "version": "1.0",
  "sha256": "02d858af1b792c37ceb7b932764a327f6719dd9aa26b230461b40330a2d909d8",
+ "files": {
+  "cell.py": "02d858af1b792c37ceb7b932764a327f6719dd9aa26b230461b40330a2d909d8",
+  "contract.json": "c39221e20ad2be894759074260ef2d3a888362cd3df1e8525ec036d38dcdaa60",
+  "gt_cases.json": "304d16e6a71c9daf06eff0d7021a829d1140508310d09efb17d282dd4dd74660"
+ },
+ "policy": 2,
  "gt_total": 24,
  "gt_passed": 24,
  "deterministic": true,

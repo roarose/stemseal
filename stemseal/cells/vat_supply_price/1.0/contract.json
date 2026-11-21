@@ -28,6 +28,10 @@
   "supply_price",
   "vat"
  ],
+ "output_schema": {
+  "supply_price": "number",
+  "vat": "number"
+ },
  "description_en": "Split a VAT-included amount into supply price and VAT (Korean practice: VAT truncated below 1 won, supply = total - VAT).",
  "when_to_use_en": "When you have a price or total that includes VAT and need the supply price (net of VAT) or the VAT. Not for adding VAT to a net price.",
  "input_aliases": {

@@ -33,6 +33,12 @@
   "lines",
   "total"
  ],
+ "output_schema": {
+  "answer_ready": "boolean",
+  "ask_customer": "string?",
+  "lines": "list",
+  "total": "number?"
+ },
  "raw_text": true,
  "description_en": "Order total from a customer's dish names and counts, priced only from the store's menu. When the words fit several dishes, miss a size, break a minimum-people rule, or are not on the menu, it does not compute: answer_ready is false and ask_customer holds the question to ask.",
  "when_to_use_en": "A customer orders or asks a price by dish name. Pass their whole sentence, the store's menu, and their words for each dish and count unchanged.",

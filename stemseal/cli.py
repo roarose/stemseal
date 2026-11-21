@@ -3,7 +3,10 @@
   stemseal list                      cells on this machine
   stemseal find <need words...>      cells that fit a need
   stemseal call <cell> '<json>'      run a cell (or @file.json)
-  stemseal verify                    re-check every lock (sha256) and ground-truth case
+  stemseal verify                    re-check every lock (all files it covers), the checker and every ground-truth case
+  stemseal reseal <cell ...> | --all [--dry-run] [--yes]
+                                     give your own cells (format 1 lock) a format 2 lock at the same version, after re-checking them
+                                     here; it seals contract.json and gt_cases.json as they are now, and shows them before writing
   stemseal request <need words...> [--example "<input -> answer>"]
                                      record a cell you needed; prints a link you can open to ask for it
   stemseal demand                    your unmet needs, alike requests grouped and counted (kept only on this machine)
@@ -62,7 +65,9 @@ def main(argv=None):
         except Exception: pass
     a = list(sys.argv[1:] if argv is None else argv) or ["list"]
     cmd, rest = a[0], a[1:]
-    if cmd == "list": _p([{k: c[k] for k in ("cell", "version", "description", "required_inputs")} for c in hub.list_cells()])
+    if cmd == "list":
+        _p([{k: c[k] for k in ("cell", "version", "description", "required_inputs")} for c in hub.list_cells()])
+        for u in hub.unsealed(): print("not usable: %s %s: %s" % (u["cell"], u["version"], u["why"]), file=sys.stderr)
     elif cmd == "find": _p(hub.find(" ".join(rest), caller="cli"))
     elif cmd == "call":
         if len(rest) != 2: print(__doc__); return 2
@@ -70,7 +75,9 @@ def main(argv=None):
         r = hub.call(rest[0], data, caller="cli"); _p(r); return 0 if r["status"] == "ok" else 1
     elif cmd == "verify":
         r = hub.verify_all(); _p(r)
-        bad = [k for k, v in r.items() if not (v["hash_ok"] and v.get("policy_ok") and v.get("gt_ok") and v["deterministic"])]
+        bad = [k for k, v in r.items() if not (v["hash_ok"] and v.get("seal_ok") and v.get("policy_ok") and v.get("gt_ok") and v["deterministic"])]
+        for k in bad:
+            if r[k].get("seal"): print("%s: %s" % (k, r[k]["seal"]))
         print("all %d cells verified" % len(r) if not bad else "FAILED: %s" % bad)
         if not limits.MEMORY_ENFORCED: print("note: this system does not enforce the memory limit; cells are limited by time only")
         if not limits.PROCESS_LIMIT_ENFORCED: print("note: running as root, so the system does not enforce the one-process limit; run stemseal as a regular user")
@@ -89,6 +96,22 @@ def main(argv=None):
         return 0
     elif cmd == "update":
         r = upd.update(check_only="--check" in rest); _p(r); return 0 if r.get("ok") else 1
+    elif cmd in ("reseal", "relock"):
+        from . import reseal as _r
+        dry = "--dry-run" in rest; names = [x for x in rest if not x.startswith("--")]
+        if cmd == "relock": r = _r.relock(dry_run=dry); _p(r); return 0 if r["ok"] else 1
+        if not names and "--all" not in rest: print(__doc__); return 2
+        def confirm(plan):
+            print("These cells will be sealed as their files are now (contract.json and gt_cases.json included):", file=sys.stderr)
+            for x in plan:
+                print("  %s %s  %s" % (x["cell"], x["version"], x["description"]), file=sys.stderr)
+                for f, h in x["files"].items(): print("      %-14s %s" % (f, h), file=sys.stderr)
+            if "--yes" in rest: return True
+            if not sys.stdin.isatty(): print("Not sealed: add --yes to agree without a prompt.", file=sys.stderr); return False
+            try: return input("Seal these %d cell(s)? [y/N] " % len(plan)).strip().lower() in ("y", "yes")
+            except EOFError: return False
+        r = _r.reseal(names or None, dry_run=dry, confirm=confirm); _p(r)
+        return 1 if r["failed"] or (r["plan"] and not dry and not r["confirmed"]) else 0
     elif cmd == "index": _p({k: list(v) for k, v in upd.build_index()["cells"].items()})
     elif cmd == "mcp":
         from . import mcp as _m; _m.main(); return 0

@@ -25,6 +25,9 @@
  "output_keys": [
   "percentile_rank"
  ],
+ "output_schema": {
+  "percentile_rank": "number"
+ },
  "description_en": "Percentile rank of a value in a list (share of values below it, %).",
  "when_to_use_en": "When finding what percentile a value is at, or top/bottom what percent."
 }

@@ -34,6 +34,13 @@
   "total",
   "qty_assumed"
  ],
+ "output_schema": {
+  "answer_ready": "boolean",
+  "ask_customer": "string?",
+  "lines": "list",
+  "total": "number?",
+  "qty_assumed": "list"
+ },
  "raw_text": true,
  "description_en": "Order total from the customer's dish names, priced only from the store's menu; the cell reads each count from the sentence itself. It computes only when nothing unread is left: after dish names, counts, particles and order words on its ignore list ('주세요', '포장', '그리고'), any other word left ('너이', '투', '두 개 반', '사람 수대로') makes it ask back. A dish with no count is one, listed in qty_assumed. It also asks back for a name that fits several dishes, a missing size, a minimum-people dish for one, a dish not on the menu, a range, 0 or over 99, a count that belongs to no dish, or a count per person. '씩'/'각각' covers the dishes listed before it. Numbers inside a dish name are not counts. A dish the customer named but left out of items is refused.",
  "when_to_use_en": "A customer orders or asks a price by dish name. Pass their whole sentence, the store's menu, and their words for every dish; counts are read by the cell.",

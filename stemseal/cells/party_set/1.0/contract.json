@@ -30,6 +30,12 @@
   "people",
   "sets"
  ],
+ "output_schema": {
+  "answer_ready": "boolean",
+  "ask_customer": "string?",
+  "people": "number?",
+  "sets": "list"
+ },
  "raw_text": true,
  "description_en": "Reads a party size as the customer said it ('둘이서', '4명', '혼자') and picks the store's sets for that many people with prices. No fitting set, or a size it cannot read, gives ask_customer instead.",
  "when_to_use_en": "A customer asks what to order for a number of people."

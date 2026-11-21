@@ -45,6 +45,14 @@
   "items_read",
   "discount_capped"
  ],
+ "output_schema": {
+  "subtotal": "number",
+  "discount": "number",
+  "total": "number",
+  "item_count": "number",
+  "items_read": "list",
+  "discount_capped": "boolean"
+ },
  "description_en": "Order total from the customer's sentence and the price/count words copied from it unchanged ('만삼천구백원', '두 잔'). Words not in the sentence, or part of a longer number, are refused. Items without qty take the count said right after (or before) their price ('두 개', '둘에', '셋 주세요'), else one. The cell reads the whole sentence: if a number word that could be a count is left over after prices, counts, discounts and particles, it refuses. Also refused: one said price used twice, a count taken from another item's price, a price for several ('2개에 만원'), per-person counts ('하나씩 두 명'). '두 개씩' covers the count-less prices before it. Discounts go outside items: discount_pct ('10%', '반값'), discount_won ('3천원'). A discount the customer claims but that is not passed or has no amount is refused; a question or a no ('할인 돼요?', '쿠폰 없어요') is not a discount.",
  "when_to_use_en": "Adding up a customer's order. Put their whole sentence in question and copy each price and count word for word; do not convert numbers.",
  "input_aliases": {

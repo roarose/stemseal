@@ -1,7 +1,15 @@
 {
+ "format": 2,
+ "kind": "cell",
  "cell": "party_set",
  "version": "2.0",
  "sha256": "78349153ab68195fdf36371475b4cc3119225680740522306048b2474eb06ef3",
+ "files": {
+  "cell.py": "78349153ab68195fdf36371475b4cc3119225680740522306048b2474eb06ef3",
+  "contract.json": "6f959a967b0c45b24abccd1423fb9545bd3eb9adfcc111549692d0e5ae13691d",
+  "gt_cases.json": "09e782ba7729be539ff97f4c8cf9e0942f360efdabe3d145733c9a544be0bbca"
+ },
+ "policy": 2,
  "gt_total": 29,
  "gt_passed": 29,
  "deterministic": true,

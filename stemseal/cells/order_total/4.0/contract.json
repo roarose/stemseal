@@ -45,6 +45,14 @@
   "items_read",
   "discount_capped"
  ],
+ "output_schema": {
+  "subtotal": "number",
+  "discount": "number",
+  "total": "number",
+  "item_count": "number",
+  "items_read": "list",
+  "discount_capped": "boolean"
+ },
  "description_en": "Order total from the customer's sentence and the price/quantity words copied from it unchanged ('만이천구백원', '두 잔'). The cell reads Korean amounts itself and refuses words that are not in the sentence, so a model cannot pass a number it made up. Discounts go outside items. Returns what it read in items_read. A word must start and end on a number boundary in the sentence ('오백원' inside '삼천오백원' is refused), and one price the customer said cannot be used for two items.",
  "when_to_use_en": "Adding up a customer's order. Put their whole sentence in question and copy each price and count word for word; do not convert numbers.",
  "input_aliases": {

@@ -12,7 +12,7 @@ Stdlib only.
 """
 import hashlib, json, os, re, shutil, sys, tempfile, time
 from datetime import datetime, timedelta, timezone
-from . import savings, policy, limits
+from . import savings, policy, limits, seal, shape
 
 PKG = os.path.dirname(os.path.abspath(__file__))
 def _home():
@@ -29,6 +29,7 @@ CELLS = os.environ.get("STEMSEAL_CELLS") or os.path.join(PKG, "cells")   # cells
 USER_CELLS = os.path.join(HOME, "cells")                                    # cells added later by `stemseal update`
 def _dirs(): return [CELLS] + ([USER_CELLS] if os.path.abspath(USER_CELLS) != os.path.abspath(CELLS) else [])
 LEDGER = os.path.join(HOME, "ledger.jsonl")
+STATE = os.path.join(HOME, "state.json")    # this machine's record of cell versions it has held with a format 2 lock
 REPO = "https://github.com/roarose/stemseal"
 MIN_GT = 20                      # a cell needs at least this many ground-truth cases to be locked
 CALL_TIMEOUT = 5                 # seconds per call
@@ -196,12 +197,12 @@ def _refused_as_expected(case, r):
     return (isinstance(want, str) and bool(want) and r.get("ok") is False and not r.get("blocked") and not r.get("fault")
             and want in str(r.get("err")))
 
-def gt_check(src, gt_cases):
-    """src: the cell source text (not a path)."""
+def gt_check(src, gt_cases, schema=None):
+    """src: the cell source text (not a path). schema: the contract's output_schema, if any; an answer must also fit it (shape.py)."""
     h = sha(src)
     res = run_isolated(src, h, [c["input"] for c in gt_cases])
     # a case may say the cell must refuse: {"input": ..., "expected_error": "text the refusal must contain"} (ambiguous input is refused, not guessed)
-    good = lambda c, r: _refused_as_expected(c, r) if "expected_error" in c else (r.get("ok") is True and r.get("out") == c["expected"])
+    good = lambda c, r: _refused_as_expected(c, r) if "expected_error" in c else (r.get("ok") is True and r.get("out") == c["expected"] and shape.problem(r["out"], schema) is None)
     fails = [{"case": i, "expected": c.get("expected", {"error": c.get("expected_error")}), "got": r.get("out"), "err": r.get("err")} for i, (c, r) in enumerate(zip(gt_cases, res)) if not good(c, r)]
     # determinism: second run must give byte-identical outputs
     res2 = run_isolated(src, h, [c["input"] for c in gt_cases])
@@ -225,18 +226,82 @@ def cell_dir(name, version=None):
     if not f: return None
     v = version or sorted(f, key=_vkey)[-1]
     return f.get(v)
-def load(name, version=None):
+def _json(b):
+    try: return json.loads(b.decode("utf-8")) if b is not None else None
+    except ValueError: return None
+def inspect(name, version=None):
+    """A cell as found on disk, whether or not its lock holds: {"dir", "version", "contract", "lock", "seal"}.
+    seal is None when the lock is format 2 and contract.json matches it (the contract is parsed from the bytes that were hashed);
+    otherwise seal.OLD or the name of the file that does not match."""
     d = cell_dir(name, version)
     if not d: return None
-    return {"dir": d, "contract": json.load(open(os.path.join(d, "contract.json"), encoding="utf-8")), "lock": json.load(open(os.path.join(d, "lock.json"), encoding="utf-8"))}
+    v = os.path.basename(d); lock = _json(seal.read_bytes(d, "lock.json")); raw = seal.read_bytes(d, "contract.json")
+    problem = seal.problem(lock, {"contract.json": raw}, name, v)
+    if problem == seal.OLD and was_sealed(name, v): problem = "lock.json"    # held here with a format 2 lock before
+    contract = _json(raw)
+    if problem is None and not (isinstance(contract, dict) and isinstance(contract.get("description"), str) and isinstance(contract.get("input_schema"), dict)):
+        problem = "contract.json"
+    return {"dir": d, "version": v, "contract": contract if isinstance(contract, dict) else {}, "lock": lock if isinstance(lock, dict) else {}, "seal": problem}
+def load(name, version=None):
+    """A cell whose lock holds (see inspect), or None."""
+    c = inspect(name, version)
+    return c if c and c["seal"] is None else None
+def exists(name): return bool(isinstance(name, str) and re.fullmatch(r"[a-z][a-z0-9_]{2,63}", name) and cell_dir(name))
+def _names(): return sorted({n for b in _dirs() if os.path.isdir(b) for n in os.listdir(b) if os.path.isdir(os.path.join(b, n))})
+_TAMPER_SEEN = set()
+def _tamper(name, version, file, once=False):
+    if once:
+        if (name, version, file) in _TAMPER_SEEN: return
+        _TAMPER_SEEN.add((name, version, file))
+    _log({"type": "tamper", "cell": name, "version": version, "file": file})
+def _sealed():
+    """(name, cell) for every cell whose newest version's lock holds. A cell whose files do not match is left out and recorded once."""
+    for name in _names():
+        c = inspect(name)
+        if not c: continue
+        if c["seal"] is None: yield name, c
+        elif c["seal"] != seal.OLD: _tamper(name, c["version"], c["seal"], once=True)
 def list_cells():
     out = []
-    names = sorted({n for b in _dirs() if os.path.isdir(b) for n in os.listdir(b) if os.path.isdir(os.path.join(b, n))})
-    for name in names:
-        c = load(name)
-        if c: out.append({"cell": name, "version": c["lock"]["version"], "description": c["contract"]["description"], "when_to_use": c["contract"].get("when_to_use", ""),
-                          "description_en": c["contract"].get("description_en", ""), "when_to_use_en": c["contract"].get("when_to_use_en", ""),
-                          "required_inputs": c["contract"]["input_schema"].get("required", []), "gt_cases": c["lock"]["gt_total"], "locked_at": c["lock"]["locked_at"]})
+    for name, c in _sealed():
+        out.append({"cell": name, "version": c["lock"]["version"], "description": c["contract"]["description"], "when_to_use": c["contract"].get("when_to_use", ""),
+                    "description_en": c["contract"].get("description_en", ""), "when_to_use_en": c["contract"].get("when_to_use_en", ""),
+                    "required_inputs": c["contract"]["input_schema"].get("required", []), "gt_cases": c["lock"]["gt_total"], "locked_at": c["lock"]["locked_at"]})
+    return out
+def _state():
+    try:
+        with open(STATE, encoding="utf-8") as f: s = json.load(f)
+        return s if isinstance(s, dict) else {}
+    except (OSError, ValueError): return {}
+def mark_sealed(name, version, sha256):
+    """Record that this machine holds name/version with a format 2 lock (kept outside the cell folder, in state.json).
+    Such a version is never taken for a format 1 cell again: reseal refuses it and its use is refused."""
+    try:
+        s = _state(); rec = s.get("sealed") if isinstance(s.get("sealed"), dict) else {}
+        rec["%s/%s" % (name, version)] = sha256; s["sealed"] = rec
+        os.makedirs(os.path.dirname(STATE), exist_ok=True)
+        fd, tmp = tempfile.mkstemp(dir=os.path.dirname(STATE), prefix=".state_", suffix=".tmp")
+        with os.fdopen(fd, "w", encoding="utf-8") as f: json.dump(s, f, ensure_ascii=False, indent=1)
+        os.replace(tmp, STATE)
+    except Exception: pass
+def was_sealed(name, version):
+    s = _state().get("sealed")
+    return isinstance(s, dict) and "%s/%s" % (name, version) in s
+def _from_update(name, version, lock):
+    """True when this machine's ledger says `stemseal update` installed this very cell file."""
+    return any(r.get("cell") == name and r.get("version") == version and r.get("sha256") == lock.get("sha256") for r in _rows("update"))
+def old_lock_text(name, version, lock, short=False):
+    """What to tell about a cell with a format 1 lock: short for a model, the full step for a person."""
+    if _from_update(name, version, lock): return "old lock format; run stemseal update"
+    return "cell needs re-sealing on this machine" if short else "old lock format. If you made this cell yourself, run: stemseal reseal %s" % name
+def unsealed():
+    """[{"cell", "version", "why"}] for every cell whose newest version cannot be used because of its lock, for people (list, verify)."""
+    out = []
+    for name in _names():
+        c = inspect(name)
+        if c and c["seal"] is not None:
+            why = old_lock_text(name, c["version"], c["lock"]) if c["seal"] == seal.OLD else "cell files do not match the lock (%s)" % c["seal"]
+            out.append({"cell": name, "version": c["version"], "why": why})
     return out
 
 def register(name, src, contract, gt_cases, locked_by="unknown", base=None):
@@ -246,21 +311,27 @@ def register(name, src, contract, gt_cases, locked_by="unknown", base=None):
     for k in ("description", "input_schema", "output_keys"):
         if k not in contract: return {"locked": False, "reason": "contract missing %s" % k}
     if len(gt_cases) < MIN_GT: return {"locked": False, "reason": "needs at least %d ground-truth cases, got %d" % (MIN_GT, len(gt_cases))}
+    schema = contract.get("output_schema")
+    if schema is not None:
+        bad = shape.schema_problem(schema, contract["output_keys"])
+        if bad: return {"locked": False, "reason": bad}
     problems = purity_check(src)
     if problems: return {"locked": False, "reason": "purity gate", "problems": problems}
     vs = _versions(name); version = "%d.0" % (int(vs[-1].split(".")[0]) + 1) if vs else "1.0"
     d = os.path.join(os.path.abspath(base or CELLS), name, version); os.makedirs(d, exist_ok=True)
     cp = os.path.join(d, "cell.py"); open(cp, "w", encoding="utf-8", newline="\n").write(src)
-    rep = gt_check(src, gt_cases)
+    rep = gt_check(src, gt_cases, schema)
     if rep["passed"] != rep["total"] or not rep["deterministic"]:
         os.remove(cp); 
         try: os.rmdir(d)
         except OSError: pass
         return {"locked": False, "reason": "ground-truth gate", "report": rep}
-    json.dump(contract, open(os.path.join(d, "contract.json"), "w", encoding="utf-8"), ensure_ascii=False, indent=1)
-    json.dump(gt_cases, open(os.path.join(d, "gt_cases.json"), "w", encoding="utf-8"), ensure_ascii=False)
-    lock = {"cell": name, "version": version, "sha256": sha(src), "gt_total": rep["total"], "gt_passed": rep["passed"], "deterministic": True, "locked_at": now(), "locked_by": locked_by}
-    json.dump(lock, open(os.path.join(d, "lock.json"), "w", encoding="utf-8"), ensure_ascii=False, indent=1)
+    raw = {"cell.py": src.encode("utf-8"), "contract.json": json.dumps(contract, ensure_ascii=False, indent=1).encode("utf-8"),
+           "gt_cases.json": json.dumps(gt_cases, ensure_ascii=False).encode("utf-8")}
+    for f in ("contract.json", "gt_cases.json"):
+        with open(os.path.join(d, f), "wb") as fh: fh.write(raw[f])
+    lock = seal.build(name, version, raw, policy.POLICY_VERSION, rep["total"], rep["passed"], now(), locked_by)
+    seal.write(d, lock); mark_sealed(name, version, lock["sha256"])
     _log({"type": "lock", "cell": name, "version": version, "sha256": lock["sha256"], "gt": rep["total"], "by": locked_by})
     return {"locked": True, "cell": name, "version": version, "sha256": lock["sha256"], "report": rep}
 
@@ -287,6 +358,7 @@ def _err_for_model(err):
     if "\n" in err or "\r" in err: err = _one_line(err)
     kind, sep, msg = err.partition(": ")
     return kind + sep + _cut(msg, ERR_TO_MODEL) if sep else _cut(err, ERR_TO_MODEL)
+RESULT_FORM = ("result is not an object", "result too large", "result is not plain JSON")   # the runner's words for a result it could not pass on
 def _err_for_ledger(err):
     """The exception type and the first characters of its message only."""
     kind, sep, msg = err.partition(": ")
@@ -301,7 +373,15 @@ def call(name, input_data, caller="unknown", version=None, model=None, decorate=
         rec = {"type": "call", "cell": name, "version": ver, "status": status, "caller": caller, "ms": round((time.time() - t0) * 1000, 1),
                "input_sha": sha(json.dumps(input_data, sort_keys=True, ensure_ascii=False))[:16] if isinstance(input_data, dict) else None,
                "reason": reason if log_reason is None else log_reason}
-        if status != "ok" and isinstance(input_data, dict): rec["input_keys"] = sorted(str(k) for k in input_data)[:12]   # names only, never values
+        if status != "ok" and isinstance(input_data, dict):
+            keys = sorted(str(k) for k in input_data)        # names only, never values
+            if log_mode() == "minimal":                      # minimal: only names the cell's contract declares, others counted
+                sch = c["contract"].get("input_schema", {}) if c else {}
+                declared = set(sch.get("properties", {})) | set(sch.get("required", [])) if isinstance(sch, dict) else set()
+                kept = [k for k in keys if k in declared]
+                if len(kept) < len(keys): rec["input_other"] = len(keys) - len(kept)
+                keys = kept
+            rec["input_keys"] = keys[:12]
         out = {"status": status, "cell": name, "version": ver, "verified": status == "ok", "result": result, "reason": reason}
         if status == "invalid_input" and c: out["how_to_fix"] = input_help(c)
         if decorate: decorate(out)
@@ -310,11 +390,18 @@ def call(name, input_data, caller="unknown", version=None, model=None, decorate=
         except Exception: pass   # the meter must never break a call
         if log: _log(rec)
         return out
-    c = load(name, version) if isinstance(name, str) and re.fullmatch(r"[a-z][a-z0-9_]{2,63}", name or "") else None
+    c = inspect(name, version) if exists(name) else None
     if not c: return env("not_available", reason="no locked cell with this name")
-    ver = c["lock"]["version"]; cp = os.path.join(c["dir"], "cell.py")
-    with open(cp, "rb") as f: raw = f.read()    # read once: the bytes whose hash is checked are the bytes that run
-    if sha(raw) != c["lock"]["sha256"]: return env("not_available", reason="cell file does not match its lock", ver=ver)
+    ver = c["version"]
+    raw = seal.read_bytes(c["dir"], "cell.py")   # read once: the bytes whose hash is checked are the bytes that run
+    problem = c["seal"] or seal.problem(c["lock"], {"cell.py": raw}, name, ver) or (None if seal.kind(c["lock"]) == "cell" else "lock.json")
+    if problem == seal.OLD:
+        lock, c = c["lock"], None
+        return env("not_available", reason=old_lock_text(name, ver, lock, short=True), ver=ver)
+    if problem:
+        c = None
+        if log: _tamper(name, ver, problem)
+        return env("not_available", reason="cell files do not match the lock (%s)" % problem, ver=ver)
     if not isinstance(input_data, dict): return env("invalid_input", reason="input must be an object", ver=ver)
     missing = [k for k in c["contract"]["input_schema"].get("required", []) if k not in input_data]
     if missing: return env("invalid_input", reason="missing required inputs: %s" % missing, ver=ver)
@@ -324,9 +411,13 @@ def call(name, input_data, caller="unknown", version=None, model=None, decorate=
         if log: _log({"type": "blocked", "cell": name, "version": ver, "why": r["blocked"]})
         return env("not_available", reason="cell failed the safety check", ver=ver)
     if r.get("fault") and r.get("err") != "timeout": return env("not_available", reason="the cell gave no proper answer", ver=ver)
+    if not r.get("ok") and r.get("err") in RESULT_FORM:     # the cell answered, but not with a plain JSON object of bounded size
+        return env("not_available", reason="cell returned an unexpected result", ver=ver, log_reason="cell returned an unexpected result: %s" % r["err"])
     if not r.get("ok"):
         err = _err_for_model(r.get("err"))
         return env("invalid_input", reason=REJECTED + err, ver=ver, log_reason=REJECTED + _err_for_ledger(_one_line(err)))
+    bad = shape.problem(r["out"], c["contract"].get("output_schema"))
+    if bad: return env("not_available", reason="cell returned an unexpected result", ver=ver, log_reason="cell returned an unexpected result: %s" % bad[:ERR_TO_LEDGER])
     return env("ok", result=r["out"], ver=ver)
 
 # ---------------------------------------------------------------- find (how an AI picks)
@@ -602,15 +693,23 @@ def stats():
             "unmet_demand": sorted(demand.items(), key=lambda x: -x[1])[:20]}
 
 def verify_all():
+    """Every cell's newest version: its lock and every file the lock lists, the checker, and its ground-truth cases."""
     out = {}
-    for c in list_cells():
-        L = load(c["cell"]); cp = os.path.join(L["dir"], "cell.py")
-        with open(cp, "rb") as f: raw = f.read()
-        src = raw.decode("utf-8")
-        ok_hash = sha(raw) == L["lock"]["sha256"]
+    for name in _names():
+        c = inspect(name)
+        if not c: continue
+        L = c["lock"]; raw = seal.read_bytes(c["dir"], "cell.py") or b""
+        problem = seal.problem_all(L, c["dir"], name, c["version"])
+        r = out[name] = {"version": c["version"], "hash_ok": sha(raw) == L.get("sha256"), "seal_ok": problem is None}
+        if problem: r["seal"] = old_lock_text(name, c["version"], L) if problem == seal.OLD else "cell files do not match the lock (%s)" % problem
+        schema = c["contract"].get("output_schema")
+        bad = shape.schema_problem(schema, c["contract"].get("output_keys")) if schema is not None else None
+        if bad: r["schema"] = bad
         problems = purity_check(raw)
-        with open(os.path.join(L["dir"], "gt_cases.json"), encoding="utf-8") as f: rep = gt_check(src, json.load(f))
-        out[c["cell"]] = {"version": c["version"], "hash_ok": ok_hash, "policy_ok": not problems, "gt": "%d/%d" % (rep["passed"], rep["total"]),
-                          "gt_ok": rep["total"] >= MIN_GT and rep["passed"] == rep["total"], "deterministic": rep["deterministic"]}
-        if problems: out[c["cell"]]["problems"] = problems[:5]
+        try:
+            with open(os.path.join(c["dir"], "gt_cases.json"), encoding="utf-8") as f: rep = gt_check(raw.decode("utf-8"), json.load(f), schema if not bad else None)
+        except (OSError, ValueError): rep = {"total": 0, "passed": 0, "deterministic": False}
+        r.update({"policy_ok": not problems and not bad, "gt": "%d/%d" % (rep["passed"], rep["total"]),
+                  "gt_ok": rep["total"] >= MIN_GT and rep["passed"] == rep["total"], "deterministic": rep["deterministic"]})
+        if problems: r["problems"] = problems[:5]
     return out

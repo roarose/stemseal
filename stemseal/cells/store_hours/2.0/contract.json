@@ -40,6 +40,15 @@
   "minutes_to_close",
   "minutes_to_open"
  ],
+ "output_schema": {
+  "now_24h": "string",
+  "open_24h": "string",
+  "close_24h": "string",
+  "long_hours": "boolean",
+  "is_open": "boolean",
+  "minutes_to_close": "number?",
+  "minutes_to_open": "number"
+ },
  "description_en": "Open now?, minutes to closing, minutes to next opening, from the current time and opening hours. Times may be 'HH:MM' (24h), '9pm', or Korean with the half of the day ('오후 8시 20분', '밤 2시', '새벽 1시'). A clock hour without am/pm ('9시') is refused with a note to ask the customer, never guessed. Same open and close is refused unless it is '00:00'-'24:00' (open all day). A one-digit hour like '7:30' is refused (24h needs two digits, '07:30'). long_hours is true when the store is open more than 20 hours. Handles hours past midnight and returns the times it read in 24h.",
  "when_to_use_en": "Is it open now, until when, minutes left before closing, when it opens. Pass the customer's time words unchanged. If the refusal says 'ask the customer', ask whether it is am or pm instead of guessing.",
  "input_aliases": {

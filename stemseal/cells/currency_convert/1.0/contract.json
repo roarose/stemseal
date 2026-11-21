@@ -25,6 +25,9 @@
  "output_keys": [
   "krw"
  ],
+ "output_schema": {
+  "krw": "number"
+ },
  "description_en": "Convert a foreign currency amount to Korean won at a given rate (won per unit), truncating below 1 won.",
  "when_to_use_en": "When converting dollars, yen, euros or other currencies to won.",
  "input_aliases": {

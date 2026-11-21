@@ -18,6 +18,7 @@ import importlib.util
 
 MAX_REQUEST = 8 * 1024 * 1024
 MAX_RESULT = 1024 * 1024
+RESULT_NOT_JSON = "result is not plain JSON"
 
 def load_policy():
     here = os.path.dirname(os.path.realpath(__file__))
@@ -81,7 +82,8 @@ def execute(code, ns, inputs, state):
             try:
                 r = fn(x)
                 if not isinstance(r, dict): out.append({"ok": False, "err": "result is not an object"}); continue
-                text = json.dumps(r, ensure_ascii=False)
+                try: text = json.dumps(r, ensure_ascii=False)
+                except (TypeError, ValueError, RecursionError): out.append({"ok": False, "err": RESULT_NOT_JSON}); continue
                 if len(text) > MAX_RESULT: out.append({"ok": False, "err": "result too large"}); continue
                 out.append({"ok": True, "out": json.loads(text)})   # what is sent is exactly what was measured
             except Exception as e:

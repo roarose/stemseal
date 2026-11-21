@@ -1,7 +1,15 @@
 {
+ "format": 2,
+ "kind": "cell",
  "cell": "menu_order_total",
  "version": "1.0",
  "sha256": "6e838bfd2a9e78d828e84e085f995b36c6d3751f9021c40b7bdbc28f92a9a0e1",
+ "files": {
+  "cell.py": "6e838bfd2a9e78d828e84e085f995b36c6d3751f9021c40b7bdbc28f92a9a0e1",
+  "contract.json": "9ce4cc8756dbe4ed32e20fb3894a55f9c9dcf83a41306198b10e39f300805eb7",
+  "gt_cases.json": "460e8fda2b69f390bf325f2110a67e23ee83efda0931caddb118943e80ee6960"
+ },
+ "policy": 2,
  "gt_total": 28,
  "gt_passed": 28,
  "deterministic": true,

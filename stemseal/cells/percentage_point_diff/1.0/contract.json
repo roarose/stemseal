@@ -24,6 +24,9 @@
  "output_keys": [
   "pp_diff"
  ],
+ "output_schema": {
+  "pp_diff": "number"
+ },
  "description_en": "Difference between two rates (%) in percentage points.",
  "when_to_use_en": "When comparing two rates such as conversion or return rates, in points rather than percent growth.",
  "input_aliases": {

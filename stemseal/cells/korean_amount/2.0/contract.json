@@ -29,6 +29,10 @@
   "value",
   "unit"
  ],
+ "output_schema": {
+  "value": "number",
+  "unit": "string"
+ },
  "raw_text": true,
  "description_en": "Reads one amount or count as the customer said it in Korean: '만이천구백원' 12900 won, '9천5백원', '두 잔' 2 cups, '10%'. Returns the number and its unit. With question, refuses text that is not in the customer's sentence.",
  "when_to_use_en": "A customer gave an amount or count in Korean words. Pass their words unchanged; do not convert them yourself.",

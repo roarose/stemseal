@@ -29,6 +29,12 @@
   "people",
   "sets"
  ],
+ "output_schema": {
+  "answer_ready": "boolean",
+  "ask_customer": "string?",
+  "people": "number?",
+  "sets": "list"
+ },
  "raw_text": true,
  "description_en": "Finds the party size in the customer's whole sentence ('넷이서', '두 명', '혼자') and picks the store's sets for that many people with prices. Mixed or missing sizes give ask_customer. people is optional.",
  "when_to_use_en": "A customer asks what to order for a number of people. Pass their whole sentence and the store's sets."
