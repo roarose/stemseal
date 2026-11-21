@@ -49,18 +49,64 @@ def now(): return datetime.now(timezone.utc).isoformat(timespec="seconds")
 def sha(b): return hashlib.sha256(b if isinstance(b, bytes) else b.encode("utf-8")).hexdigest()
 LOG_MODES = ("full", "minimal", "off")
 def log_mode():
-    """STEMSEAL_LOG: full (default) keeps request sentences; minimal keeps, instead of a sentence, its hash and up to 8 of its
-    words (enough to count alike requests together); off writes no ledger at all."""
+    """STEMSEAL_LOG: full (default) keeps request sentences; minimal keeps, instead of a sentence, its hash and at most
+    MIN_WORDS calculation words found in it (see _calc_words); off writes no ledger at all."""
     v = (os.environ.get("STEMSEAL_LOG") or "full").strip().lower()
     return v if v in LOG_MODES else "full"
+MIN_WORDS = 4
+CALC_TERMS = set("""이자 대출 원리금 상환 복리 단리 적금 예금 금리 할부 할인 세금 부가세 소득세 수수료 환율 환전 평균 비율 퍼센트 백분율 합계 총액 가격 요금
+단가 원가 마진 이익 매출 시간 날짜 기간 요일 나이 칼로리 무게 거리 속도 면적 부피 넓이 월급 시급 연봉 일급 주휴수당 퇴직금 보험 연금 배송비 택배비
+주문 메뉴 인분 세트 영업시간 마감 예약 bmi 체질량 성장률 증가율 감소율 반올림 단위 변환 환산 개수 수량 나누기 더치페이 팁
+loan interest tax fee discount average rate price total cost margin profit wage salary hourly monthly yearly age date time days hours
+distance speed weight area volume calories currency exchange percent percentage growth tip split order menu""".split())
+_VOCAB = None
+def _calc_words(text, n=MIN_WORDS):
+    """At most n calculation words found in the text, each given as the known word (a cell card's word or CALC_TERMS), never
+    as the text's own spelling: a word of the text counts when it starts with a known word ('이자를' -> '이자')."""
+    global _VOCAB
+    if _VOCAB is None:
+        _VOCAB = sorted(CALC_TERMS, key=len, reverse=True)      # in place while the cell cards are read
+        v = set(CALC_TERMS)
+        try:
+            for c in list_cells(): v |= {w for w in _doc_words(c["cell"]) if len(w) >= 2}
+        except Exception: pass
+        _VOCAB = sorted(v, key=len, reverse=True)
+    out = []
+    for w in _words(text):
+        hit = next((t for t in _VOCAB if w.startswith(t)), None)
+        if hit and hit not in out: out.append(hit)
+        if len(out) >= n: break
+    return out
 def _minimal(rec):
-    """A ledger row in minimal mode: every request sentence becomes need_sha + need_words; examples are not kept."""
+    """A ledger row in minimal mode: a request sentence becomes need_sha + a few calculation words, a model's search words
+    are kept only as calculation words, examples are not kept, and a cell's error keeps only its exception type."""
     rec = dict(rec)
     if "need" in rec:
         need = str(rec.pop("need") or "")
-        rec["need_sha"] = sha(need)[:16]; rec["need_words"] = _words(need)[:8]
+        rec["need_sha"] = sha(need)[:16]; rec["need_words"] = _calc_words(need)
+    if isinstance(rec.get("words"), list): rec["words"] = _calc_words(" ".join(str(w) for w in rec["words"]))
     rec.pop("example", None)
+    if isinstance(rec.get("reason"), str) and rec["reason"].startswith(REJECTED):
+        rec["reason"] = REJECTED + rec["reason"][len(REJECTED):].split(":")[0][:40]
     return rec
+def ledger_has_text():
+    """True when the ledger files still hold rows that minimal mode would not keep as they are (written before the switch)."""
+    for path in (LEDGER, os.path.join(os.path.dirname(LEDGER), "ledger.1.jsonl")):
+        for r in _rows(path=path, raw=True):
+            if _minimal(r) != r: return True
+    return False
+def minimize_ledger():
+    """Rewrite the ledger files as minimal mode would have written them. Run by the user (stemseal ledger --minimize);
+    nothing does it on its own. Returns how many rows changed."""
+    changed = 0
+    for path in (LEDGER, os.path.join(os.path.dirname(LEDGER), "ledger.1.jsonl")):
+        if not os.path.exists(path): continue
+        rows = _rows(path=path, raw=True); new = [_minimal(r) for r in rows]
+        changed += sum(a != b for a, b in zip(rows, new))
+        fd, tmp = tempfile.mkstemp(dir=os.path.dirname(path), prefix=".ledger_", suffix=".tmp")
+        with os.fdopen(fd, "w", encoding="utf-8") as f: f.writelines(json.dumps(r, ensure_ascii=False) + "\n" for r in new)
+        os.replace(tmp, path)
+    return changed
 def _log(rec):
     """Logging must never break a call: if the log folder cannot be written, the answer still goes back."""
     try:
@@ -226,9 +272,21 @@ def input_help(c):
     return h
 
 # ---------------------------------------------------------------- the membrane: call
-ERR_TO_MODEL = 120     # characters of a cell's error message the model sees
-ERR_TO_LEDGER = 60     # characters of it (after the exception type) the ledger keeps
+ERR_TO_MODEL = 200     # characters of a cell's error message the model sees (the runner already sends no more)
+ERR_TO_LEDGER = 60     # characters of it (after the exception type) the ledger keeps in full mode; minimal keeps the type only
+REJECTED = "cell rejected the input: "
 def _one_line(text): return re.sub(r"\s+", " ", str(text or "")).strip()
+def _cut(text, n):
+    """text if it fits in n characters; otherwise cut at the last word boundary before n, marked with '…'."""
+    if len(text) <= n: return text
+    head = text[:n]; sp = head.rfind(" ")
+    return (head[:sp] if sp > n // 2 else head).rstrip() + "…"
+def _err_for_model(err):
+    """The cell's error as the runner sent it: put on one line only when it has line breaks, cut (at a word) only past ERR_TO_MODEL."""
+    err = str(err or "")
+    if "\n" in err or "\r" in err: err = _one_line(err)
+    kind, sep, msg = err.partition(": ")
+    return kind + sep + _cut(msg, ERR_TO_MODEL) if sep else _cut(err, ERR_TO_MODEL)
 def _err_for_ledger(err):
     """The exception type and the first characters of its message only."""
     kind, sep, msg = err.partition(": ")
@@ -267,9 +325,8 @@ def call(name, input_data, caller="unknown", version=None, model=None, decorate=
         return env("not_available", reason="cell failed the safety check", ver=ver)
     if r.get("fault") and r.get("err") != "timeout": return env("not_available", reason="the cell gave no proper answer", ver=ver)
     if not r.get("ok"):
-        err = _one_line(r.get("err"))
-        return env("invalid_input", reason="cell rejected the input: %s" % err[:ERR_TO_MODEL], ver=ver,
-                   log_reason="cell rejected the input: %s" % _err_for_ledger(err))
+        err = _err_for_model(r.get("err"))
+        return env("invalid_input", reason=REJECTED + err, ver=ver, log_reason=REJECTED + _err_for_ledger(_one_line(err)))
     return env("ok", result=r["out"], ver=ver)
 
 # ---------------------------------------------------------------- find (how an AI picks)
@@ -342,7 +399,7 @@ def _keys(need):
     return ["s:" + " ".join(sorted(set(w))), "n:" + "".join(w)]
 def _ticket(need):
     return "D-" + sha(_keys(need)[0])[:8]
-def _rows(kind=None, path=None):
+def _rows(kind=None, path=None, raw=False):
     """Ledger rows, oldest first. A damaged line (a write cut off midway) is skipped, never allowed to hide the rest.
     kind: a type or tuple of types to keep; the raw line is checked first, so a long call log does not slow a miss."""
     kinds = (kind,) if isinstance(kind, str) else tuple(kind or ())
@@ -355,7 +412,7 @@ def _rows(kind=None, path=None):
             try: r = json.loads(l)
             except ValueError: continue
             if isinstance(r, dict) and (not kinds or r.get("type") in kinds):
-                if "need" not in r and isinstance(r.get("need_words"), list): r["need"] = " ".join(str(w) for w in r["need_words"])
+                if not raw and "need" not in r and isinstance(r.get("need_words"), list): r["need"] = " ".join(str(w) for w in r["need_words"])
                 out.append(r)
     return out
 KEEP_DAYS = 90                      # ledger rows older than this move to ledger.1.jsonl
@@ -365,6 +422,10 @@ def tidy_ledger(today=None):
     """Run once when the MCP server starts. Rows older than KEEP_DAYS, and the oldest rows while the file is over MAX_LEDGER,
     move to ledger.1.jsonl, which replaces the previous one. Returns how many rows moved. Never raises."""
     try:
+        d = os.path.dirname(LEDGER)
+        for left in (n for n in os.listdir(d) if n.startswith(".ledger_") and n.endswith(".tmp")) if os.path.isdir(d) else ():
+            try: os.remove(os.path.join(d, left))     # left by a tidy that did not finish
+            except OSError: pass
         if not os.path.exists(LEDGER): return 0
         size = os.path.getsize(LEDGER)
         cut = (today or datetime.now(timezone.utc)) - timedelta(days=KEEP_DAYS)

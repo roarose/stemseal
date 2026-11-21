@@ -10,6 +10,8 @@
   stemseal demand --share            the same, with a prefilled GitHub cell-request link per need
   stemseal demand --open <n> [--yes] show the n-th need's issue text (contact data hidden), then open it in your browser if you agree
   stemseal demand --all | --json     include needs a cell now answers | raw groups as JSON
+  stemseal ledger [--minimize]       where this machine's ledger is and what it keeps; --minimize rewrites the rows already
+                                     there as STEMSEAL_LOG=minimal keeps them (sentences become a hash and a few words)
   stemseal update [--check]          bring cells made since this install (each is re-verified here before use)
   stemseal savings [--days N]        tokens the cells saved, from this machine's ledger (measured and estimated kept apart)
   stemseal measure <cell> <model> [--n 5] [--url http://127.0.0.1:11434] [--ship]
@@ -79,6 +81,12 @@ def main(argv=None):
             i = rest.index("--example"); ex = " ".join(rest[i + 1:i + 2]) or None; rest = rest[:i] + rest[i + 2:]
         r = hub.request_cell(" ".join(rest), caller="cli", example=ex); _p(r); return 0 if r.get("recorded") else 2
     elif cmd == "demand": return _demand(rest)
+    elif cmd == "ledger":
+        if "--minimize" in rest: print("rewrote %d rows in %s" % (hub.minimize_ledger(), hub.LEDGER)); return 0
+        print("ledger: %s\nmode: %s (STEMSEAL_LOG)" % (hub.LEDGER, hub.log_mode()))
+        if hub.ledger_has_text():
+            print("rows written in full mode are still there" + ("; to keep only what minimal keeps, run: stemseal ledger --minimize" if hub.log_mode() == "minimal" else ""))
+        return 0
     elif cmd == "update":
         r = upd.update(check_only="--check" in rest); _p(r); return 0 if r.get("ok") else 1
     elif cmd == "index": _p({k: list(v) for k, v in upd.build_index()["cells"].items()})

@@ -32,7 +32,7 @@ class Modes(unittest.TestCase):
         guides.find(NEED, caller="t")
         hub.request_cell(NEED, caller="t", example="1,000,000 -> 85,607")
         text = raw()
-        for s in ("010-1234-5678", "85,607", "균등상환 월"):
+        for s in ("010-1234-5678", "85,607", "균등상환 월", "홍길동"):
             self.assertNotIn(s, text)
         rows = [json.loads(l) for l in text.splitlines()]
         withneed = [r for r in rows if "need_sha" in r]
@@ -40,7 +40,30 @@ class Modes(unittest.TestCase):
         for r in rows:
             self.assertNotIn("need", r); self.assertNotIn("example", r)
         for r in withneed:
-            self.assertEqual(len(r["need_sha"]), 16); self.assertLessEqual(len(r["need_words"]), 8)
+            self.assertEqual(len(r["need_sha"]), 16); self.assertLessEqual(len(r["need_words"]), hub.MIN_WORDS)
+
+    def test_minimal_keeps_no_short_sentence(self):
+        """A short sentence with a name and a phone number: neither is kept, and what is kept is not the sentence."""
+        os.environ["STEMSEAL_LOG"] = "minimal"
+        said = "김민수예요 010-9876-5432 으로 연락 주시고 떡볶이 두 개 주세요"
+        guides.find(said, caller="t", words=["김민수", "떡볶이 가격"]); hub.request_cell(said, caller="t")
+        mcp._handle("call_cell", {"cell": "order_total", "input": {"question": said, "items": [{"price": "김민수 4천원"}]}})
+        text = raw()
+        for s in ("김민수", "9876", "5432", "연락"): self.assertNotIn(s, text)
+        rows = [json.loads(l) for l in text.splitlines()]
+        words = [w for r in rows for w in r.get("need_words", []) + r.get("words", [])]
+        said_words = said.split()
+        self.assertLess(len(set(words)), len(said_words) / 2)
+        for r in rows:
+            if r.get("type") == "call": self.assertEqual(r["reason"], "cell rejected the input: ValueError")
+
+    def test_switching_to_minimal_leaves_old_rows_until_the_user_minimizes(self):
+        hub.request_cell(NEED, caller="t", example="1,000,000 -> 85,607")
+        os.environ["STEMSEAL_LOG"] = "minimal"
+        self.assertIn("홍길동", raw()); self.assertTrue(hub.ledger_has_text())
+        self.assertGreater(hub.minimize_ledger(), 0)
+        self.assertNotIn("홍길동", raw()); self.assertNotIn("85,607", raw()); self.assertFalse(hub.ledger_has_text())
+        self.assertEqual(len(hub.demand_summary()), 1)
 
     def test_minimal_still_counts_alike_requests_together(self):
         os.environ["STEMSEAL_LOG"] = "minimal"
@@ -108,24 +131,34 @@ class Tidy(unittest.TestCase):
 
 class ErrorText(unittest.TestCase):
     def tearDown(self): os.environ.pop("STEMSEAL_LOG", None)
-    def test_cell_error_is_one_short_line(self):
+    def test_cell_error_is_one_line_cut_at_a_word(self):
         if os.path.exists(hub.LEDGER): os.remove(hub.LEDGER)
         err = "ValueError: " + "가나다\n라마 " * 100
         with mock.patch.object(hub, "run_isolated", lambda *a, **k: [{"ok": False, "err": err}]):
             r = hub.call("vat_supply_price", {"total": 11000}, caller="t")
         self.assertEqual(r["status"], "invalid_input")
-        detail = r["reason"].split("cell rejected the input: ", 1)[1]
-        self.assertNotIn("\n", r["reason"]); self.assertLessEqual(len(detail), hub.ERR_TO_MODEL)
+        detail = r["reason"].split("cell rejected the input: ValueError: ", 1)[1]
+        self.assertNotIn("\n", r["reason"]); self.assertLessEqual(len(detail), hub.ERR_TO_MODEL + 1)
+        self.assertTrue(detail.endswith("…")); self.assertTrue(hub._one_line(err).startswith("ValueError: " + detail[:-1] + " "))
         row = [x for x in hub._rows("call")][-1]
         logged = row["reason"].split("cell rejected the input: ", 1)[1]
         self.assertTrue(logged.startswith("ValueError: ")); self.assertLessEqual(len(logged), len("ValueError: ") + hub.ERR_TO_LEDGER)
+
+    def test_cell_error_within_the_limit_is_passed_as_sent(self):
+        err = "ValueError: " + "give each item its qty in the customer's words,  or ask the customer if it is unclear " * 2
+        err = err[:len("ValueError: ") + hub.ERR_TO_MODEL]
+        with mock.patch.object(hub, "run_isolated", lambda *a, **k: [{"ok": False, "err": err}]):
+            r = hub.call("vat_supply_price", {"total": 11000}, caller="t", log=False)
+        self.assertEqual(r["reason"], "cell rejected the input: " + err)
 
 class InputFile(unittest.TestCase):
     def setUp(self):
         self.root = os.path.realpath(tempfile.mkdtemp(prefix="stemseal_inputs_"))
         self.out = os.path.realpath(tempfile.mkdtemp(prefix="stemseal_elsewhere_"))
-        self.p = mock.patch.object(mcp, "INPUT_ROOTS", [self.root]); self.p.start()
-    def tearDown(self): self.p.stop()
+        self.p = [mock.patch.object(mcp, "INPUT_ROOTS", [self.root]), mock.patch.object(mcp, "INPUT_DIR", self.root)]
+        for p in self.p: p.start()
+    def tearDown(self):
+        for p in self.p: p.stop()
     def put(self, d, name, text):
         path = os.path.join(d, name)
         with open(path, "w", encoding="utf-8") as f: f.write(text)
@@ -149,11 +182,74 @@ class InputFile(unittest.TestCase):
             try:
                 link = os.path.join(self.root, "link.json"); os.symlink(cases["outside"], link); cases["link out"] = link
             except OSError: pass
-        want = "input_file must be a .json file under %s" % self.root
         for k, path in cases.items():
             with self.subTest(case=k):
                 r = self.call(path)
-                self.assertEqual(r, {"status": "invalid_input", "reason": want})
+                self.assertEqual(r, {"status": "invalid_input", "reason": mcp.input_file_error(path)})
+                self.assertNotIn(self.root, r["reason"]); self.assertNotIn(self.out, r["reason"])
+
+    def test_relative_path_is_taken_from_the_inputs_folder(self):
+        self.put(self.root, "rel.json", json.dumps({"total": 11000}))
+        self.assertEqual(self.call("rel.json")["status"], "ok")
+
+    def test_reply_names_the_file_and_not_where_it_is(self):
+        home = os.path.realpath(os.path.expanduser("~"))
+        with mock.patch.object(mcp, "INPUT_DIR", os.path.join(home, ".stemseal", "inputs")):
+            msg = mcp.input_file_error(os.path.join(self.out, "secret.json"))
+        self.assertIn("'secret.json'", msg); self.assertIn("~", msg); self.assertNotIn(home, msg)
+
+    def test_start_folder_counts_only_when_it_is_narrow(self):
+        home = os.path.realpath(os.path.expanduser("~"))
+        top = os.path.abspath(os.sep)
+        for broad in (top, home, os.path.dirname(home)):
+            with self.subTest(folder=broad): self.assertEqual(mcp.input_roots(broad), [mcp.INPUT_DIR])
+        self.assertEqual(mcp.input_roots(self.out), [mcp.INPUT_DIR, self.out])
+
+    def test_reserved_device_names(self):
+        for name in ("con.json", "NUL.json", "com1.json", "LPT9.json", "aux.json", "prn.json", "conin$.json"):
+            with self.subTest(name=name):
+                self.assertIsNone(mcp.read_input_file(os.path.join(self.root, name)))
+
+@unittest.skipUnless(os.name == "nt", "Windows path forms")
+class WindowsPaths(unittest.TestCase):
+    """The forms a Windows path can take: drive letters, letter case, both slashes, UNC, short (8.3) names, device names."""
+    def setUp(self):
+        self.root = os.path.realpath(tempfile.mkdtemp(prefix="stemseal_inputs_long_name_"))
+        self.out = os.path.realpath(tempfile.mkdtemp(prefix="stemseal_elsewhere_long_name_"))
+        self.p = [mock.patch.object(mcp, "INPUT_ROOTS", [self.root]), mock.patch.object(mcp, "INPUT_DIR", self.root)]
+        for p in self.p: p.start()
+        self.inside = os.path.join(self.root, "in.json"); self.outside = os.path.join(self.out, "in.json")
+        for path in (self.inside, self.outside):
+            with open(path, "w", encoding="utf-8") as f: f.write('{"total": 11000}')
+    def tearDown(self):
+        for p in self.p: p.stop()
+    def short(self, path):
+        import ctypes
+        buf = ctypes.create_unicode_buffer(1024)
+        n = ctypes.windll.kernel32.GetShortPathNameW(path, buf, 1024)
+        return buf.value if n else path
+
+    def test_inside_in_any_spelling_is_read(self):
+        drive, rest = os.path.splitdrive(self.inside)
+        for path in (drive.lower() + rest, self.inside.upper(), self.inside.replace("\\", "/"), self.short(self.inside)):
+            with self.subTest(path=path): self.assertEqual(mcp.read_input_file(path), {"total": 11000})
+
+    def test_outside_in_any_spelling_is_refused(self):
+        drive, rest = os.path.splitdrive(self.outside)
+        other = "Z:" if drive.upper() != "Z:" else "Y:"
+        sub = os.path.join(self.root, "sub"); os.makedirs(sub)
+        up = os.path.relpath(self.outside, sub)
+        forms = [self.outside, drive.lower() + rest, self.outside.upper(), self.outside.replace("\\", "/"), self.short(self.outside),
+                 sub + "\\" + up, sub.replace("\\", "/") + "/" + up.replace("\\", "/"),
+                 "\\\\localhost\\" + drive[0] + "$" + rest, "\\\\?\\" + self.outside, "\\\\.\\" + self.outside,
+                 other + rest, other + "in.json", drive + "in.json"]
+        for path in forms:
+            with self.subTest(path=path): self.assertIsNone(mcp.read_input_file(path))
+
+    def test_device_names_are_refused_without_waiting(self):
+        for path in ("CON", "con.json", "NUL.json", "\\\\.\\CON", os.path.join(self.root, "COM1.json"), os.path.join(self.root, "aux .json"),
+                     os.path.join(self.root, "in.json:stream"), os.path.join(self.root, "CONIN$.json")):
+            with self.subTest(path=path): self.assertIsNone(mcp.read_input_file(path))
 
 if __name__ == "__main__":
     unittest.main()
