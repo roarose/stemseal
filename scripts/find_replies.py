@@ -22,4 +22,4 @@ for model in (None, "exaone3.5:2.4b"):
     out["%s/list_cells" % tag] = digest(mcp.handle("list_cells", {}))
     for n in NEEDS:
         out["%s/find/%s" % (tag, n)] = digest(mcp.handle("find_cell", {"need": n}))
-print(json.dumps(out, ensure_ascii=False, indent=0, sort_keys=True))
+sys.stdout.buffer.write((json.dumps(out, ensure_ascii=False, indent=0, sort_keys=True) + "\n").encode("utf-8"))   # UTF-8 on every OS (Windows consoles default to cp1252)
