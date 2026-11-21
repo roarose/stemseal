@@ -219,8 +219,8 @@ class WindowsPaths(unittest.TestCase):
         self.p = [mock.patch.object(mcp, "INPUT_ROOTS", [self.root]), mock.patch.object(mcp, "INPUT_DIR", self.root)]
         for p in self.p: p.start()
         self.inside = os.path.join(self.root, "in.json"); self.outside = os.path.join(self.out, "in.json")
-        for path in (self.inside, self.outside):
-            with open(path, "w", encoding="utf-8") as f: f.write('{"total": 11000}')
+        for path, total in ((self.inside, 11000), (self.outside, 22000)):
+            with open(path, "w", encoding="utf-8") as f: f.write('{"total": %d}' % total)
     def tearDown(self):
         for p in self.p: p.stop()
     def short(self, path):
@@ -242,9 +242,14 @@ class WindowsPaths(unittest.TestCase):
         forms = [self.outside, drive.lower() + rest, self.outside.upper(), self.outside.replace("\\", "/"), self.short(self.outside),
                  sub + "\\" + up, sub.replace("\\", "/") + "/" + up.replace("\\", "/"),
                  "\\\\localhost\\" + drive[0] + "$" + rest, "\\\\?\\" + self.outside, "\\\\.\\" + self.outside,
-                 other + rest, other + "in.json", drive + "in.json"]
+                 other + rest, other + "in.json"]
         for path in forms:
             with self.subTest(path=path): self.assertIsNone(mcp.read_input_file(path))
+
+    def test_drive_relative_name_stays_in_the_inputs_folder(self):
+        drive = os.path.splitdrive(self.outside)[0]
+        for path in (drive + "in.json", drive.lower() + "in.json"):
+            with self.subTest(path=path): self.assertIn(mcp.read_input_file(path), (None, {"total": 11000}))
 
     def test_device_names_are_refused_without_waiting(self):
         for path in ("CON", "con.json", "NUL.json", "\\\\.\\CON", os.path.join(self.root, "COM1.json"), os.path.join(self.root, "aux .json"),
