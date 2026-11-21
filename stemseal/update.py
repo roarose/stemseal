@@ -138,7 +138,8 @@ def _have(name, v):
     d = hub._found(name).get(v)
     if not d: return "no"
     c = hub.inspect(name, v)
-    if c and c["seal"] == seal.OLD and os.path.dirname(os.path.dirname(c["dir"])) == os.path.realpath(hub.USER_CELLS) \
+    same = lambda a, b: os.path.normcase(os.path.realpath(a)) == os.path.normcase(os.path.realpath(b))
+    if c and c["seal"] == seal.OLD and same(os.path.dirname(os.path.dirname(c["dir"])), hub.USER_CELLS) \
             and hub._from_update(name, v, c["lock"]): return "replace"
     return "yes"
 
