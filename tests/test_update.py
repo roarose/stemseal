@@ -6,7 +6,7 @@ from unittest import mock
 os.environ.setdefault("STEMSEAL_HOME", tempfile.mkdtemp(prefix="stemseal_test_"))
 for k in ("NO_PROXY", "no_proxy"): os.environ[k] = ",".join(x for x in (os.environ.get(k), "127.0.0.1", "localhost") if x)
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from stemseal import ed25519, hub, policy, seal, update
+from stemseal import ed25519, hub, policy, seal, state, update
 
 KEY, SPARE, OTHER = (hashlib.sha256(os.urandom(32)).digest() for _ in range(3))
 SRC = "def cell_executor(input_data):\n    return {\"v\": input_data[\"x\"] * 2}\n"
@@ -91,6 +91,26 @@ class Update(unittest.TestCase):
         self.assertEqual(update.read_state()["last_release"], 1)
         self.assertEqual(update.update()["installed"], [])
         self.assertEqual(update.update(check_only=True)["new"], [])
+
+    def test_record_of_installed_cells_and_release_together(self):
+        self.first({"double_cell": {"1.0": cell_files("double_cell")}})
+        hub.mark_sealed("own_cell", "1.0", "0" * 64)
+        self.assertTrue(update.update()["ok"])
+        s = update.read_state()
+        self.assertEqual(s["last_release"], 1); self.assertEqual(set(s["sealed"]), {"own_cell/1.0", "double_cell/1.0"})
+
+    def test_unreadable_record_takes_nothing(self):
+        self.first({"double_cell": {"1.0": cell_files("double_cell")}})
+        with open(hub.STATE, "w") as f: f.write("{")
+        r = update.update()
+        self.assertFalse(r["ok"]); self.assertIn("could not be read", r["reason"]); self.assertEqual(self.installed(), [])
+        with open(hub.STATE, "rb") as f: self.assertEqual(f.read(), b"{")
+
+    def test_no_record_no_cell(self):
+        self.first({"double_cell": {"1.0": cell_files("double_cell")}})
+        with mock.patch.object(hub, "mark_sealed", side_effect=state.Unavailable("held")):
+            r = update.update()
+        self.assertEqual(self.installed(), []); self.assertIn("cannot record", r["refused"][0]["reason"])
 
     def test_names_that_are_not_allowed(self):
         before = tree(self.outside)

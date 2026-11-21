@@ -8,7 +8,9 @@
       Re-sealing seals contract.json and gt_cases.json as they are now: before anything is written, each cell's name,
       version, file hashes and description are shown and you are asked to agree (--yes agrees for scripts).
       Not re-sealed, whatever the options: a cell that `stemseal update` installed (run stemseal update instead), and a
-      version this machine has held with a format 2 lock before (state.json). A cell that does not pass is left as it is.
+      version this machine has held with a format 2 lock before (state.json), and any cell while state.json cannot be read.
+      A cell that does not pass is left as it is. Deleting state.json starts a new record: the versions held before are then
+      not known to this machine (the person who can delete it can also write the cell's lock).
       A re-sealed cell is a cell of this machine only: copied to another machine, it is re-sealed there.
 
   stemseal relock [--dry-run]   (maintainers)
@@ -17,7 +19,7 @@
       shipped cell passes. A changed cell is a new version.
 Standard library only."""
 import json, os, platform
-from . import hub, policy, seal, shape
+from . import hub, policy, seal, shape, state
 
 def _check(name, d, lock):
     """(None, report) when the cell in d can be sealed as it is; (reason, None) otherwise."""
@@ -76,8 +78,11 @@ def reseal(names=None, dry_run=False, base=None, confirm=None):
                 if names: out["skipped"].append({"cell": name, "version": v, "why": "already format 2" if p is None else "lock.json is not a format 1 lock"})
                 elif p is not None: out["failed"].append({"cell": name, "version": v, "why": "lock.json is not a format 1 lock"})
                 continue
-            if hub.was_sealed(name, v):
-                out["failed"].append({"cell": name, "version": v, "why": "this machine held this version with a format 2 lock; its files do not match that lock"}); continue
+            held = hub.was_sealed(name, v)
+            if held is None:
+                out["failed"].append({"cell": name, "version": v, "why": hub.state_problem() or "this machine's record cannot be read"}); continue
+            if held:
+                out["failed"].append({"cell": name, "version": v, "why": "its files do not match the format 2 lock it had; " + hub.HELD_BEFORE}); continue
             if hub._from_update(name, v, lock):
                 out["failed"].append({"cell": name, "version": v, "why": "installed by stemseal update; run: stemseal update"}); continue
             if os.path.exists(os.path.join(d, "lock.v1.json")):
@@ -91,7 +96,10 @@ def reseal(names=None, dry_run=False, base=None, confirm=None):
     for name, v, d, ok in todo:
         new = seal.build(name, v, ok["raw"], policy.POLICY_VERSION, ok["rep"]["total"], ok["rep"]["passed"], hub.now(),
                          "reseal on %s" % (platform.node() or "this machine"))
-        seal.write(d, new, keep_old_as="lock.v1.json"); hub.mark_sealed(name, v, new["sha256"])
+        try: hub.mark_sealed(name, v, new["sha256"])     # the record first, then the lock
+        except state.Unavailable as e:
+            out["failed"].append({"cell": name, "version": v, "why": "cannot record the lock on this machine: %s" % e}); continue
+        seal.write(d, new, keep_old_as="lock.v1.json")
         hub._log({"type": "lock", "cell": name, "version": v, "sha256": new["sha256"], "gt": new["gt_total"], "by": "reseal"})
         out["resealed"].append({"cell": name, "version": v})
     return out

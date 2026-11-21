@@ -13,6 +13,7 @@ Stdlib only.
 import hashlib, json, os, re, shutil, sys, tempfile, time
 from datetime import datetime, timedelta, timezone
 from . import savings, policy, limits, seal, shape
+from . import state as _state
 
 PKG = os.path.dirname(os.path.abspath(__file__))
 def _home():
@@ -237,7 +238,7 @@ def inspect(name, version=None):
     if not d: return None
     v = os.path.basename(d); lock = _json(seal.read_bytes(d, "lock.json")); raw = seal.read_bytes(d, "contract.json")
     problem = seal.problem(lock, {"contract.json": raw}, name, v)
-    if problem == seal.OLD and was_sealed(name, v): problem = "lock.json"    # held here with a format 2 lock before
+    if problem == seal.OLD and was_sealed(name, v) is True: problem = "lock.json"    # held here with a format 2 lock before
     contract = _json(raw)
     if problem is None and not (isinstance(contract, dict) and isinstance(contract.get("description"), str) and isinstance(contract.get("input_schema"), dict)):
         problem = "contract.json"
@@ -256,10 +257,8 @@ def _tamper(name, version, file, once=False):
     _log({"type": "tamper", "cell": name, "version": version, "file": file})
 def withdrawn():
     """{(cell, version)} that a cell release withdrew (state.json, written by stemseal update). These are not used."""
-    try:
-        with open(STATE, encoding="utf-8") as f: s = json.load(f)
-        return {(r["cell"], r["version"]) for r in s.get("revoked", []) if isinstance(r, dict) and "cell" in r and "version" in r}
-    except Exception: return set()
+    s, _ = _state.read(STATE)
+    return {(r["cell"], r["version"]) for r in s.get("revoked", []) if isinstance(r.get("cell"), str) and isinstance(r.get("version"), str)}
 def _sealed():
     """(name, cell) for every cell whose newest version's lock holds and that is not withdrawn. A cell whose files do not
     match is left out and recorded once."""
@@ -276,25 +275,24 @@ def list_cells():
                     "description_en": c["contract"].get("description_en", ""), "when_to_use_en": c["contract"].get("when_to_use_en", ""),
                     "required_inputs": c["contract"]["input_schema"].get("required", []), "gt_cases": c["lock"]["gt_total"], "locked_at": c["lock"]["locked_at"]})
     return out
-def _state():
-    try:
-        with open(STATE, encoding="utf-8") as f: s = json.load(f)
-        return s if isinstance(s, dict) else {}
-    except (OSError, ValueError): return {}
 def mark_sealed(name, version, sha256):
-    """Record that this machine holds name/version with a format 2 lock (kept outside the cell folder, in state.json).
-    Such a version is never taken for a format 1 cell again: reseal refuses it and its use is refused."""
-    try:
-        s = _state(); rec = s.get("sealed") if isinstance(s.get("sealed"), dict) else {}
-        rec["%s/%s" % (name, version)] = sha256; s["sealed"] = rec
-        os.makedirs(os.path.dirname(STATE), exist_ok=True)
-        fd, tmp = tempfile.mkstemp(dir=os.path.dirname(STATE), prefix=".state_", suffix=".tmp")
-        with os.fdopen(fd, "w", encoding="utf-8") as f: json.dump(s, f, ensure_ascii=False, indent=1)
-        os.replace(tmp, STATE)
-    except Exception: pass
+    """Record, before its format 2 lock is written, that this machine holds name/version with a format 2 lock (state.json,
+    outside the cell folder). Such a version is never taken for a format 1 cell again. Raises state.Unavailable when the
+    record cannot be written; the lock is then not written either."""
+    def add(s): s.setdefault("sealed", {})["%s/%s" % (name, version)] = sha256
+    _state.change(STATE, add)
 def was_sealed(name, version):
-    s = _state().get("sealed")
-    return isinstance(s, dict) and "%s/%s" % (name, version) in s
+    """True when this machine's record has name/version, None when the record cannot be read (unknown), False otherwise."""
+    s, how = _state.read(STATE)
+    if how == "unreadable": return None
+    if "%s/%s" % (name, version) in s.get("sealed", {}): return True
+    return None if "damaged" in s else False
+STATE_DAMAGED = ("this machine's record (%s) could not be read and was kept aside; check it, then delete %s to start a new record"
+                 " (versions held before are then not known to this machine)")
+def state_problem():
+    """None when state.json can be trusted; otherwise what a person should do."""
+    return None if _state.status(STATE) == "ok" else STATE_DAMAGED % (STATE, STATE)
+HELD_BEFORE = "this machine held this version with a format 2 lock; bring back that copy, or register the cell as a new version"
 def _from_update(name, version, lock):
     """True when this machine's ledger says `stemseal update` installed this very cell file."""
     return any(r.get("cell") == name and r.get("version") == version and r.get("sha256") == lock.get("sha256") for r in _rows("update"))
@@ -309,6 +307,7 @@ def unsealed():
         c = inspect(name)
         if c and c["seal"] is not None:
             why = old_lock_text(name, c["version"], c["lock"]) if c["seal"] == seal.OLD else "cell files do not match the lock (%s)" % c["seal"]
+            if c["seal"] == "lock.json" and seal.is_v1(c["lock"]) and was_sealed(name, c["version"]) is True: why += "; " + HELD_BEFORE
             out.append({"cell": name, "version": c["version"], "why": why})
     return out
 
@@ -339,7 +338,15 @@ def register(name, src, contract, gt_cases, locked_by="unknown", base=None):
     for f in ("contract.json", "gt_cases.json"):
         with open(os.path.join(d, f), "wb") as fh: fh.write(raw[f])
     lock = seal.build(name, version, raw, policy.POLICY_VERSION, rep["total"], rep["passed"], now(), locked_by)
-    seal.write(d, lock); mark_sealed(name, version, lock["sha256"])
+    try: mark_sealed(name, version, lock["sha256"])          # the record first: a version recorded but not locked stays unused
+    except _state.Unavailable as e:
+        for f in ("cell.py", "contract.json", "gt_cases.json"):
+            try: os.remove(os.path.join(d, f))
+            except OSError: pass
+        try: os.rmdir(d)
+        except OSError: pass
+        return {"locked": False, "reason": "cannot record the lock on this machine: %s" % e}
+    seal.write(d, lock)
     _log({"type": "lock", "cell": name, "version": version, "sha256": lock["sha256"], "gt": rep["total"], "by": locked_by})
     return {"locked": True, "cell": name, "version": version, "sha256": lock["sha256"], "report": rep}
 

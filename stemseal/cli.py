@@ -68,6 +68,7 @@ def main(argv=None):
     if cmd == "list":
         _p([{k: c[k] for k in ("cell", "version", "description", "required_inputs")} for c in hub.list_cells()])
         for u in hub.unsealed(): print("not usable: %s %s: %s" % (u["cell"], u["version"], u["why"]), file=sys.stderr)
+        if hub.state_problem(): print("note: " + hub.state_problem(), file=sys.stderr)
     elif cmd == "find": _p(hub.find(" ".join(rest), caller="cli"))
     elif cmd == "call":
         if len(rest) != 2: print(__doc__); return 2
@@ -79,6 +80,7 @@ def main(argv=None):
         for k in bad:
             if r[k].get("seal"): print("%s: %s" % (k, r[k]["seal"]))
         print("all %d cells verified" % len(r) if not bad else "FAILED: %s" % bad)
+        if hub.state_problem(): print("note: " + hub.state_problem())
         if not limits.MEMORY_ENFORCED: print("note: this system does not enforce the memory limit; cells are limited by time only")
         if not limits.PROCESS_LIMIT_ENFORCED: print("note: running as root, so the system does not enforce the one-process limit; run stemseal as a regular user")
         return 1 if bad else 0

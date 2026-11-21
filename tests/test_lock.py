@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
 """Lock format 2 (stemseal/seal.py), re-sealing (stemseal/reseal.py) and the result shape (stemseal/shape.py).
 Run: python -m unittest discover -s tests"""
-import glob, json, os, shutil, sys, tempfile, unittest
+import glob, json, os, shutil, subprocess, sys, tempfile, time, unittest
 from unittest import mock
 os.environ.setdefault("STEMSEAL_HOME", tempfile.mkdtemp(prefix="stemseal_test_"))
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
-from stemseal import hub, policy, reseal, seal, shape, update
+from stemseal import hub, policy, reseal, seal, shape, state, update
 
 SHIPPED = os.path.join(ROOT, "stemseal", "cells")
 OK_CELL = "def cell_executor(input_data):\n    return {\"v\": input_data[\"x\"] * 2}\n"
@@ -266,12 +266,12 @@ class ResealOnlyFormat1(Place):
         self.put_lock(d, {k: v for k, v in lock.items() if k in seal.V1_KEYS})
         self.assertEqual(hub.inspect("held_cell")["seal"], "lock.json")
         self.assertEqual(hub.call("held_cell", {"x": 1}, caller="t")["reason"], "cell files do not match the lock (lock.json)")
-        self.assertEqual({u["cell"]: u["why"] for u in hub.unsealed()}["held_cell"], "cell files do not match the lock (lock.json)")
+        self.assertEqual({u["cell"]: u["why"] for u in hub.unsealed()}["held_cell"], "cell files do not match the lock (lock.json); " + hub.HELD_BEFORE)
         before = self.files()
         for args in (["held_cell"], None):
             out = reseal.reseal(args, confirm=self.YES)
             self.assertEqual(out["resealed"], []); self.assertEqual(out["plan"], [])
-            self.assertIn("format 2", {x["cell"]: x["why"] for x in out["failed"]}["held_cell"])
+            self.assertIn(hub.HELD_BEFORE, {x["cell"]: x["why"] for x in out["failed"]}["held_cell"])
         self.assertEqual(self.files(), before)
 
     def test_a_cell_update_installed_is_left_to_update(self):
@@ -311,6 +311,80 @@ class ResealOnlyFormat1(Place):
             self.assertIsNone(seal.problem_all(json.loads(seal.read_bytes(d, "lock.json")), d, name, "1.0"))
             self.assertEqual(hub.call(name, {"x": 3}, caller="t")["result"], {"v": 6})
         self.assertIn(b"\r\n", seal.read_bytes(d1, "lock.v1.json"))
+
+class StateRecord(Place):
+    """state.json: kept aside when it cannot be read, the safe side while it cannot, every change kept, the record before the lock."""
+    def own(self, name): return make(self.user, name, fmt=1)
+    def write_state(self, data):
+        with open(hub.STATE, "wb") as f: f.write(data)
+
+    def test_unreadable_record_refuses_reseal_and_is_kept_aside(self):
+        for label, data in (("broken", b'{"sealed": {"a/1.0": '), ("wrong form", b'{"sealed": []}'), ("not text", b"\xff\xfe"),
+                            ("wrong hash", b'{"sealed": {"a/1.0": "x"}}'), ("folder", None)):
+            with self.subTest(state=label):
+                shutil.rmtree(self.user); os.makedirs(self.user)
+                for n in glob.glob(os.path.join(self.tmp, "state*")):
+                    shutil.rmtree(n) if os.path.isdir(n) else os.remove(n)
+                if data is None: os.makedirs(hub.STATE)
+                else: self.write_state(data)
+                d = self.own("own_cell")
+                self.assertIsNotNone(hub.state_problem())
+                out = reseal.reseal(["own_cell"], confirm=lambda plan: True)
+                self.assertEqual(out["resealed"], []); self.assertIn("could not be read", out["failed"][0]["why"])
+                self.assertIsNone(json.loads(seal.read_bytes(d, "lock.json")).get("format"))
+                r = hub.register("new_cell", OK_CELL, dict(CONTRACT), GT, base=self.user)    # a change keeps the old file aside
+                self.assertTrue(r["locked"], r)
+                kept = glob.glob(os.path.join(self.tmp, "state.bad-*.json"))
+                self.assertEqual(len(kept), 1)
+                if data is not None:
+                    with open(kept[0], "rb") as f: self.assertEqual(f.read(), data)
+                s = json.loads(open(hub.STATE, encoding="utf-8").read())
+                self.assertEqual(s["damaged"], os.path.basename(kept[0])); self.assertIn("new_cell/1.0", s["sealed"])
+                self.assertIsNotNone(hub.state_problem())                          # still the safe side until the person acts
+                self.assertEqual(reseal.reseal(["own_cell"], confirm=lambda plan: True)["resealed"], [])
+                self.assertEqual(hub.call("new_cell", {"x": 2}, caller="t")["result"], {"v": 4})
+                os.remove(hub.STATE)                                               # the person starts a new record
+                self.assertIsNone(hub.state_problem())
+                self.assertEqual(reseal.reseal(["own_cell"], confirm=lambda plan: True)["resealed"], [{"cell": "own_cell", "version": "1.0"}])
+
+    def test_changes_at_the_same_time_are_all_kept(self):
+        prog = ("import sys; sys.path.insert(0, sys.argv[1]); from stemseal import state\n"
+                "for i in range(150): state.change(sys.argv[2], lambda s, i=i: s.setdefault('sealed', {}).__setitem__('%s_%d/1.0' % (sys.argv[3], i), '0' * 64))\n")
+        procs = [subprocess.Popen([sys.executable, "-c", prog, ROOT, hub.STATE, tag]) for tag in ("a", "b")]
+        self.assertEqual([p.wait(timeout=120) for p in procs], [0, 0])
+        s = json.loads(open(hub.STATE, encoding="utf-8").read())
+        self.assertEqual(len(s["sealed"]), 300)
+        self.assertEqual(glob.glob(os.path.join(self.tmp, ".state_*")) + glob.glob(hub.STATE + ".lock"), [])
+
+    def test_left_over_lock_and_new_files_are_cleared(self):
+        old = time.time() - 2 * state.LOCK_STALE
+        for p in (hub.STATE + ".lock", os.path.join(self.tmp, ".state_x.tmp")):
+            with open(p, "w") as f: f.write("1")
+            os.utime(p, (old, old))
+        hub.mark_sealed("some_cell", "1.0", "0" * 64)
+        self.assertTrue(hub.was_sealed("some_cell", "1.0"))
+        self.assertEqual(glob.glob(os.path.join(self.tmp, ".state_*")) + glob.glob(hub.STATE + ".lock"), [])
+
+    def test_a_held_lock_is_waited_for_then_given_up(self):
+        with open(hub.STATE + ".lock", "w") as f: f.write("1")
+        with mock.patch.object(state, "LOCK_WAIT", 0.2):
+            with self.assertRaises(state.Unavailable): hub.mark_sealed("some_cell", "1.0", "0" * 64)
+            d = self.own("own_cell")
+            out = reseal.reseal(["own_cell"], confirm=lambda plan: True)
+            self.assertEqual(out["resealed"], []); self.assertIn("cannot record", out["failed"][0]["why"])
+            self.assertIsNone(json.loads(seal.read_bytes(d, "lock.json")).get("format"))
+            r = hub.register("new_cell", OK_CELL, dict(CONTRACT), GT, base=self.user)
+            self.assertFalse(r["locked"]); self.assertFalse(os.path.exists(os.path.join(self.user, "new_cell", "1.0")))
+
+    def test_the_record_comes_before_the_lock(self):
+        d = self.own("own_cell")
+        with mock.patch.object(seal, "write", side_effect=OSError("stopped")):
+            with self.assertRaises(OSError): reseal.reseal(["own_cell"], confirm=lambda plan: True)
+        self.assertTrue(hub.was_sealed("own_cell", "1.0"))
+        self.assertIsNone(json.loads(seal.read_bytes(d, "lock.json")).get("format"))
+        self.assertEqual(hub.call("own_cell", {"x": 1}, caller="t")["status"], "not_available")
+        out = reseal.reseal(["own_cell"], confirm=lambda plan: True)
+        self.assertEqual(out["resealed"], []); self.assertIn(hub.HELD_BEFORE, out["failed"][0]["why"])
 
 class DeepResults(Place):
     def test_deep_result_without_schema_is_refused_and_logged(self):

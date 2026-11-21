@@ -18,7 +18,7 @@ are no longer used. Only runs when you type it; nothing else in stemseal touches
   stemseal update --check  only list what is new
 Maintainers: `stemseal release <N>` writes stemseal/cells/release.json for release N."""
 import json, os, re, shutil, tempfile, urllib.request
-from . import __version__, ed25519, hub, seal, shape
+from . import __version__, ed25519, hub, seal, shape, state
 
 PKG = os.path.dirname(os.path.abspath(__file__))
 REFS = "https://api.github.com/repos/roarose/stemseal/git/matching-refs/tags/cells-"
@@ -66,15 +66,7 @@ def _version_tuple(v):
 
 # ---------------------------------------------------------------- this machine's state
 def read_state():
-    try:
-        with open(hub.STATE, encoding="utf-8") as f: s = json.load(f)
-        return s if isinstance(s, dict) else {}
-    except (OSError, ValueError): return {}
-def _write_state(s):
-    os.makedirs(os.path.dirname(hub.STATE), exist_ok=True)
-    fd, tmp = tempfile.mkstemp(dir=os.path.dirname(hub.STATE), prefix=".state_", suffix=".tmp")
-    with os.fdopen(fd, "w", encoding="utf-8") as f: json.dump(s, f, ensure_ascii=False, indent=1)
-    os.replace(tmp, hub.STATE)
+    return state.read(hub.STATE)[0]
 
 # ---------------------------------------------------------------- the release
 def _signature(raw):
@@ -185,6 +177,8 @@ def _install(n, name, v, meta, raw_url):
         if os.path.exists(dest):
             aside = os.path.join(root, ".replaced", "%s-%s-%s" % (name, v, hub.now().replace(":", "")))
             os.makedirs(os.path.dirname(aside), exist_ok=True); os.replace(dest, aside)
+        try: hub.mark_sealed(name, v, files["cell.py"])          # the record first, then the cell
+        except state.Unavailable as e: return "cannot record the cell on this machine: %s" % e
         os.makedirs(os.path.dirname(dest), exist_ok=True)
         os.replace(tmp, dest); tmp = None
         hub._log({"type": "update", "cell": name, "version": v, "sha256": files["cell.py"], "release": n})
@@ -201,7 +195,9 @@ def _revoked(rel):
 def update(check_only=False):
     out = {"ok": False}
     if TEST_BASE: out["warning"] = "STEMSEAL_TEST_RELEASE_BASE is set: cells come from %s, not from GitHub" % TEST_BASE
-    state = read_state(); last = state.get("last_release", 0) if isinstance(state.get("last_release"), int) else 0
+    bad = hub.state_problem()
+    if bad: out["reason"] = bad; return out
+    last = read_state().get("last_release", 0)
     try:
         n = latest_release()
         if n == 0: out.update(ok=True, new=[], installed=[], refused=[], note="no cell release yet"); return out
@@ -229,7 +225,9 @@ def update(check_only=False):
         why = _install(n, name, v, meta, raw_url)
         if why: refused.append({"cell": name, "version": v, "reason": why})
         else: done.append({"cell": name, "version": v, "description": meta.get("description")})
-    state.update(last_release=n, revoked=_revoked(rel), release_sha256=seal.sha(raw)); _write_state(state)
+    def took(s): s.update(last_release=max(n, s.get("last_release", 0)), revoked=_revoked(rel), release_sha256=seal.sha(raw))
+    try: state.change(hub.STATE, took)
+    except state.Unavailable as e: out["warning"] = "cells installed, but this machine's record of the release was not written: %s" % e
     out.update(ok=True, release=n, installed=done, refused=refused, where=hub.USER_CELLS)
     return out
 
