@@ -38,13 +38,18 @@ class Signer(unittest.TestCase):
             signer.sign(gone, key_path=os.path.join(b, signer.SPARE_NAME), passphrase=pw[1], out_dir=tempfile.mkdtemp(), confirm=False,
                         trusted=json.dumps({"2": hashlib.sha256(graw).hexdigest()}).encode())
         self.assertIn(pubs[0][:16], shown.getvalue())                    # the key a release withdraws is shown before signing
+        self.assertIn("폐기 대상: 주 열쇠", shown.getvalue()); self.assertIn("서명하는 열쇠: 예비 열쇠", shown.getvalue())
+        with redirect_stdout(io.StringIO()):                              # a release that withdraws the signing key is not signed
+            self.assertEqual(signer.sign(gone, key_path=os.path.join(a, signer.MAIN_NAME), passphrase=pw[0], out_dir=tempfile.mkdtemp(), confirm=False,
+                                         trusted=json.dumps({"2": hashlib.sha256(graw).hexdigest()}).encode()), 1)
         for path in (sig_path, main_sig):
             with open(path, "rb") as f: sig = f.read()
             keys = [bytes.fromhex(p) for p in pubs]
             self.assertTrue(update.signed_by_release_key(raw, sig, keys))
             self.assertFalse(update.signed_by_release_key(raw + b" ", sig, keys))
-        for d in (a, b):
-            with open(os.path.join(d, os.listdir(d)[0]), "rb") as f: self.assertIn(b"ENCRYPTED", f.read())
+        for d, pem in ((a, signer.MAIN_NAME), (b, signer.SPARE_NAME)):
+            with open(os.path.join(d, pem), "rb") as f: self.assertIn(b"ENCRYPTED", f.read())
+            with open(os.path.join(d, signer.PUBLIC_NAME), encoding="ascii") as f: self.assertEqual(f.read(), "main %s\nspare %s\n" % tuple(pubs))
 
     def test_runs_isolated(self):
         r = subprocess.run([sys.executable, "-I", os.path.join(ROOT, "tools", "signer", "signer.py")], capture_output=True)

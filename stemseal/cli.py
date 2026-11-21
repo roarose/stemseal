@@ -79,6 +79,8 @@ def main(argv=None):
         bad = [k for k, v in r.items() if not (v["hash_ok"] and v.get("seal_ok") and v.get("policy_ok") and v.get("gt_ok") and v["deterministic"])]
         for k in bad:
             if r[k].get("seal"): print("%s: %s" % (k, r[k]["seal"]))
+        for k, v in r.items():
+            if v.get("note"): print("not used: %s: %s" % (k, v["note"]))
         print("all %d cells verified" % len(r) if not bad else "FAILED: %s" % bad)
         if hub.state_problem(): print("note: " + hub.state_problem())
         if not limits.MEMORY_ENFORCED: print("note: this system does not enforce the memory limit; cells are limited by time only")

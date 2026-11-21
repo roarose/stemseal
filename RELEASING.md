@@ -42,28 +42,38 @@ Cell folders that update replaced are kept in `~/.stemseal/replaced/`; nothing r
 ## When a release key is lost or stolen
 
 1. The owner tells the working thread at once (what and when; never the passphrase or the key file).
-2. **Withdraw the key in the next cell release**, signed with the remaining key:
-   `stemseal release <N> --revoke-key <hex of the lost key>`. N must be above every `cells-*` number already out.
-   Clients from 0.2.4 on that take it stop accepting the withdrawn key, stop using cells installed from releases it
-   signed, and keep that for good (it is kept beside `state.json` as well).
-3. A pull request removes that key from `stemseal/release_keys.json`, adds a new spare key, and raises the version;
-   the owner publishes it. A later cell release sets `min_client` to that version.
+2. **Withdraw the key in the next cell release**, signed with the remaining key (if the main stick is lost, run the
+   signer from the spare stick): `stemseal release <N> --revoke-key <hex of the lost key>`. N must be above every
+   `cells-*` number already out. The signer names both keys (main or spare) and refuses a release that withdraws the
+   key signing it. Clients from 0.2.4 on that take it stop accepting the withdrawn key and keep that for good (it is
+   kept beside `state.json` as well). Cells they took from releases the withdrawn key signed pause until update takes
+   them again from a release signed by a key still in use; release N carries every shipped cell, so that is release N.
+3. New keys: make two new keys on two new USB sticks (`열쇠만들기.bat`), and a pull request puts both new public keys in
+   `stemseal/release_keys.json` in place of the old ones, lists release N in `stemseal/trusted_releases.json`, and
+   raises the version; the owner publishes it. The next cell release sets `min_client` to that version and is signed
+   with the remaining old key, so that older clients are told to update; after that, releases are signed with the
+   new main key.
 4. Users are told to update stemseal (README, release notes, an issue).
 
 Rules a client follows for withdrawn keys:
 
 - Any release key may withdraw any release key, itself included. A withdrawal counts when the release carrying it is
   signed by any key built into that stemseal version, even one already withdrawn on that machine.
+- Withdrawals in every release on the path from a release down to one that stemseal lists also count. So a release
+  signed by a withdrawn key is not taken, however many releases are published above the withdrawal.
 - Withdrawals only add up. `stemseal release` carries earlier ones over and refuses to withdraw the last key it lists.
 - When the two keys withdraw each other, a client keeps neither: it takes no cell release, stops using cells installed
   from releases, and keeps using the cells shipped with the package and its own cells. The way back is a stemseal
   version with new keys.
+- `stemseal list` and `stemseal verify` say why a cell from a withdrawn key is not used, and what to run.
 
 Limits:
 
 - A client takes a withdrawal only when it runs `stemseal update` and sees that release. Until then it trusts the key.
-- Whoever holds a lost key can also withdraw the other key; with the step above, clients then keep no key and wait for
-  a new stemseal version. They do not come to trust the lost key alone.
+- Whoever holds a lost key can also withdraw the other key; clients then keep no key and wait for a new stemseal
+  version.
+- A withdrawal release is fixed for good once a stemseal version lists it in `trusted_releases.json` (step 3), or once
+  a client has taken it.
 - Clients older than 0.2.4 do not read key withdrawals; step 4 is what reaches them.
 - A release that withdraws cells with the spare key withdraws cells only; withdrawing a key is `--revoke-key`.
 

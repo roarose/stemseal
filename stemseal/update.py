@@ -22,8 +22,10 @@ update installed are not called until `stemseal update` runs again; cells shippe
 this machine keep working.
 
 Release keys: a signed release may also withdraw release keys ("revoked_keys"). Every candidate's withdrawals count before
-one is chosen, from a signature by any key built into this version, withdrawn here or not; they only add up and are kept
-like withdrawn cells. A release signed by a withdrawn key is not taken, and cells installed from one are not used. When
+one is chosen, from a signature by any key built into this version, withdrawn here or not, and so do the withdrawals of
+every release on the path down to one this version lists; they only add up and are kept like withdrawn cells. A release
+signed by a withdrawn key is not taken. Cells installed from one are not used until update takes them again from a
+release signed by a key still in use. When
 every built-in key is withdrawn, no release is taken until a stemseal version with new keys is installed. Only runs when you type it; nothing else in stemseal touches the network. Nothing is sent.
 
   stemseal update          install new cells
@@ -210,12 +212,14 @@ def _parse(raw, n):
     return rel
 
 def _anchored(n, raw, rel, fetch):
-    """release.json of cells-n is the one this version lists, or links back to one it lists."""
-    trusted = trusted_releases(); digest = seal.sha(raw)
+    """release.json of cells-n is the one this version lists, or links back to one it lists. Returns the release keys
+    withdrawn by every release on that path (cells-n included)."""
+    trusted = trusted_releases(); digest = seal.sha(raw); keys = set()
     for _ in range(MAX_CHAIN):
+        keys |= set(_key_list(rel.get("revoked_keys", [])))
         if n in trusted:
             if trusted[n] != digest: raise Refused("cells-%d is not the release this version knows" % n)
-            return
+            return keys
         prev = rel.get("previous_index_sha256")
         if n <= 1 or not (isinstance(prev, str) and HEX.fullmatch(prev)): break
         n -= 1; raw = fetch(n); digest = seal.sha(raw)
@@ -256,11 +260,12 @@ def fetch_signed(n):
     return raw, sig, _parse(raw, n), who
 
 def check_release(n, raw, rel):
-    """The checks a release passes before its cells are installed: this version is new enough, and it is anchored."""
+    """The checks a release passes before its cells are installed: this version is new enough, and it is anchored.
+    Returns the release keys withdrawn along the path to the anchor."""
     need = _version_tuple(rel.get("min_client", "0"))
     if need is None: raise Refused("cells-%d does not say which stemseal it needs" % n)
     if need > _version_tuple(__version__): raise Refused("cells-%d needs stemseal %s or newer; update stemseal" % (n, rel.get("min_client")))
-    _anchored(n, raw, rel, _fetch_raw)
+    return _anchored(n, raw, rel, _fetch_raw)
 
 def fetch_release(n):
     """(raw bytes, signature bytes, parsed release) for cells-n after the signature, format and anchor checks; Refused otherwise."""
@@ -273,6 +278,7 @@ def _have(name, v):
     d = hub._found(name).get(v)
     if not d: return "no"
     c = hub.inspect(name, v)
+    if c and hub.key_withdrawn(c): return "replace"           # taken again from a release signed by a key still in use
     same = lambda a, b: os.path.normcase(os.path.realpath(a)) == os.path.normcase(os.path.realpath(b))
     if c and c["seal"] == seal.OLD and same(os.path.dirname(os.path.dirname(c["dir"])), hub.USER_CELLS) \
             and hub._from_update(name, v, c["lock"]): return "replace"
@@ -378,11 +384,19 @@ def update(check_only=False):
         for k, raw, sig, rel, who in signed:
             try:
                 if who in out_keys: raise Refused("cells-%d is signed by a withdrawn release key" % k)
-                check_release(k, raw, rel)
+                path = check_release(k, raw, rel) - out_keys      # withdrawals on the way to a release this version lists
+                if path:
+                    out_keys |= path; out["keys_withdrawn"] = sorted(set(out.get("keys_withdrawn", [])) | path)
+                    if not check_only:
+                        try: _keep_keys_out(path)
+                        except (OSError, state.Unavailable) as e: raise Refused("a release withdrew a release key, and this machine cannot record it: %s" % e)
+                    if built_in and set(built_in) <= out_keys: raise Refused(ALL_KEYS_OUT)
+                    if who in out_keys: raise Refused("cells-%d is signed by a withdrawn release key" % k)
                 if k in known and seal.sha(raw) != known[k]: raise Refused("cells-%d is not the release this machine took under that number" % k)
                 n = k; signer = who; break
             except Refused as e: skipped.append({"release": k, "reason": str(e)})
         skipped.sort(key=lambda x: -x["release"])
+        if n is None and built_in and set(built_in) <= out_keys: raise Refused(ALL_KEYS_OUT)
         if n is None: raise Refused(skipped[0]["reason"] if len(skipped) == 1 else "none of the newest %d cell releases checks" % len(skipped))
     except Refused as e:
         out["reason"] = str(e)
