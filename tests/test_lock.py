@@ -166,8 +166,7 @@ class OldFormat(Place):
         d = make(self.user, "got_cell", fmt=1); sha = seal.sha(seal.read_bytes(d, "cell.py"))
         hub._log({"type": "update", "cell": "got_cell", "version": "1.0", "sha256": sha})
         make(self.user, "own_cell", fmt=1)
-        idx = {"cells": {"got_cell": {"1.0": {"sha256": sha}}, "own_cell": {"1.0": {"sha256": seal.sha(OK_CELL.encode())}}}}
-        self.assertEqual([(n, v) for n, v, _ in update.new_cells(idx)], [("got_cell", "1.0")])
+        self.assertEqual((update._have("got_cell", "1.0"), update._have("own_cell", "1.0"), update._have("no_cell", "1.0")), ("replace", "yes", "no"))
 
 class Reseal(Place):
     def lock_of(self, name): return json.loads(seal.read_bytes(os.path.join(self.user, name, "1.0"), "lock.json"))

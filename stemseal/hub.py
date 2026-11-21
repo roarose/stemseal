@@ -29,7 +29,7 @@ CELLS = os.environ.get("STEMSEAL_CELLS") or os.path.join(PKG, "cells")   # cells
 USER_CELLS = os.path.join(HOME, "cells")                                    # cells added later by `stemseal update`
 def _dirs(): return [CELLS] + ([USER_CELLS] if os.path.abspath(USER_CELLS) != os.path.abspath(CELLS) else [])
 LEDGER = os.path.join(HOME, "ledger.jsonl")
-STATE = os.path.join(HOME, "state.json")    # this machine's record of cell versions it has held with a format 2 lock
+STATE = os.path.join(HOME, "state.json")    # this machine's state: cell versions held with a format 2 lock, last cell release taken, withdrawn cells
 REPO = "https://github.com/roarose/stemseal"
 MIN_GT = 20                      # a cell needs at least this many ground-truth cases to be locked
 CALL_TIMEOUT = 5                 # seconds per call
@@ -254,11 +254,19 @@ def _tamper(name, version, file, once=False):
         if (name, version, file) in _TAMPER_SEEN: return
         _TAMPER_SEEN.add((name, version, file))
     _log({"type": "tamper", "cell": name, "version": version, "file": file})
+def withdrawn():
+    """{(cell, version)} that a cell release withdrew (state.json, written by stemseal update). These are not used."""
+    try:
+        with open(STATE, encoding="utf-8") as f: s = json.load(f)
+        return {(r["cell"], r["version"]) for r in s.get("revoked", []) if isinstance(r, dict) and "cell" in r and "version" in r}
+    except Exception: return set()
 def _sealed():
-    """(name, cell) for every cell whose newest version's lock holds. A cell whose files do not match is left out and recorded once."""
+    """(name, cell) for every cell whose newest version's lock holds and that is not withdrawn. A cell whose files do not
+    match is left out and recorded once."""
+    gone = withdrawn()
     for name in _names():
         c = inspect(name)
-        if not c: continue
+        if not c or (name, c["version"]) in gone: continue
         if c["seal"] is None: yield name, c
         elif c["seal"] != seal.OLD: _tamper(name, c["version"], c["seal"], once=True)
 def list_cells():
@@ -393,6 +401,7 @@ def call(name, input_data, caller="unknown", version=None, model=None, decorate=
     c = inspect(name, version) if exists(name) else None
     if not c: return env("not_available", reason="no locked cell with this name")
     ver = c["version"]
+    if (name, ver) in withdrawn(): c = None; return env("not_available", reason="this cell was withdrawn", ver=ver)
     raw = seal.read_bytes(c["dir"], "cell.py")   # read once: the bytes whose hash is checked are the bytes that run
     problem = c["seal"] or seal.problem(c["lock"], {"cell.py": raw}, name, ver) or (None if seal.kind(c["lock"]) == "cell" else "lock.json")
     if problem == seal.OLD:

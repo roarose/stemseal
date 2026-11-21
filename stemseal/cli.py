@@ -15,7 +15,7 @@
   stemseal demand --all | --json     include needs a cell now answers | raw groups as JSON
   stemseal ledger [--minimize]       where this machine's ledger is and what it keeps; --minimize rewrites the rows already
                                      there as STEMSEAL_LOG=minimal keeps them (sentences become a hash and a few words)
-  stemseal update [--check]          bring cells made since this install (each is re-verified here before use)
+  stemseal update [--check]          bring cells from the newest signed cell release (each is re-verified here before use)
   stemseal savings [--days N]        tokens the cells saved, from this machine's ledger (measured and estimated kept apart)
   stemseal measure <cell> <model> [--n 5] [--url http://127.0.0.1:11434] [--ship]
                                      measure a cell's baseline (tokens without the cell) with a local Ollama model
@@ -113,6 +113,17 @@ def main(argv=None):
         r = _r.reseal(names or None, dry_run=dry, confirm=confirm); _p(r)
         return 1 if r["failed"] or (r["plan"] and not dry and not r["confirmed"]) else 0
     elif cmd == "index": _p({k: list(v) for k, v in upd.build_index()["cells"].items()})
+    elif cmd == "release":        # maintainers: stemseal release <N> [--min-client X.Y.Z] [--revoke cell@version:reason ...]
+        try: n = int(rest[0])
+        except (IndexError, ValueError): print("stemseal release <N>: N is the cell release number"); return 2
+        opt = lambda k: rest[rest.index(k) + 1] if k in rest and rest.index(k) + 1 < len(rest) else None
+        rev = []
+        for i, x in enumerate(rest):
+            if x == "--revoke" and i + 1 < len(rest):
+                cv, _, why = rest[i + 1].partition(":"); c, _, v = cv.partition("@"); rev.append({"cell": c, "version": v, "reason": why})
+        try: rel, digest = upd.build_release(n, min_client=opt("--min-client"), revoke=rev)
+        except ValueError as e: print("not written: %s" % e); return 1
+        print("release.json for cells-%d written: %d cells, sha256 %s (fingerprint %s)" % (n, sum(len(v) for v in rel["cells"].values()), digest, digest[:8]))
     elif cmd == "mcp":
         from . import mcp as _m; _m.main(); return 0
     elif cmd == "savings":

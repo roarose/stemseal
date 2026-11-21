@@ -88,20 +88,19 @@ class EveryPath(unittest.TestCase):
     def test_update(self):
         c = hub.load("vat_supply_price")
         files = {}
-        for f in update.FILES:
+        for f in ("cell.py", "contract.json", "gt_cases.json"):
             with open(os.path.join(c["dir"], f), "rb") as fh: files[f] = fh.read()
-        sha = hub.sha(files["cell.py"])
         files["lock.json"] = seal.dumps(seal.build("reply_test_update", "1.0", files, 2, 25, 25, "x", "t"))
-        index = j({"cells": {"reply_test_update": {"1.0": {"sha256": sha}}}})
-        def get(url, timeout=20):
-            if url.endswith("/index.json"): return index
+        meta = {"files": {f: hub.sha(b) for f, b in files.items()}}
+        def get(url, limit, timeout=20):
             for f, b in files.items():
                 if url.endswith("/" + f): return b
             raise OSError("not found")
-        with mock.patch.object(update, "_get", get), mock.patch.object(hub, "_run_runner", return_value=("timeout", b"")):
-            r = update.update()
-        self.assertEqual(r["installed"], [])
-        self.assertTrue(r["refused"][0]["reason"].startswith("policy gate"))
+        user = tempfile.mkdtemp()
+        with mock.patch.object(update, "_get", get), mock.patch.object(hub, "_run_runner", return_value=("timeout", b"")), \
+             mock.patch.object(hub, "USER_CELLS", user):
+            why = update._install(1, "reply_test_update", "1.0", meta, "x/%d/%s")
+        self.assertTrue(why.startswith("policy gate")); self.assertEqual(os.listdir(user), [])
 
 class RefusalCases(unittest.TestCase):
     def test_only_the_cells_own_refusal_counts(self):
