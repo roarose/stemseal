@@ -358,6 +358,7 @@ def _err_for_model(err):
     if "\n" in err or "\r" in err: err = _one_line(err)
     kind, sep, msg = err.partition(": ")
     return kind + sep + _cut(msg, ERR_TO_MODEL) if sep else _cut(err, ERR_TO_MODEL)
+RESULT_FORM = ("result is not an object", "result too large", "result is not plain JSON")   # the runner's words for a result it could not pass on
 def _err_for_ledger(err):
     """The exception type and the first characters of its message only."""
     kind, sep, msg = err.partition(": ")
@@ -410,6 +411,8 @@ def call(name, input_data, caller="unknown", version=None, model=None, decorate=
         if log: _log({"type": "blocked", "cell": name, "version": ver, "why": r["blocked"]})
         return env("not_available", reason="cell failed the safety check", ver=ver)
     if r.get("fault") and r.get("err") != "timeout": return env("not_available", reason="the cell gave no proper answer", ver=ver)
+    if not r.get("ok") and r.get("err") in RESULT_FORM:     # the cell answered, but not with a plain JSON object of bounded size
+        return env("not_available", reason="cell returned an unexpected result", ver=ver, log_reason="cell returned an unexpected result: %s" % r["err"])
     if not r.get("ok"):
         err = _err_for_model(r.get("err"))
         return env("invalid_input", reason=REJECTED + err, ver=ver, log_reason=REJECTED + _err_for_ledger(_one_line(err)))

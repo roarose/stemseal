@@ -321,9 +321,17 @@ class DeepResults(Place):
                 src = "def cell_executor(input_data):\n    v = 1\n    for i in range(%d):\n        v = [v]\n    return {\"v\": v}\n" % depth
                 make(self.user, "deep_cell", src=src)
                 r = hub.call("deep_cell", {"x": 1}, caller="t")
-                self.assertEqual(r["status"], "not_available"); self.assertIsNone(r["result"])
+                self.assertEqual((r["status"], r["reason"], r["result"]), ("not_available", "cell returned an unexpected result", None))
         rows = [x for x in hub._rows("call") if x.get("cell") == "deep_cell"]
         self.assertEqual(len(rows), 3); self.assertTrue(all(x["status"] == "not_available" for x in rows))
+
+    def test_results_the_runner_cannot_pass_on(self):
+        for body in ("return [1]", "return {\"v\": {1, 2}}", "return {\"v\": \"x\" * (2 * 1024 * 1024)}"):
+            with self.subTest(body=body):
+                shutil.rmtree(os.path.join(self.user, "form_cell"), ignore_errors=True)
+                make(self.user, "form_cell", src="def cell_executor(input_data):\n    %s\n" % body)
+                r = hub.call("form_cell", {"x": 1}, caller="t")
+                self.assertEqual((r["status"], r["reason"]), ("not_available", "cell returned an unexpected result"))
 
     def test_nesting_up_to_the_limit_still_passes(self):
         src = "def cell_executor(input_data):\n    v = 1\n    for i in range(%d):\n        v = [v]\n    return {\"v\": v}\n" % (shape.HARD_DEPTH - 1)
