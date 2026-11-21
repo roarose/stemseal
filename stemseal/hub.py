@@ -276,6 +276,29 @@ def withdrawn():
     """{(cell, version)} that a cell release withdrew: state.json and the kept copy of the last release, together. Not used."""
     return _release_view()["withdrawn"]
 def _from_release(d): return os.path.isfile(os.path.join(d, "from_release.json"))
+KEY_OUT_HINT = "the key that signed the release this cell came from was withdrawn; run: stemseal update (it takes the cell again from a release signed by a key still in use)"
+ALL_KEYS_OUT_HINT = "every release key of this stemseal version was withdrawn; update stemseal (a new version brings new keys)"
+def release_hint(c):
+    """For a person: why a cell that update installed is not used now and what to do, or None."""
+    if key_withdrawn(c):
+        try:
+            from . import update as _u
+            built = {k.hex() for k in _u.release_keys()}
+        except Exception: built = set()
+        return ALL_KEYS_OUT_HINT if built and built <= (_release_view().get("keys_out") or set()) else KEY_OUT_HINT
+    if release_unknown(c):
+        return "this machine cannot tell which cell release it took (state.json and its kept copy are missing or cannot be read); run: stemseal update"
+    return None
+def key_withdrawn(c):
+    """True for a cell that update installed from a release whose signing key a later signed release withdrew. When any key
+    is withdrawn, a cell whose record does not name its key counts as withdrawn too."""
+    if not c or not _from_release(c["dir"]): return False
+    out = _release_view().get("keys_out") or set()
+    if not out: return False
+    try:
+        with open(os.path.join(c["dir"], "from_release.json"), encoding="utf-8") as f: k = json.load(f).get("key")
+    except (OSError, ValueError, AttributeError): k = None
+    return not isinstance(k, str) or k in out
 def release_unknown(c):
     """True for a cell that update installed while this machine cannot tell which release it last took (see update.release_view)."""
     return bool(c) and _from_release(c["dir"]) and _release_view()["unknown"]
@@ -285,7 +308,7 @@ def _sealed():
     view = _release_view(); gone = view["withdrawn"]
     for name in _names():
         c = inspect(name)
-        if not c or (name, c["version"]) in gone or (view["unknown"] and _from_release(c["dir"])): continue
+        if not c or (name, c["version"]) in gone or (view["unknown"] and _from_release(c["dir"])) or key_withdrawn(c): continue
         if c["seal"] is None: yield name, c
         elif c["seal"] != seal.OLD: _tamper(name, c["version"], c["seal"], once=True)
 def list_cells():
@@ -329,9 +352,8 @@ def unsealed():
             why = old_lock_text(name, c["version"], c["lock"]) if c["seal"] == seal.OLD else "cell files do not match the lock (%s)" % c["seal"]
             if c["seal"] == "lock.json" and seal.is_v1(c["lock"]) and was_sealed(name, c["version"]) is True: why += "; " + HELD_BEFORE
             out.append({"cell": name, "version": c["version"], "why": why})
-        elif c and release_unknown(c):
-            why = "this machine cannot tell which cell release it took (state.json and its kept copy are missing or cannot be read); run: stemseal update"
-            out.append({"cell": name, "version": c["version"], "why": why})
+        elif c and (name, c["version"]) not in withdrawn() and release_hint(c):
+            out.append({"cell": name, "version": c["version"], "why": release_hint(c)})
     return out
 
 def register(name, src, contract, gt_cases, locked_by="unknown", base=None):
@@ -431,7 +453,7 @@ def call(name, input_data, caller="unknown", version=None, model=None, decorate=
     c = inspect(name, version) if exists(name) else None
     if not c: return env("not_available", reason="no locked cell with this name")
     ver = c["version"]
-    if (name, ver) in withdrawn(): c = None; return env("not_available", reason="this cell was withdrawn", ver=ver)
+    if (name, ver) in withdrawn() or key_withdrawn(c): c = None; return env("not_available", reason="this cell was withdrawn", ver=ver)
     if release_unknown(c): c = None; return env("not_available", reason=RELEASE_UNKNOWN, ver=ver)
     raw = seal.read_bytes(c["dir"], "cell.py")   # read once: the bytes whose hash is checked are the bytes that run
     problem = c["seal"] or seal.problem(c["lock"], {"cell.py": raw}, name, ver) or (None if seal.kind(c["lock"]) == "cell" else "lock.json")
@@ -752,4 +774,6 @@ def verify_all():
         r.update({"policy_ok": not problems and not bad, "gt": "%d/%d" % (rep["passed"], rep["total"]),
                   "gt_ok": rep["total"] >= MIN_GT and rep["passed"] == rep["total"], "deterministic": rep["deterministic"]})
         if problems: r["problems"] = problems[:5]
+        hint = release_hint(c) if (name, c["version"]) not in withdrawn() else "withdrawn by a cell release"
+        if hint: r["in_use"] = False; r["note"] = hint
     return out

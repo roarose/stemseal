@@ -79,6 +79,8 @@ def main(argv=None):
         bad = [k for k, v in r.items() if not (v["hash_ok"] and v.get("seal_ok") and v.get("policy_ok") and v.get("gt_ok") and v["deterministic"])]
         for k in bad:
             if r[k].get("seal"): print("%s: %s" % (k, r[k]["seal"]))
+        for k, v in r.items():
+            if v.get("note"): print("not used: %s: %s" % (k, v["note"]))
         print("all %d cells verified" % len(r) if not bad else "FAILED: %s" % bad)
         if hub.state_problem(): print("note: " + hub.state_problem())
         if not limits.MEMORY_ENFORCED: print("note: this system does not enforce the memory limit; cells are limited by time only")
@@ -97,7 +99,9 @@ def main(argv=None):
             print("rows written in full mode are still there" + ("; to keep only what minimal keeps, run: stemseal ledger --minimize" if hub.log_mode() == "minimal" else ""))
         return 0
     elif cmd == "update":
-        r = upd.update(check_only="--check" in rest); _p(r); return 0 if r.get("ok") else 1
+        r = upd.update(check_only="--check" in rest); _p(r)
+        for line in upd.warnings(r): print("warning: " + line, file=sys.stderr)
+        return 0 if r.get("ok") else 1
     elif cmd in ("reseal", "relock"):
         from . import reseal as _r
         dry = "--dry-run" in rest; names = [x for x in rest if not x.startswith("--")]
@@ -115,7 +119,7 @@ def main(argv=None):
         r = _r.reseal(names or None, dry_run=dry, confirm=confirm); _p(r)
         return 1 if r["failed"] or (r["plan"] and not dry and not r["confirmed"]) else 0
     elif cmd == "index": _p({k: list(v) for k, v in upd.build_index()["cells"].items()})
-    elif cmd == "release":        # maintainers: stemseal release <N> [--min-client X.Y.Z] [--revoke cell@version:reason ...]
+    elif cmd == "release":        # maintainers: stemseal release <N> [--min-client X.Y.Z] [--revoke cell@version:reason ...] [--revoke-key HEX ...]
         try: n = int(rest[0])
         except (IndexError, ValueError): print("stemseal release <N>: N is the cell release number"); return 2
         opt = lambda k: rest[rest.index(k) + 1] if k in rest and rest.index(k) + 1 < len(rest) else None
@@ -123,9 +127,10 @@ def main(argv=None):
         for i, x in enumerate(rest):
             if x == "--revoke" and i + 1 < len(rest):
                 cv, _, why = rest[i + 1].partition(":"); c, _, v = cv.partition("@"); rev.append({"cell": c, "version": v, "reason": why})
-        try: rel, digest = upd.build_release(n, min_client=opt("--min-client"), revoke=rev)
+        keys = [rest[i + 1].strip().lower() for i, x in enumerate(rest) if x == "--revoke-key" and i + 1 < len(rest)]
+        try: rel, digest = upd.build_release(n, min_client=opt("--min-client"), revoke=rev, revoke_keys=keys)
         except ValueError as e: print("not written: %s" % e); return 1
-        print("release.json for cells-%d written: %d cells, sha256 %s (fingerprint %s)" % (n, sum(len(v) for v in rel["cells"].values()), digest, digest[:8]))
+        print("release.json for cells-%d written: %d cells, sha256 %s (fingerprint %s)" % (n, sum(len(v) for v in rel["cells"].values()), digest, digest[:16]))
     elif cmd == "mcp":
         from . import mcp as _m; _m.main(); return 0
     elif cmd == "savings":

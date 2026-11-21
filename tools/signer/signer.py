@@ -13,6 +13,7 @@ RELEASE_URL = "https://raw.githubusercontent.com/roarose/stemseal/main/stemseal/
 TRUSTED_URL = "https://raw.githubusercontent.com/roarose/stemseal/main/stemseal/trusted_releases.json"
 FINGERPRINT = 16          # characters of the sha256 shown and compared
 MAIN_NAME, SPARE_NAME = "stemseal-release-key-main.pem", "stemseal-release-key-spare.pem"
+PUBLIC_NAME = "stemseal-release-keys-public.txt"   # both public keys, on both sticks (not secret): names them on screen
 
 def say(text): print(text, flush=True)
 
@@ -41,8 +42,8 @@ def _folder(question, allow_fixed=False):
         if not a or not os.path.isdir(a): say("  그 폴더(드라이브)를 찾지 못했습니다. USB가 꽂혀 있는지 확인하고 다시 입력하세요."); continue
         if not allow_fixed and not _removable(a):
             say("  이 드라이브는 윈도우가 '이동식'이 아니라 '고정 드라이브'로 알려 줍니다.")
-            say("  일부 USB 메모리와 외장 SSD는 이렇게 보입니다. 지금 꽂은 USB가 맞으면 '네'를, 아니면 엔터만 누르세요.")
-            if input("  이 드라이브가 USB가 맞습니까? ").strip() != "네": continue
+            say("  일부 USB 메모리와 외장 SSD는 이렇게 보입니다. 지금 꽂은 USB가 맞으면 '네'(또는 y)를, 아니면 엔터만 누르세요.")
+            if input("  이 드라이브가 USB가 맞습니까? ").strip().lower() not in ("네", "y"): continue
         return a
 
 def _passphrase(twice):
@@ -85,6 +86,8 @@ def make_keys(main_dir=None, spare_dir=None, passphrase=None, allow_fixed=False)
         pem = k.private_bytes(ser.Encoding.PEM, ser.PrivateFormat.PKCS8, ser.BestAvailableEncryption(pw))
         with open(p, "xb") as f: f.write(pem)
         publics.append(k.public_key().public_bytes(ser.Encoding.Raw, ser.PublicFormat.Raw).hex())
+    for d in (main_dir, spare_dir):
+        with open(os.path.join(d, PUBLIC_NAME), "w", encoding="ascii") as f: f.write("main %s\nspare %s\n" % tuple(publics))
     say("")
     say("열쇠를 만들었습니다. 아래 두 줄은 공개 열쇠입니다(비밀이 아닙니다). 이 두 줄만 작업 스레드에 붙여 주세요.")
     say("  주   %s" % publics[0])
@@ -97,6 +100,18 @@ def _load(path, passphrase):
     _, ser = _crypto()
     with open(path, "rb") as f: data = f.read()
     return ser.load_pem_private_key(data, password=passphrase)
+
+ROLE = {"main": "주 열쇠", "spare": "예비 열쇠"}
+def _roles(folder):
+    """{public hex: '주 열쇠' | '예비 열쇠'} from the public key list on the stick, if it is there."""
+    out = {}
+    try:
+        with open(os.path.join(folder, PUBLIC_NAME), encoding="ascii") as f:
+            for line in f:
+                p = line.split()
+                if len(p) == 2 and p[0] in ROLE: out[p[1]] = ROLE[p[0]]
+    except (OSError, UnicodeDecodeError): pass
+    return out
 
 def summary(raw):
     rel = json.loads(raw.decode("utf-8"))
@@ -127,16 +142,21 @@ def sign(source=None, key_path=None, passphrase=None, out_dir=None, confirm=True
         if isinstance(trusted, str):
             with open(trusted, "rb") as f: trusted = f.read()
         if trusted is None: trusted = _download(TRUSTED_URL)
-    except (OSError, ValueError) as e: say("파일을 받지 못했습니다(%s). 서명하지 않습니다." % type(e).__name__); return 1
+    except (OSError, ValueError) as e: say("파일을 받지 못했습니다(%s). 서명하지 않습니다. 5분 뒤 다시 해 보세요." % type(e).__name__); return 1
     n, cells, digest = summary(raw)
     if not listed(n, digest, trusted):
         say("이 release.json은 같은 커밋의 trusted_releases.json에 cells-%s로 적힌 것과 다릅니다. 서명하지 않습니다." % n)
-        say("작업 스레드에 이 메시지를 알려 주세요.")
+        say("병합 직후라면 GitHub에 새 파일이 다 퍼지지 않았을 수 있습니다. 5분 뒤 다시 해 보고, 그래도 같으면 작업 스레드에 알려 주세요.")
         return 1
     say("")
     say("출시 번호: cells-%s" % n)
     say("세포 %d개:" % len(cells))
     for c in cells: say("  " + c)
+    gone = json.loads(raw.decode("utf-8")).get("revoked_keys") or []
+    if gone:
+        say("이 출시가 폐기하는 열쇠 %d개 (공개 열쇠 앞 16글자):" % len(gone))
+        for k in gone: say("  " + str(k)[:16])
+        say("  폐기한 열쇠는 되살릴 수 없습니다. 작업 스레드 메시지의 폐기 대상과 같은지 확인하세요.")
     say("지문: %s  (trusted_releases.json에 적힌 값과 같음을 확인했습니다)" % digest[:FINGERPRINT])
     say("")
     if confirm:
@@ -156,6 +176,17 @@ def sign(source=None, key_path=None, passphrase=None, out_dir=None, confirm=True
             if passphrase is not None: say("암호가 맞지 않습니다."); return 1
             say("  암호가 맞지 않습니다. 다시 입력하세요.")
     else: return 1
+    _, ser = _crypto()
+    mine = k.public_key().public_bytes(ser.Encoding.Raw, ser.PublicFormat.Raw).hex()
+    roles = _roles(os.path.dirname(os.path.abspath(key_path)))
+    name = roles.get(mine) or ("예비 열쇠" if os.path.basename(key_path) == SPARE_NAME else "주 열쇠")
+    say("서명하는 열쇠: %s (%s)" % (name, mine[:16]))
+    if gone:
+        if mine in gone:
+            say("이 출시는 지금 서명하는 열쇠(%s)를 폐기합니다. 서명하지 않습니다. 작업 스레드에 알려 주세요." % name)
+            return 1
+        for g in gone: say("폐기 대상: %s (%s)" % (roles.get(g, "이 USB에 적힌 두 열쇠가 아닌 열쇠"), str(g)[:16]))
+        if confirm and input("폐기 대상이 잃어버린 열쇠가 맞으면 y 를 입력하세요: ").strip().lower() != "y": say("서명하지 않았습니다."); return 1
     sig = k.sign(raw).hex()
     out_dir = out_dir or os.path.join(os.path.expanduser("~"), "Desktop")
     if not os.path.isdir(out_dir): out_dir = os.path.expanduser("~")

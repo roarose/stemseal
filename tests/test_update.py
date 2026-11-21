@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
 """stemseal update from signed cell releases (stemseal/update.py), against a local server in place of GitHub.
 Keys are made here for each run and never written to the repository. Run: python -m unittest discover -s tests"""
-import functools, hashlib, http.server, json, os, shutil, sys, tempfile, threading, unittest
+import functools, hashlib, http.server, io, json, os, shutil, sys, tempfile, threading, unittest
 from unittest import mock
+from contextlib import redirect_stderr, redirect_stdout
 os.environ.setdefault("STEMSEAL_HOME", tempfile.mkdtemp(prefix="stemseal_test_"))
 for k in ("NO_PROXY", "no_proxy"): os.environ[k] = ",".join(x for x in (os.environ.get(k), "127.0.0.1", "localhost") if x)
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -211,6 +212,11 @@ class Update(unittest.TestCase):
         r = update.update(); self.assertTrue(r["ok"], r); self.assertEqual(r["release"], 1)
         self.assertEqual(r["skipped"], [{"release": 99, "reason": "cells-99 has no signature"}])
         self.assertEqual(self.installed(), [os.path.join("double_cell", "1.0")])
+        self.assertEqual(update.warnings(r), ["cells-99 was not taken (cells-99 has no signature); took cells-1"])
+        from stemseal import cli
+        err = io.StringIO()
+        with redirect_stderr(err), redirect_stdout(io.StringIO()): cli.main(["update"])
+        self.assertIn("warning: cells-99 was not taken", err.getvalue())
 
     @unittest.skipIf(os.name == "nt" or not hasattr(os, "geteuid") or os.geteuid() == 0, "file modes are not enforced here")
     def test_state_without_read_permission_does_not_slow_calls(self):
@@ -368,7 +374,131 @@ class Update(unittest.TestCase):
         self.first({"double_cell": {"1.0": cell_files("double_cell")}})
         self.assertIn("STEMSEAL_TEST_RELEASE_BASE", update.update()["warning"])
 
-class BuildRelease(unittest.TestCase):
+PUB, SPUB = (ed25519.public_key(k).hex() for k in (KEY, SPARE))
+
+class KeysWithdrawn(unittest.TestCase):
+    """A signed release may withdraw release keys (revoked_keys). Withdrawals only add up; a key that withdraws the other and
+    is withdrawn by it leaves no key, and updates stop until a new stemseal version brings new keys."""
+    setUp, tearDown, first, installed = Update.setUp, Update.tearDown, Update.first, Update.installed
+
+    def test_a_release_by_the_spare_key_withdraws_the_main_key(self):
+        self.first({"double_cell": {"1.0": cell_files("double_cell")}}); update.update()
+        self.site.release(2, {"triple_cell": {"1.0": cell_files("triple_cell")}}, key=SPARE, extra={"revoked_keys": [PUB]})
+        r = update.update()
+        self.assertTrue(r["ok"], r); self.assertEqual(r["keys_withdrawn"], [PUB]); self.assertEqual(r["release"], 2)
+        self.assertEqual(hub.call("triple_cell", {"x": 1}, caller="t")["result"], {"v": 2})
+        self.assertEqual(hub.call("double_cell", {"x": 1}, caller="t")["reason"], "this cell was withdrawn")  # signed by the main key
+        self.assertNotIn("double_cell", [c["cell"] for c in hub.list_cells()])
+        self.site.release(3, {"quad_cell": {"1.0": cell_files("quad_cell")}}, key=KEY)                     # the main key again
+        r = update.update()
+        self.assertEqual(r["release"], 2); self.assertEqual(r["skipped"][0]["release"], 3)
+        self.assertIn("withdrawn release key", r["skipped"][0]["reason"]); self.assertNotIn("quad_cell", self.installed())
+        self.assertEqual(update.read_state()["revoked_keys"], [PUB])
+        self.assertIn("release key %s was withdrawn by a signed release" % PUB[:16], update.warnings({"keys_withdrawn": [PUB]}))
+
+    def test_keys_that_withdraw_each_other_leave_no_key(self):
+        self.first({"double_cell": {"1.0": cell_files("double_cell")}}); update.update()
+        self.site.release(2, {"triple_cell": {"1.0": cell_files("triple_cell")}}, key=KEY, extra={"revoked_keys": [SPUB]})
+        self.assertTrue(update.update()["ok"])                       # this machine took the first one out
+        self.assertEqual(hub.call("triple_cell", {"x": 1}, caller="t")["result"], {"v": 2})
+        self.site.release(3, {}, key=SPARE, extra={"revoked_keys": [PUB]})
+        r = update.update()
+        self.assertFalse(r["ok"]); self.assertEqual(r["reason"], update.ALL_KEYS_OUT)
+        for name in ("double_cell", "triple_cell"): self.assertEqual(hub.call(name, {"x": 1}, caller="t")["reason"], "this cell was withdrawn")
+        self.assertIn("vat_supply_price", [c["cell"] for c in hub.list_cells()])                       # shipped cells go on
+        self.site.release(4, {"quad_cell": {"1.0": cell_files("quad_cell")}}, key=KEY)
+        self.assertEqual(update.update()["reason"], update.ALL_KEYS_OUT)
+
+    def test_both_withdrawals_arriving_together_leave_no_key(self):
+        self.first({"double_cell": {"1.0": cell_files("double_cell")}})
+        self.site.release(2, {"triple_cell": {"1.0": cell_files("triple_cell")}}, key=SPARE, extra={"revoked_keys": [PUB]})
+        self.site.release(3, {"quad_cell": {"1.0": cell_files("quad_cell")}}, key=KEY, extra={"revoked_keys": [SPUB]})
+        r = update.update()
+        self.assertFalse(r["ok"]); self.assertEqual(r["reason"], update.ALL_KEYS_OUT); self.assertEqual(self.installed(), [])
+        self.assertEqual(sorted(update.read_state()["revoked_keys"]), sorted([PUB, SPUB]))
+
+    def test_a_release_that_withdraws_its_own_key_is_not_taken(self):
+        self.first({"double_cell": {"1.0": cell_files("double_cell")}}); update.update()
+        self.site.release(2, {"triple_cell": {"1.0": cell_files("triple_cell")}}, key=KEY, extra={"revoked_keys": [PUB]})
+        r = update.update()                                            # the key is out, and so is what it signed
+        self.assertFalse(r["ok"]); self.assertNotIn("triple_cell", self.installed())
+        self.assertTrue(all("withdrawn release key" in x["reason"] for x in r["skipped"]))
+        self.assertEqual(hub.call("double_cell", {"x": 1}, caller="t")["reason"], "this cell was withdrawn")
+
+    def test_withdrawn_keys_hold_without_state(self):
+        self.first({"double_cell": {"1.0": cell_files("double_cell")}}); update.update()
+        self.site.release(2, {"triple_cell": {"1.0": cell_files("triple_cell")}}, key=SPARE, extra={"revoked_keys": [PUB]})
+        update.update(); os.remove(hub.STATE)
+        self.assertEqual(hub.call("double_cell", {"x": 1}, caller="t")["reason"], "this cell was withdrawn")
+        os.remove(update._copy_paths()[0])                             # the kept list alone still holds
+        self.assertEqual(hub.call("double_cell", {"x": 1}, caller="t")["reason"], "this cell was withdrawn")
+
+    def test_check_only_records_nothing(self):
+        self.first({"double_cell": {"1.0": cell_files("double_cell")}}); update.update()
+        self.site.release(2, {"triple_cell": {"1.0": cell_files("triple_cell")}}, key=SPARE, extra={"revoked_keys": [PUB]})
+        r = update.update(check_only=True)
+        self.assertEqual(r["keys_withdrawn"], [PUB]); self.assertNotIn("revoked_keys", update.read_state())
+        self.assertEqual(hub.call("double_cell", {"x": 1}, caller="t")["result"], {"v": 2})
+
+    def test_withdrawal_below_many_newer_releases_still_counts(self):
+        """The withdrawal sits under more releases by the withdrawn key than update looks at as candidates."""
+        self.first({"double_cell": {"1.0": cell_files("double_cell")}}); update.update()
+        self.site.release(2, {"double_cell": {"1.0": cell_files("double_cell")}}, key=SPARE, extra={"revoked_keys": [PUB]})
+        for k in range(3, 3 + update.MAX_TRIES + 3):
+            self.site.release(k, {"quad_cell": {"1.0": cell_files("quad_cell")}}, key=KEY)
+        r = update.update()
+        self.assertFalse(r["ok"]); self.assertNotIn(os.path.join("quad_cell", "1.0"), self.installed())
+        self.assertEqual(update.read_state()["revoked_keys"], [PUB])
+        self.assertEqual(hub.call("quad_cell", {"x": 1}, caller="t")["status"], "not_available")
+        self.assertEqual(hub.call("double_cell", {"x": 1}, caller="t")["reason"], "this cell was withdrawn")
+        a_new = tempfile.mkdtemp()                                     # a machine that never took a release
+        with mock.patch.object(hub, "USER_CELLS", os.path.join(a_new, "cells")), mock.patch.object(hub, "STATE", os.path.join(a_new, "state.json")):
+            r = update.update(); self.assertFalse(r["ok"]); self.assertFalse(os.path.isdir(os.path.join(a_new, "cells", "quad_cell")))
+        shutil.rmtree(a_new, ignore_errors=True)
+
+    def test_cells_from_a_withdrawn_key_come_back_from_the_remaining_key(self):
+        self.first({"double_cell": {"1.0": cell_files("double_cell")}}); update.update()
+        self.site.release(2, {"triple_cell": {"1.0": cell_files("triple_cell")}}, key=SPARE, extra={"revoked_keys": [PUB]})
+        update.update()                                                # double_cell is not in cells-2: it waits
+        self.assertEqual(hub.call("double_cell", {"x": 1}, caller="t")["reason"], "this cell was withdrawn")
+        self.assertEqual({u["cell"]: u["why"] for u in hub.unsealed()}["double_cell"], hub.KEY_OUT_HINT)
+        self.assertEqual(hub.verify_all()["double_cell"]["note"], hub.KEY_OUT_HINT)
+        self.site.release(3, {"double_cell": {"1.0": cell_files("double_cell")}, "triple_cell": {"1.0": cell_files("triple_cell")}}, key=SPARE)
+        r = update.update()
+        self.assertEqual([c["cell"] for c in r["installed"]], ["double_cell"])
+        self.assertEqual(hub.call("double_cell", {"x": 1}, caller="t")["result"], {"v": 2})
+        self.assertNotIn("double_cell", {u["cell"] for u in hub.unsealed()}); self.assertNotIn("note", hub.verify_all()["double_cell"])
+
+    def test_with_every_key_withdrawn_list_says_so(self):
+        self.first({"double_cell": {"1.0": cell_files("double_cell")}}); update.update()
+        self.site.release(2, {}, key=SPARE, extra={"revoked_keys": [PUB]}); update.update()
+        self.site.release(3, {}, key=KEY, extra={"revoked_keys": [SPUB]})
+        self.assertEqual(update.update()["reason"], update.ALL_KEYS_OUT)
+        self.assertEqual({u["cell"]: u["why"] for u in hub.unsealed()}["double_cell"], hub.ALL_KEYS_OUT_HINT)
+
+    def test_odd_key_entries_are_left_out(self):
+        self.first({"double_cell": {"1.0": cell_files("double_cell")}}, extra={"revoked_keys": ["xyz", PUB.upper(), 5]})
+        r = update.update()
+        self.assertTrue(r["ok"], r); self.assertNotIn("keys_withdrawn", r)
+        self.assertEqual(hub.call("double_cell", {"x": 1}, caller="t")["result"], {"v": 2})
+
+class BuildReleaseKeys(unittest.TestCase):
+    def test_withdrawn_keys_carry_over(self):
+        base = tempfile.mkdtemp(prefix="stemseal_rel_")
+        shutil.copytree(hub.CELLS, os.path.join(base, "cells")); cells = os.path.join(base, "cells")
+        with open(os.path.join(cells, "trusted_releases.json"), "w") as f: f.write("{}")
+        with mock.patch.object(update, "release_keys", lambda: [ed25519.public_key(KEY), ed25519.public_key(SPARE)]):
+            rel, _ = update.build_release(1, base=cells)
+            self.assertNotIn("revoked_keys", rel)
+            with self.assertRaises(ValueError): update.build_release(2, base=cells, revoke_keys=[ed25519.public_key(OTHER).hex()])
+            with self.assertRaises(ValueError): update.build_release(2, base=cells, revoke_keys=[PUB, SPUB])
+            rel, _ = update.build_release(2, base=cells, revoke_keys=[PUB])
+            self.assertEqual(rel["revoked_keys"], [PUB])
+            with self.assertRaises(ValueError): update.build_release(3, base=cells, revoke_keys=[SPUB])  # the last key
+            rel, _ = update.build_release(3, base=cells)
+            self.assertEqual(rel["revoked_keys"], [PUB])
+        shutil.rmtree(base, ignore_errors=True)
+
     def test_release_file_and_trusted_list(self):
         base = tempfile.mkdtemp(prefix="stemseal_rel_")
         shutil.copytree(hub.CELLS, os.path.join(base, "cells")); cells = os.path.join(base, "cells")
