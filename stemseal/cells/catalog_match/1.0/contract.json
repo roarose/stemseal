@@ -3,8 +3,8 @@
   "match.catalog_name"
  ],
  "raw_text": true,
- "description": "손님 문장 속 말이 가게 목록(메뉴판, 상품 목록)의 어느 항목인지 찾는다. 정확한 이름, 별칭, 브랜드(콜라→음료), 크기를 붙인 이름('모둠 전 대')을 보고, 더 긴 이름이 있으면 그쪽('치즈 계란찜')으로, 이름이 여럿에 걸리면 후보를 모두 돌려준다. '포장'이 있으면 포장 항목을 고른다. 손님 문장의 어느 자리를 이름으로 읽었는지(spans)를 함께 돌려준다. 넘긴 말이 문장에 없거나, 문장에 다른 항목 이름이 있는데 said에 빠졌으면 거절한다.",
- "description_en": "Finds which entry of a store's list (menu, product list) each of the customer's words names: exact name, alias, brand, name with size, longest name first; several candidates when ambiguous. Returns where in the sentence each name stands. Refuses words not in the sentence, and a sentence naming an entry left out of said.",
+ "description": "손님 문장 속 말이 가게 목록(메뉴판, 상품 목록)의 어느 항목인지 찾는다. 정확한 이름, 별칭, 브랜드(콜라→음료), 크기를 붙인 이름('모둠 전 대')을 보고, 더 긴 이름이 있으면 그쪽('치즈 계란찜')으로, 이름이 여럿에 걸리면 후보를 모두 돌려준다. '포장'이 있으면 포장 항목을 고른다. 손님 문장의 어느 자리를 이름으로 읽었는지(spans)를 함께 돌려준다. 넘긴 말이 문장에 없거나, 문장에 다른 항목 이름이 있는데 said에 빠졌으면 거절한다. 이름 뒤에 '말고', '아니', '대신', '빼', '취소'가 오면(고르다 바꾼 이름) answer_ready 거짓으로 되묻는다. 따로 불러도 조용히 틀리지 않는다: 값의 뜻을 바꾸는 말이 있으면 값을 내지 않고 asks로 되묻는다(answer_ready 거짓). 조립(장기)에서는 '모르는 말 거르기'가 그 뒤의 두 번째 안전망이다.",
+ "description_en": "Finds which entry of a store's list (menu, product list) each of the customer's words names: exact name, alias, brand, name with size, longest name first; several candidates when ambiguous. Returns where in the sentence each name stands. Refuses words not in the sentence, and a sentence naming an entry left out of said. Asks when a name is taken back or swapped ('말고', '빼').",
  "when_to_use": "손님이 이름으로 무언가를 고를 때, 수량 찾기나 가격 붙이기 앞 단계로.",
  "keywords": [
   "메뉴 이름 찾기",
@@ -26,11 +26,15 @@
   }
  },
  "output_keys": [
+  "answer_ready",
+  "asks",
   "matches",
   "spans"
  ],
  "part": true,
  "output_schema": {
+  "answer_ready": "boolean",
+  "asks": "list",
   "matches": "list",
   "spans": "list"
  }

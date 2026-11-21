@@ -129,6 +129,18 @@ _LEFT = re.compile("|".join((   # a number word that could be a count: if one is
     r"(?<![가-힣])(?:열|쉰)(?![가-힣])|(?<![가-힣])(?:열|쉰)(?=[한두세네하둘셋넷다여일아]|요|이|에|로|씩|%s)" % _UNITS,
     r"(?<![가-힣])(?:한(?!\s*번)|두|세|석|너|네|[일이삼사오육칠팔구십백천만]+)\s*(?:%s)" % _UNITS,
     r"(?<!\S)(?:한(?!\s*번)|두|세|석|일|삼|사|육|칠|팔|구|십)(?:요|이요|개)?(?=\s|$|[,.?!~])")))
+# words right after a thing and its count that change what was read: taken away, cancelled, corrected, half more, more.
+# With one of these the part gives no number for it: it asks, even when called on its own (the unread-word step is a second net).
+_CHANGE = re.compile(r"빼|빠|취소|제외|말고|아니|대신|반(?!값|찬|반)|더(?!운|워|위)|추가|두\s*배|곱하기|x\d|\*\d")
+_NEXT_OK = ("요", "이요", "예요", "이에요", "에요", "입니다", "이랑", "랑", "하고", "이고", "고", "와", "과", "도", "은", "는", "을", "를", "이", "가", "에", "에다", "에다가", "로", "으로", "만", "짜리", "주세요", "주시고", "줘", "주실래요", "할게요", "할께요", "해", "해요", "부탁해요", "부탁드려요", "부탁합니다", "드릴게요", "시킬게요", "주문", "주문할게요", "갈게요", "먹고", "가져갈게요", "그리고", "포장", "포장해", "포장할게요", "그냥", "일단", "우선", "얼마", "얼마예요", "얼마에요", "얼마죠", "얼마인가요", "여기요", "저기요", "사장님", "총", "다해서", "전부해서", "합쳐서", "인데", "인데요", "있어요", "있는데", "있는데요", "있고", "해서", "주문하는데", "주문하는데요")   # the words that may follow a thing said without a count (the priced order's list of plain words)
+_NEXT_RE = re.compile("(?:%s)+" % "|".join(sorted(_NEXT_OK, key=len, reverse=True)))
+_OTHER_STEP = re.compile(r"[\d일이삼사오육칠팔구십백천만,.]+원|할인|쿠폰|깎|반값|반액|\d+%")   # a word the discount step reads, or the next price
+def _next_word(qn, gaps, i):
+    """The customer's word starting at i in norm(question): up to the next space."""
+    j = i
+    while j < len(qn) and not (j > i and gaps[j]):
+        j += 1
+    return qn[i:j]
 def _counts(q, qn):
     """Every count the customer said, as (start, end) in norm(question). A bare count word followed by other words counts only with a space after it."""
     gaps = _flat(q)[1]
@@ -258,5 +270,16 @@ def cell_executor(inp):
                 taken.append(x); spent.append(x); break
     if not dflt:   # every item has its count: '세 명이서' only says who it is for
         spent += [(x.start(), x.end()) for x in _PEOPLE_SAID.finditer(qn)]
+    gaps = _flat(q)[1]; starts = sorted(ps[0] for ps, k in prices if ps); asks = []
+    for ps, k in prices:   # read on its own, a count can still be changed by the words after it ('두 그릇 빼 주세요', '두 개 반', '만원짜리 너이')
+        if not ps:
+            continue
+        c = cnt.get(k); at = max(ps[1], c[1] if c else 0)
+        nxt = min([s for s in starts if s > ps[0]] + [at + 12, len(qn)])
+        w = _next_word(qn, gaps, _GAP.match(qn, ps[1]).end()) if k in dflt else ""
+        if _CHANGE.search(qn[at:nxt]) or (w and not _NEXT_RE.fullmatch(w) and not _OTHER_STEP.match(w) and not any(x[0] == _GAP.match(qn, ps[1]).end() for x, j in prices if x) and not any(norm(nm) == w or w.startswith(norm(nm)) for nm, j in names)):
+            asks = ["주문하신 수량을 품목마다 한 번 더 말씀해 주시겠어요?"]
+    if asks:   # no numbers when a count's meaning changed: the caller asks instead of computing
+        read = []; dflt = []
     lines = [{"unit_price": p, "qty": n} for p, n in read]
-    return {"items_read": read, "lines": lines, "qty_assumed": sorted(dflt), "spans": [[a, b] for a, b in sorted(set(spent))]}
+    return {"answer_ready": not asks, "asks": asks, "items_read": read, "lines": lines, "qty_assumed": sorted(dflt), "spans": [[a, b] for a, b in sorted(set(spent))]}

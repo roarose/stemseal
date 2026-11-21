@@ -128,6 +128,7 @@ def _token(qn, gaps, a, step):
     while i < len(qn) and re.match(r"[가-힣0-9a-z]", qn[i]) and (i == a or not gaps[i]):
         i += 1
     return (a, i) if i > a and (i == len(qn) or gaps[i] or not re.match(r"[가-힣0-9a-z]", qn[i])) else None
+_UNSURE = re.compile(r"\d\s*%?\s*[~∼\-–]\s*\d|(?:%|원|할인)\s*(?:\S+\s*)?(?:아니|말고|대신|이나|쯤|정도|까지)|아마|최대|이상|이하")
 def cell_executor(inp):
     q = inp.get("question")
     if not isinstance(q, str) or not q.strip():
@@ -163,4 +164,6 @@ def cell_executor(inp):
             a = len(norm(q[:x.start()])); b = len(norm(q[:e]))
             t = _token(qn, gaps, b, 1) if b < len(qn) and not gaps[b] else None
             spent.append((a, t[1] if t else b))
-    return {"pct": pct or 0, "won": won or 0, "spans": [[a, b] for a, b in sorted(set(spent))]}
+    if (pct is not None or won is not None) and _UNSURE.search(q):   # a range, a correction or a maybe about the discount: ask, never guess
+        return {"answer_ready": False, "asks": ["할인 금액을 한 번 더 말씀해 주시겠어요?"], "pct": 0, "won": 0, "spans": []}
+    return {"answer_ready": True, "asks": [], "pct": pct or 0, "won": won or 0, "spans": [[a, b] for a, b in sorted(set(spent))]}

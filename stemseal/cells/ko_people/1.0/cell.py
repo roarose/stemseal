@@ -110,27 +110,39 @@ _BARE = "|".join(["(?:%s)(?:하나|둘|셋|넷|다섯|여섯|일곱|여덟|아�
 _PWORD = re.compile(r"(?<![가-힣\d])(?:%s\s*(?:명|사람|분(?!\s*(?:걸|남|뒤|후|동안|정도|만에)))|(%s)(?:이(?:서|고|요|에요|예요|라|면|니까|인데|$|(?=\s))|인데)|(\d+)\s*인(?!분))|(혼자|혼밥)|(?<![가-힣\d])(%s|하나)(?=\s|$|[,.?!]|요|인데)" % (_PCOUNT, _BARE, _BARE))   # last: a bare count word ('어른 셋 아이 둘이요') also counts
 _NEG = re.compile(r"^\s*(?:\S+\s*){0,2}?(?:아니|아닌|말고)")
 _MORE = re.compile(r"(?:이랑|랑|하고|와|과)\s*(?:저|나|제가|내가)(?:요|도|까지|$|\s)|(?:명|이|분|사람|둘|셋|넷|다섯|여섯|일곱|여덟|아홉)\s*더|더\s*(?:와|올|오|있)")
+# words that change what a number of people means: a range, people added or taken away, a correction, 'only two of us'.
+# With one of these the part never gives a number: it asks (reading the number alone would be a quiet wrong answer).
+_CHANGE = re.compile("|".join((
+    r"\d\s*[~∼\-–]\s*\d|[~∼]",                                       # '2~3명'
+    r"추가|빠지|빠졌|빠져|빼고|빼면|제외|안\s*먹|못\s*먹|안\s*와|못\s*와|안\s*오|못\s*오|늦게|나중에\s*와|따로",   # people added or taken away
+    r"아니|아닌|말고|대신|정정|잘못",                                          # a correction or a taken-back word
+    r"(?:명|분|사람|이|둘|셋|넷|다섯|여섯|일곱|여덟|아홉|하나|\d)\s*만(?=\s|$|[,.?!]|요|이요|먹|있)",   # '둘만', '두 명만 먹어요'
+    r"(?:하나|둘|셋|넷|다섯|여섯|일곱|여덟|아홉|명|분)\s*에\s*(?:하나|둘|셋|넷|다섯|여섯|일곱|여덟|아홉|\d|한|두|세|네)",   # '둘에 둘'
+    r"(?:하나|둘|셋|넷|다섯|여섯|일곱|여덟|아홉|명|분|사람)\s*(?:이랑|랑|하고|와|과)?\s*(?:아이|애기|아기|어린이|애)\s*(?:하나|둘|셋|\d|한|두|세)",   # adults and children told apart
+)))
 def _scan(q):
-    """How many people the customer said, read from their whole sentence: '넷이서', '두 명', '혼자', '4인'.
+    """How many people the customer said, read from their whole sentence: '넷이서', '두 명', '혼자', '4인', and where it stands.
     A bare count word counts too ('어른 셋 아이 둘이요' has two numbers, so the cell asks). A number the customer takes back ('혼자 온 건 아니고') does not count. None when it says nothing about it, says two different
     numbers, or adds people on top ('친구 셋이랑 저요', '두 명 더 와요'): then the cell asks instead of adding up."""
     t = str(q)
     if _MORE.search(t):
-        return None
-    got = set()
+        return None, []
+    got = set(); at = []
     for m in _PWORD.finditer(t):
         if _NEG.match(t[m.end():]):
             continue
+        at.append((len(norm(t[:m.start()])), len(norm(t[:m.end()]))))
         if m.group(4):
             got.add(1); continue
         w = m.group(1) or m.group(2) or m.group(3) or m.group(5)
         try:
             v = amount(w)[0]
         except ValueError:
-            return None
+            return None, at
         if v:
             got.add(v)
-    return got.pop() if len(got) == 1 else None
+    return (got.pop() if len(got) == 1 else None), at
+_ASK = "몇 분이 드실 건가요?"
 def cell_executor(inp):
     q = inp.get("question")
     if not isinstance(q, str) or not q.strip():
@@ -138,13 +150,16 @@ def cell_executor(inp):
     extra = sorted(str(k) for k in inp if k not in ("question", "people"))
     if extra:
         raise ValueError("unknown input %s; use question, people" % extra[:3])
-    n = _scan(q)
+    if _CHANGE.search(q):   # the number's meaning changes (a range, more or fewer people, a correction): ask, never guess
+        return {"answer_ready": False, "asks": [_ASK], "people": None, "spans": []}
+    n, at = _scan(q)
     p = inp.get("people")
     if n is None and isinstance(p, str) and p.strip() and found(p, q):   # the cell found nothing itself: try the model's words
         try:
             n = _people(p)
         except ValueError:
             n = None
+        at = spots(p, q)[:1] if n else at
     if not n:
-        return {"answer_ready": False, "asks": ["몇 분이 드실 건가요?"], "people": n}
-    return {"answer_ready": True, "asks": [], "people": n}
+        return {"answer_ready": False, "asks": [_ASK], "people": n, "spans": []}
+    return {"answer_ready": True, "asks": [], "people": n, "spans": [[a, b] for a, b in sorted(set(at))]}

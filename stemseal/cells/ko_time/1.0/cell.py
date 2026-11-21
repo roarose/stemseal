@@ -175,7 +175,7 @@ def _role(q, a, b):
 def _locate(v, q, key):
     """The customer's own words for this time, read from the question. The model's fragment may add or change the
     half-of-day word ('오후 11시' for '11시'); the question's word wins, and with none there the customer is asked.
-    Returns None when the time is not in the question. Raises ValueError when it stands where the other role is said."""
+    Returns (words, start, end in _canon(q)), or None when the time is not in the question. Raises ValueError when it stands where the other role is said."""
     qc = _canon(q); vc = _canon(v)
     m = re.fullmatch("(%s)?(.+)" % _MARK, vc)
     core = m.group(2) if m and m.group(1) and m.group(2) else vc
@@ -185,7 +185,8 @@ def _locate(v, q, key):
             continue
         mk = re.search("%s$" % _MARK, qc[:a])
         words = (mk.group(0) if mk else "") + core
-        hits.append((words, _role(qc, a - (len(mk.group(0)) if mk else 0), b)))
+        a0 = a - (len(mk.group(0)) if mk else 0)
+        hits.append((words, _role(qc, a0, b), a0, b))
     if not hits:
         return None
     if key != "now":
@@ -195,7 +196,26 @@ def _locate(v, q, key):
             raise ValueError("%s looks swapped: open is the time said with 열/오픈/부터, close the one with 닫/마감/까지; pass them again" % key)
         hits = fit
     exact = [h for h in hits if h[0] == vc]
-    return (exact or hits)[0][0]
+    h = (exact or hits)[0]
+    return h[0], h[2], h[3]
+# words around a time that change what it means: '2시 10분 전', '10시쯤', '11시나 12시', '아마', a correction ('아니고', '말고').
+# With one of these the part gives no minutes: it asks (reading the time alone would be a quiet wrong answer).
+_AFTER = re.compile(r"^(?:에|엔|에는)?(?:전|후|뒤|쯤|경|정도|넘|이전|이후|조금|좀|나(?=\d|[일이삼사오육칠팔구십]|열|한|두|세|네|다|여|아|오전|오후|밤|저녁|아침|새벽|낮)|이나|아니면|또는)")
+_BEFORE_W = re.compile(r"(?:아마|대략|대충|거의|약|한)$")
+_FIX = re.compile(r"아니|말고|대신|정정|잘못|바뀌|바꿨|변경")
+_ASK = "말씀하신 시각을 한 번 더 정확히 말씀해 주시겠어요?"
+def _norm_span(q, qc, a, b):
+    """The (start, end) in norm(q) of the words found at qc[a:b] (qc = _canon(q)): the k-th stretch of norm(q) that reads the same."""
+    nq = norm(q); k = len([m for m in re.finditer("(?=%s)" % re.escape(qc[a:b]), qc[:a])])
+    seen = 0
+    for i in range(len(nq)):
+        for j in range(i + 1, len(nq) + 1):
+            if _canon(nq[i:j]) == qc[a:b]:
+                if seen == k:
+                    return [i, j]
+                seen += 1
+                break
+    return None
 _KEYS = ("now", "open", "close")
 def cell_executor(inp):
     q = inp.get("question")
@@ -211,17 +231,23 @@ def cell_executor(inp):
     v = inp.get("words")
     if not isinstance(v, str) or not v.strip():
         raise ValueError("pass %s: the customer's words for it, e.g. '밤 7시 반'" % key)
+    spans = []
     if clock:
         if not re.fullmatch(r"\d{2}:\d{2}", v.strip()):
             raise ValueError("now from the clock must be 24h HH:MM, e.g. '19:30'")
     else:
-        w = _locate(v, q, key)
-        if w is None:
+        hit = _locate(v, q, key)
+        if hit is None:
             raise ValueError("%s is not in the question; copy the customer's words for it exactly (like '밤 7시 반'), do not convert" % key)
+        w, a, b = hit; qc = _canon(q)
+        if _AFTER.match(qc[b:]) or _BEFORE_W.search(qc[max(0, a - 2):a]) or _FIX.search(q):   # the time's meaning changes: ask, never guess
+            return {"minutes": None, "said": v.strip(), "ask_word": None, "answer_ready": False, "asks": [_ASK], "spans": []}
+        sp = _norm_span(q, qc, a, b)
+        spans = [sp] if sp else []
         if w != _canon(v):
             v = w
     said = v.strip()
     try:
-        return {"minutes": _clock(v, key), "said": said, "ask_word": None}
+        return {"minutes": _clock(v, key), "said": said, "ask_word": None, "answer_ready": True, "asks": [], "spans": spans}
     except Ask:
-        return {"minutes": None, "said": said, "ask_word": said}
+        return {"minutes": None, "said": said, "ask_word": said, "answer_ready": True, "asks": [], "spans": spans}

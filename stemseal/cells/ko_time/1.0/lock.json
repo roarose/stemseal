@@ -3,16 +3,16 @@
  "kind": "cell",
  "cell": "ko_time",
  "version": "1.0",
- "sha256": "04bb6448b08bbf43a2434801fe99a93e9348c3e424b537a7cfe1440af6f91836",
+ "sha256": "20d85eed696c3a8a26aebb42612b46fa290922574bf872a39f99fe72b34f3900",
  "files": {
-  "cell.py": "04bb6448b08bbf43a2434801fe99a93e9348c3e424b537a7cfe1440af6f91836",
-  "contract.json": "e3738ba07454d154e92280db0ad546efe537f7f8f77e7ab3d75eebd8363daa6d",
-  "gt_cases.json": "c9ec7641ac1e62cc57dd83bd9e93249facddde63a9a91350675eef0c11dc46e2"
+  "cell.py": "20d85eed696c3a8a26aebb42612b46fa290922574bf872a39f99fe72b34f3900",
+  "contract.json": "b6cf88701fb32df40d337ea04cf0bd85aa74d9575e00a637e09e25965c04d036",
+  "gt_cases.json": "0ee3da8c643db38280c5e9c591f9e121c752a9b330a162c558926e48bceef04a"
  },
  "policy": 2,
- "gt_total": 24,
- "gt_passed": 24,
+ "gt_total": 32,
+ "gt_passed": 32,
  "deterministic": true,
- "locked_at": "2026-11-21T08:36:54+00:00",
+ "locked_at": "2026-11-21T09:10:25+00:00",
  "locked_by": "claude-organ-parts-20261121"
 }

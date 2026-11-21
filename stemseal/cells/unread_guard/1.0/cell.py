@@ -111,9 +111,10 @@ _LEFT = re.compile("|".join((   # a number word that could be a count: if one is
     r"(?<![가-힣])(?:한(?!\s*번)|두|세|석|너|네|[일이삼사오육칠팔구십백천만]+)\s*(?:%s)" % _UNITS,
     r"(?<!\S)(?:한(?!\s*번)|두|세|석|일|삼|사|육|칠|팔|구|십)(?:요|이요|개)?(?=\s|$|[,.?!~])")))
 # word lists: pieces whose meaning plainly does not touch a count, a price or whether something is ordered. Never 더, 추가, 빼, 말고, 반 and the like.
-_ORDER_WORDS = ("요", "이요", "예요", "이에요", "에요", "입니다", "이랑", "랑", "하고", "이고", "고", "와", "과", "도", "은", "는", "을", "를", "이", "가", "에", "에다", "에다가", "로", "으로", "만", "짜리", "주세요", "주시고", "줘", "주실래요", "할게요", "할께요", "해", "해요", "부탁해요", "부탁드려요", "부탁합니다", "드릴게요", "시킬게요", "주문", "주문할게요", "주문하는데", "주문하는데요", "갈게요", "먹고", "가져갈게요", "그리고", "포장", "포장해", "포장할게요", "그냥", "일단", "우선", "얼마", "얼마예요", "얼마에요", "얼마죠", "얼마인가요", "여기요", "저기요", "사장님", "총", "다해서", "전부해서", "합쳐서", "인데", "인데요", "있어요", "있는데", "있는데요", "있고", "해서")
+_ORDER_WORDS = ("요", "이요", "예요", "이에요", "에요", "입니다", "이랑", "랑", "하고", "이고", "고", "와", "과", "도", "은", "는", "을", "를", "이", "가", "에", "에다", "에다가", "로", "으로", "만", "짜리", "주세요", "주시고", "줘", "주실래요", "할게요", "할께요", "해", "해요", "부탁해요", "부탁드려요", "부탁합니다", "드릴게요", "시킬게요", "주문", "주문할게요", "갈게요", "먹고", "가져갈게요", "그리고", "포장", "포장해", "포장할게요", "그냥", "일단", "우선", "얼마", "얼마예요", "얼마에요", "얼마죠", "얼마인가요", "여기요", "저기요", "사장님", "총", "다해서", "전부해서", "합쳐서", "인데", "인데요")   # menu order: the list of menu_order_total 8.0, word for word
+_PRICED_WORDS = _ORDER_WORDS + ("있어요", "있는데", "있는데요", "있고", "해서", "주문하는데", "주문하는데요")   # priced order: the list of order_total 9.0 (a customer who says the price is ordering)
 LISTS = {"order": {"words": _ORDER_WORDS, "count": "'%s'%s 어느 메뉴의 수량인지 다시 말씀해 주시겠어요?", "other": "'%s'%s 잘 알아듣지 못했어요. 주문을 다시 한번 말씀해 주시겠어요?"},
-         "order_refuse": {"words": _ORDER_WORDS, "refuse": True,   # for a step that refuses instead of asking (the caller asks the customer)
+         "order_refuse": {"words": _PRICED_WORDS, "refuse": True,   # for a step that refuses instead of asking (the caller asks the customer)
                           "count": "the customer said '%s' but no item uses it as its count; give each item its qty in the customer's words, or ask the customer if it is unclear",
                           "other": "the cell cannot read '%s' in the customer's words; if it is a dish, pass it as that item's name, exactly as said; otherwise ask the customer or hand over to staff"}}
 _SUFFIX = ("이", "가", "도", "고", "만", "은", "는", "을", "를", "와", "과", "에", "로", "요")   # one-syllable pieces allowed only right after something read, never standing alone ('콜라 이' is not '콜라이')

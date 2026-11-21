@@ -151,6 +151,7 @@ def _at(qn, a, menu):
                 elif len(n) == best and i not in hit:
                     hit.append(i)
     return best, hit
+_TAKEN_BACK = re.compile(r"(?:은|는|이|가|을|를|도)?(?:말고|아니|대신|빼|취소|제외|없이)")
 def cell_executor(inp):
     q = inp.get("question")
     if not isinstance(q, str) or not q.strip():
@@ -214,5 +215,9 @@ def cell_executor(inp):
                     continue
                 if not any(x <= a < y or x < b <= y for x, y in covered):
                     raise ValueError("the question names another entry that is not in said; add every entry the customer named as its own item")
-    return {"matches": [{"said": r["name"], "start": r["span"][0], "name_end": r["span"][1], "end": r["end"], "candidates": r["cands"]} for r in rows],
+    asks = []
+    for r in rows:   # a name the customer takes back or swaps ('계란말이 말고 콜라', '김밥 빼고'): the matches are not an order, ask
+        if _TAKEN_BACK.match(qn, r["end"]):
+            asks = ["주문하실 메뉴를 한 번 더 말씀해 주시겠어요?"]; break
+    return {"answer_ready": not asks, "asks": asks, "matches": [{"said": r["name"], "start": r["span"][0], "name_end": r["span"][1], "end": r["end"], "candidates": r["cands"]} for r in rows],
             "spans": [[a, b] for a, b in sorted(set(covered))]}

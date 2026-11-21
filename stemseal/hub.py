@@ -261,9 +261,14 @@ def _sealed():
         if not c: continue
         if c["seal"] is None: yield name, c
         elif c["seal"] != seal.OLD: _tamper(name, c["version"], c["seal"], once=True)
-def list_cells():
+def list_cells(parts=False):
+    """The sealed cells a model may be shown. A part cell (contract "part": true: one step of a job, such as reading a time) is left
+    out unless parts=True: until the organ runner puts parts together behind the unread-word step, a model never picks one
+    from find_cell or list_cells (it can still be called by name)."""
     out = []
     for name, c in _sealed():
+        if c["contract"].get("part") and not parts:
+            continue
         out.append({"cell": name, "version": c["lock"]["version"], "description": c["contract"]["description"], "when_to_use": c["contract"].get("when_to_use", ""),
                     "description_en": c["contract"].get("description_en", ""), "when_to_use_en": c["contract"].get("when_to_use_en", ""),
                     "required_inputs": c["contract"]["input_schema"].get("required", []), "gt_cases": c["lock"]["gt_total"], "locked_at": c["lock"]["locked_at"]})
@@ -446,14 +451,12 @@ def _rank(need, min_score):
         s = len(q & doc) / max(1, len(q))
         if s >= min_score: scored.append((round(s, 3), c))
     scored.sort(key=lambda x: -x[0]); return scored
-def _is_part(card):
-    c = load(card["cell"]); return bool(c and c["contract"].get("part"))
 def find(need, caller="unknown", k=3, min_score=0.3, words=None, model=None, record=True):
     """Return up to k locked cells that fit the stated need, best first. An empty list is an honest 'nothing fits', and the need
     is recorded as demand right there (auto=True), so demand gathers even when the model never calls request_cell.
     words: the caller's own short names for the calculation (e.g. "연평균 성장률"). They are searched on their own and the two result lists
     are taken in turn (request, words, request, ...), so a request worded unlike any cell card can still reach its cell (exp8).
-    Part cells (contract "part": true) are listed after the whole-job cells.
+    Part cells (contract "part": true) are never found: see list_cells.
     record=False: an internal probe (e.g. after a guessed cell name), whose caller records the demand itself."""
     need = need if isinstance(need, str) else ("" if need is None else json.dumps(need, ensure_ascii=False))
     a = _rank(need, min_score); b = _rank(" ".join(str(w) for w in words), min_score) if words else []
@@ -461,9 +464,7 @@ def find(need, caller="unknown", k=3, min_score=0.3, words=None, model=None, rec
     for i in range(max(len(a), len(b))):
         for lst in (a, b):
             if i < len(lst) and lst[i][1]["cell"] not in seen: seen.add(lst[i][1]["cell"]); hits.append(dict(lst[i][1], score=lst[i][0]))
-    # a part cell (contract "part": true, one step of a job) comes after every whole-job cell that fits, so a small model's first
-    # candidates stay what they were; parts only fill the slots left over
-    hits = sorted(hits, key=_is_part)[:k]
+    hits = hits[:k]
     _log({"type": "find", "need": need[:300], "words": (words or [])[:8], "caller": caller, "hits": [h["cell"] for h in hits]})
     if not hits and record and need.strip(): _log_demand(need, caller, model=model, auto=True)
     return hits
@@ -692,7 +693,7 @@ def stats():
     demand = {}
     for r in rows:
         if r.get("type") == "demand" and r.get("need"): demand[r["need"]] = demand.get(r["need"], 0) + 1
-    return {"cells_locked": len(list_cells()), "calls": len(calls), "ok": sum(r.get("status") == "ok" for r in calls), "refused": sum(r.get("status") != "ok" for r in calls),
+    return {"cells_locked": len(list_cells(parts=True)), "calls": len(calls), "ok": sum(r.get("status") == "ok" for r in calls), "refused": sum(r.get("status") != "ok" for r in calls),
             "distinct_callers": len({str(r.get("caller")) for r in calls}), "finds": sum(r.get("type") == "find" for r in rows),
             "per_cell": {k: {"calls": v["calls"], "ok": v["ok"], "avg_ms": round(v["ms"] / v["calls"], 1), "callers": sorted(v["callers"])} for k, v in sorted(per.items(), key=lambda x: -x[1]["calls"])},
             "unmet_demand": sorted(demand.items(), key=lambda x: -x[1])[:20]}

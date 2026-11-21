@@ -1,0 +1,298 @@
+{
+"default/find/4500원짜리 두 개 10% 할인": {
+"bytes": 6312,
+"sha": "578f98c41a4386a2"
+},
+"default/find/convert dollars to won": {
+"bytes": 4780,
+"sha": "92f6ff38f6980cc0"
+},
+"default/find/how many people set": {
+"bytes": 6131,
+"sha": "187cab97614eead0"
+},
+"default/find/is the store open now": {
+"bytes": 6524,
+"sha": "5063324413a3ad6f"
+},
+"default/find/minutes until closing": {
+"bytes": 6205,
+"sha": "0f7430db18d33bbd"
+},
+"default/find/order total with discount": {
+"bytes": 6370,
+"sha": "87fb5bbea7509b7d"
+},
+"default/find/기하평균 성장률": {
+"bytes": 533,
+"sha": "6359639c8a7f4728"
+},
+"default/find/김밥 하나 라면 둘 주세요 얼마": {
+"bytes": 4390,
+"sha": "157a00460e35f058"
+},
+"default/find/넷이서 왔는데 어떤 세트가 좋아요": {
+"bytes": 1237,
+"sha": "2517ab7cb877ff64"
+},
+"default/find/단가 곱하기 수량": {
+"bytes": 5371,
+"sha": "a56e1afde80de599"
+},
+"default/find/대출 원리금 균등상환 월 납입액": {
+"bytes": 315,
+"sha": "35568d7711348318"
+},
+"default/find/둘이서 뭐 먹어요": {
+"bytes": 1237,
+"sha": "2517ab7cb877ff64"
+},
+"default/find/떡볶이 두 개 얼마예요": {
+"bytes": 5042,
+"sha": "ba60a3fcc25dbcc1"
+},
+"default/find/마감까지 몇 분 남았어요": {
+"bytes": 3056,
+"sha": "4593799d13b19042"
+},
+"default/find/만이천구백원": {
+"bytes": 3180,
+"sha": "11ab4d1e0b53628e"
+},
+"default/find/맵기 어때요": {
+"bytes": 1058,
+"sha": "b17b1608cbd70f18"
+},
+"default/find/메뉴판에서 찾기": {
+"bytes": 6455,
+"sha": "0f1e779c7a73afa1"
+},
+"default/find/몇 시까지 해요?": {
+"bytes": 4034,
+"sha": "ca4e25c3387c0764"
+},
+"default/find/부가세 포함 공급가": {
+"bytes": 622,
+"sha": "6f0e8e0def8851be"
+},
+"default/find/세 명이서 먹을 세트": {
+"bytes": 1237,
+"sha": "2517ab7cb877ff64"
+},
+"default/find/세트 고르기": {
+"bytes": 1237,
+"sha": "2517ab7cb877ff64"
+},
+"default/find/시각 읽기": {
+"bytes": 2749,
+"sha": "e3fd5b7bab7b4888"
+},
+"default/find/시급으로 월급": {
+"bytes": 5931,
+"sha": "bebfbb936f7b412a"
+},
+"default/find/연차 며칠": {
+"bytes": 543,
+"sha": "582de03fb105fc9a"
+},
+"default/find/영업 시간 창": {
+"bytes": 2877,
+"sha": "10faf38c1d438589"
+},
+"default/find/오전 오후": {
+"bytes": 2097,
+"sha": "5a8befcb3a9a6b9a"
+},
+"default/find/인원 몇 명": {
+"bytes": 7494,
+"sha": "619ceb26ae2db987"
+},
+"default/find/읽지 못한 말": {
+"bytes": 6861,
+"sha": "0303b87a5b3cfcc5"
+},
+"default/find/주차 되나요": {
+"bytes": 1058,
+"sha": "b17b1608cbd70f18"
+},
+"default/find/지금 밤 9시 반인데 몇 시까지 해요": {
+"bytes": 3056,
+"sha": "4593799d13b19042"
+},
+"default/find/지금 영업 중이에요?": {
+"bytes": 4739,
+"sha": "b05a312d1d3e245a"
+},
+"default/find/칼로리": {
+"bytes": 583,
+"sha": "266058ca18657586"
+},
+"default/find/할인 얼마나 돼요": {
+"bytes": 5042,
+"sha": "e73d35fc1ef44496"
+},
+"default/find/할인 적용": {
+"bytes": 2528,
+"sha": "698ceb05b9875f0d"
+},
+"default/find/합계 계산": {
+"bytes": 5819,
+"sha": "6257ef506d41e302"
+},
+"default/find/환율 계산": {
+"bytes": 5329,
+"sha": "f90b21c5f102691a"
+},
+"default/list_cells": {
+"bytes": 12588,
+"sha": "8e50a63c2d6615fe"
+},
+"exaone3.5:2.4b/find/4500원짜리 두 개 10% 할인": {
+"bytes": 6312,
+"sha": "578f98c41a4386a2"
+},
+"exaone3.5:2.4b/find/convert dollars to won": {
+"bytes": 4780,
+"sha": "92f6ff38f6980cc0"
+},
+"exaone3.5:2.4b/find/how many people set": {
+"bytes": 6131,
+"sha": "187cab97614eead0"
+},
+"exaone3.5:2.4b/find/is the store open now": {
+"bytes": 6524,
+"sha": "5063324413a3ad6f"
+},
+"exaone3.5:2.4b/find/minutes until closing": {
+"bytes": 6205,
+"sha": "0f7430db18d33bbd"
+},
+"exaone3.5:2.4b/find/order total with discount": {
+"bytes": 6370,
+"sha": "87fb5bbea7509b7d"
+},
+"exaone3.5:2.4b/find/기하평균 성장률": {
+"bytes": 533,
+"sha": "6359639c8a7f4728"
+},
+"exaone3.5:2.4b/find/김밥 하나 라면 둘 주세요 얼마": {
+"bytes": 4390,
+"sha": "157a00460e35f058"
+},
+"exaone3.5:2.4b/find/넷이서 왔는데 어떤 세트가 좋아요": {
+"bytes": 1237,
+"sha": "2517ab7cb877ff64"
+},
+"exaone3.5:2.4b/find/단가 곱하기 수량": {
+"bytes": 5371,
+"sha": "a56e1afde80de599"
+},
+"exaone3.5:2.4b/find/대출 원리금 균등상환 월 납입액": {
+"bytes": 315,
+"sha": "af9125ad94889a5b"
+},
+"exaone3.5:2.4b/find/둘이서 뭐 먹어요": {
+"bytes": 1237,
+"sha": "2517ab7cb877ff64"
+},
+"exaone3.5:2.4b/find/떡볶이 두 개 얼마예요": {
+"bytes": 5042,
+"sha": "ba60a3fcc25dbcc1"
+},
+"exaone3.5:2.4b/find/마감까지 몇 분 남았어요": {
+"bytes": 3056,
+"sha": "4593799d13b19042"
+},
+"exaone3.5:2.4b/find/만이천구백원": {
+"bytes": 3180,
+"sha": "11ab4d1e0b53628e"
+},
+"exaone3.5:2.4b/find/맵기 어때요": {
+"bytes": 1058,
+"sha": "b17b1608cbd70f18"
+},
+"exaone3.5:2.4b/find/메뉴판에서 찾기": {
+"bytes": 6455,
+"sha": "0f1e779c7a73afa1"
+},
+"exaone3.5:2.4b/find/몇 시까지 해요?": {
+"bytes": 4034,
+"sha": "ca4e25c3387c0764"
+},
+"exaone3.5:2.4b/find/부가세 포함 공급가": {
+"bytes": 622,
+"sha": "6f0e8e0def8851be"
+},
+"exaone3.5:2.4b/find/세 명이서 먹을 세트": {
+"bytes": 1237,
+"sha": "2517ab7cb877ff64"
+},
+"exaone3.5:2.4b/find/세트 고르기": {
+"bytes": 1237,
+"sha": "2517ab7cb877ff64"
+},
+"exaone3.5:2.4b/find/시각 읽기": {
+"bytes": 2749,
+"sha": "e3fd5b7bab7b4888"
+},
+"exaone3.5:2.4b/find/시급으로 월급": {
+"bytes": 5931,
+"sha": "bebfbb936f7b412a"
+},
+"exaone3.5:2.4b/find/연차 며칠": {
+"bytes": 543,
+"sha": "582de03fb105fc9a"
+},
+"exaone3.5:2.4b/find/영업 시간 창": {
+"bytes": 2877,
+"sha": "10faf38c1d438589"
+},
+"exaone3.5:2.4b/find/오전 오후": {
+"bytes": 2097,
+"sha": "5a8befcb3a9a6b9a"
+},
+"exaone3.5:2.4b/find/인원 몇 명": {
+"bytes": 7494,
+"sha": "619ceb26ae2db987"
+},
+"exaone3.5:2.4b/find/읽지 못한 말": {
+"bytes": 6861,
+"sha": "0303b87a5b3cfcc5"
+},
+"exaone3.5:2.4b/find/주차 되나요": {
+"bytes": 1058,
+"sha": "b17b1608cbd70f18"
+},
+"exaone3.5:2.4b/find/지금 밤 9시 반인데 몇 시까지 해요": {
+"bytes": 3056,
+"sha": "4593799d13b19042"
+},
+"exaone3.5:2.4b/find/지금 영업 중이에요?": {
+"bytes": 4739,
+"sha": "b05a312d1d3e245a"
+},
+"exaone3.5:2.4b/find/칼로리": {
+"bytes": 583,
+"sha": "266058ca18657586"
+},
+"exaone3.5:2.4b/find/할인 얼마나 돼요": {
+"bytes": 5042,
+"sha": "e73d35fc1ef44496"
+},
+"exaone3.5:2.4b/find/할인 적용": {
+"bytes": 2528,
+"sha": "698ceb05b9875f0d"
+},
+"exaone3.5:2.4b/find/합계 계산": {
+"bytes": 5819,
+"sha": "6257ef506d41e302"
+},
+"exaone3.5:2.4b/find/환율 계산": {
+"bytes": 5329,
+"sha": "f90b21c5f102691a"
+},
+"exaone3.5:2.4b/list_cells": {
+"bytes": 12588,
+"sha": "8e50a63c2d6615fe"
+}
+}

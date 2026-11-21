@@ -99,9 +99,9 @@ stemseal savings          # tokens the cells saved on this machine
 
 ### Part cells / 부품 세포
 
-세포는 장기가 아니다: 큰 일을 하던 가게 세포 넷(menu_order_total, order_total, store_hours, party_set)을 한 가지 일만 하는 부품 세포 14개로 나눴습니다. 부품을 차례로 이으면 원래 세포와 같은 답을 냅니다(원래 세포의 정답 사례 396개, 무작위 문장 19,000개에서 확인). 부품을 잇는 "장기(organ)" 실행기는 다음 단계이고, 그때까지 원래 세포는 그대로 씁니다. 부품 세포는 계약에 `"part": true`가 있고, `find_cell`에서는 한 가지 업무 전체를 하는 세포 뒤에 나옵니다.
+세포는 장기가 아니다: 큰 일을 하던 가게 세포 넷(menu_order_total, order_total, store_hours, party_set)을 한 가지 일만 하는 부품 세포 14개로 나눴습니다. 부품을 차례로 이으면 원래 세포보다 덜 되묻는 일 없이 같은 값을 냅니다(원래 세포의 정답 사례 전부와 무작위 문장으로 확인). 손님 말을 읽는 부품은 읽은 자리(spans)를 돌려주고, 범위·더하고 빼는 말·정정·"10분 전"처럼 값의 뜻을 바꾸는 말이 있으면 따로 불러도 값을 내지 않고 되묻습니다. 부품을 잇는 "장기(organ)" 실행기는 다음 단계이고, 그때까지 부품 세포는 `find_cell`과 `list_cells`에 나오지 않습니다(계약의 `"part": true`). 이름으로 부를 수는 있습니다.
 
-Cells are not organs: the four store cells above are split into 14 part cells that each do one step. Chained, they give the same replies as the original cells. Part cells carry `"part": true` and are listed after whole-job cells in `find_cell`.
+Cells are not organs: the four store cells above are split into 14 part cells that each do one step. Chained, they never ask less than the original cells and give the same numbers. A part that reads the customer's words returns what it read and asks instead of giving a value when words change its meaning. Until the organ runner exists, part cells (`"part": true`) are hidden from `find_cell` and `list_cells`; they can still be called by name.
 
 | part cell | does | used by |
 |---|---|---|

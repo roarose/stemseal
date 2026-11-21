@@ -128,6 +128,17 @@ _EACH = re.compile(r"각각|각(?!자)")
 _ALL = re.compile(r"총|모두|다(?!섯)")
 _PEOPLE = re.compile(r"(?:%s|\d+)(?:명|사람|번)|(?<!인)(?:%s|\d+)분|(?:둘|셋|넷|다섯|여섯|일곱|여덟|아홉|열)이서" % (NATIVE_RE, NATIVE_RE))
 _PEOPLE_SAID = re.compile(r"(?:%s|\d+)\s*(?:명|사람|분)(?:이서|이|서)?|(?:둘|셋|넷|다섯|여섯|일곱|여덟|아홉|열)이서" % NATIVE_RE)
+# words right after a thing and its count that change what was read: taken away, cancelled, corrected, half more, more.
+# With one of these the part gives no number for it: it asks, even when called on its own (the unread-word step is a second net).
+_CHANGE = re.compile(r"빼|빠|취소|제외|말고|아니|대신|반(?!값|찬|반)|더(?!운|워|위)|추가|두\s*배|곱하기|x\d|\*\d")
+_NEXT_OK = ("요", "이요", "예요", "이에요", "에요", "입니다", "이랑", "랑", "하고", "이고", "고", "와", "과", "도", "은", "는", "을", "를", "이", "가", "에", "에다", "에다가", "로", "으로", "만", "짜리", "주세요", "주시고", "줘", "주실래요", "할게요", "할께요", "해", "해요", "부탁해요", "부탁드려요", "부탁합니다", "드릴게요", "시킬게요", "주문", "주문할게요", "갈게요", "먹고", "가져갈게요", "그리고", "포장", "포장해", "포장할게요", "그냥", "일단", "우선", "얼마", "얼마예요", "얼마에요", "얼마죠", "얼마인가요", "여기요", "저기요", "사장님", "총", "다해서", "전부해서", "합쳐서", "인데", "인데요")   # the words that may follow a thing said without a count (the menu order's list of plain words)
+_NEXT_RE = re.compile("(?:%s)+" % "|".join(sorted(_NEXT_OK, key=len, reverse=True)))
+def _next_word(qn, gaps, i):
+    """The customer's word starting at i in norm(question): up to the next space."""
+    j = i
+    while j < len(qn) and not (j > i and gaps[j]):
+        j += 1
+    return qn[i:j]
 def _count(m):
     """A count match -> (whole number or None, why not). None means ask: a range ('한두 개') or 0 or over 99."""
     if m.group("approx"):
@@ -212,14 +223,26 @@ def cell_executor(inp):
             spent.append((m.end(), m.end() + 1))
     if all(r["qty"] is not None for r in rows):   # every name has its count: '세 명이서' only says who it is for
         spent += [(m.start(), m.end()) for m in _PEOPLE_SAID.finditer(qn)]
+    starts = sorted(r["span"][0] for r in rows)
+    for r in rows:   # read on its own, a count can still be changed by the words after it ('두 개 빼 주세요', '두 개 반', '계란말이 너이')
+        m = r["qty"]; at = max(r["end"], m.end() if m is not None else 0)
+        nxt = min([s for s in starts if s >= at] + [at + 12, len(qn)])
+        if _CHANGE.search(masked[at:nxt]):
+            r["changed"] = True
+        elif m is None and not r.get("unclear"):
+            w = _next_word(masked, gaps, r["end"]).split("|")[0]
+            if w and not _NEXT_RE.fullmatch(w):
+                r["changed"] = True
+    if any(r.get("changed") for r in rows):
+        asks.append("주문하신 수량을 메뉴마다 한 번 더 말씀해 주시겠어요?")
     counts = []
     for r in rows:
         m = r["qty"]
         if m is None:
-            counts.append({"value": None, "why": "unclear" if r.get("unclear") else "none", "text": None, "start": None, "end": None})
+            counts.append({"value": None, "why": "unclear" if r.get("unclear") or r.get("changed") else "none", "text": None, "start": None, "end": None})
             continue
         v, why = _count(m)
-        if r.get("unclear"):
+        if r.get("unclear") or r.get("changed"):
             v, why = None, "unclear"
         counts.append({"value": v, "why": why, "text": _show(q, m.start(), m.end()), "start": m.start(), "end": m.end()})
     return {"answer_ready": not asks, "asks": asks, "counts": counts, "spans": [[a, b] for a, b in sorted(set(spent))]}

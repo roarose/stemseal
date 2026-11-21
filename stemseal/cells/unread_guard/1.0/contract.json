@@ -3,7 +3,7 @@
   "guard.unread_words"
  ],
  "raw_text": true,
- "description": "다른 단계가 읽은 자리(used)를 모두 빼고, 손님 문장에 남은 말이 허용 목록(조사, '주세요', '포장' 같은 주문 말) 밖이면 그 말을 돌려준다. 짐작하지 않는다: 남은 말이 있으면 되묻거나(list 'order') 거절한다(list 'order_refuse'). '더', '추가', '빼', '말고' 같은 말은 허용 목록에 없다. 손님 말을 직접 읽는 장기는 이 세포를 반드시 거친다.",
+ "description": "다른 단계가 읽은 자리(used)를 모두 빼고, 손님 문장에 남은 말이 허용 목록(조사, '주세요', '포장' 같은 주문 말. 'order'는 menu_order_total 8.0의 목록 그대로, 'order_refuse'는 order_total 9.0의 목록 그대로) 밖이면 그 말을 돌려준다. 짐작하지 않는다: 남은 말이 있으면 되묻거나(list 'order') 거절한다(list 'order_refuse'). '더', '추가', '빼', '말고' 같은 말은 허용 목록에 없다. 손님 말을 직접 읽는 장기는 이 세포를 반드시 거친다.",
  "description_en": "Takes out every span the other steps read and returns any word left that is not on the ignore list (particles, order words). Never guesses: it asks back (list 'order') or refuses (list 'order_refuse'). Every organ that reads a customer's own words must pass through it.",
  "when_to_use": "손님 문장을 읽는 단계들 뒤, 계산 앞.",
  "keywords": [
