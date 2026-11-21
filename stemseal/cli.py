@@ -66,7 +66,7 @@ def main(argv=None):
     a = list(sys.argv[1:] if argv is None else argv) or ["list"]
     cmd, rest = a[0], a[1:]
     if cmd == "list":
-        _p([{k: c[k] for k in ("cell", "version", "description", "required_inputs")} for c in hub.list_cells()])
+        _p([{k: c[k] for k in ("cell", "version", "description", "required_inputs")} for c in hub.list_cells(parts=True)])
         for u in hub.unsealed(): print("not usable: %s %s: %s" % (u["cell"], u["version"], u["why"]), file=sys.stderr)
     elif cmd == "find": _p(hub.find(" ".join(rest), caller="cli"))
     elif cmd == "call":

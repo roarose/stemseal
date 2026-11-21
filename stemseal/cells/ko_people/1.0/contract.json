@@ -1,0 +1,37 @@
+{
+ "provides": [
+  "read.ko.people"
+ ],
+ "raw_text": true,
+ "description": "손님 문장 전체에서 인원('넷이서', '두 명', '혼자', '세 분', '4인')을 읽는다. 서로 다른 인원이 섞이거나, 사람이 더 붙거나('친구 셋이랑 저요', '두 명 더'), 인원이 없으면 값 없이 되묻는다. 손님이 부정한 인원('혼자 온 건 아니고')은 뺀다. people은 세포가 못 찾을 때만 쓴다. 범위('2~3명'), 사람을 더하거나 빼는 말('추가', '빠졌', '안 먹어요', '둘만'), 정정('아니', '말고'), 어른·아이 구분이 있으면 값 없이 되묻는다. 읽은 자리(spans)를 돌려준다. 이 부품이 아는 말만 보고 되묻는다. 목록 밖의 말('열 명쯤', '3시 반 지나서' 등)은 놓칠 수 있으므로 혼자서는 쓰지 않고 장기 안에서 '모르는 말 거르기'와 함께 쓴다. 장기 실행기 전까지 이름으로 직접 부르면 거절된다.",
+ "description_en": "Reads how many people from the whole sentence; asks back when numbers differ, people are added on top, or none is said. A number taken back does not count. Asks on a range, people added or taken away, a correction or adults and children told apart; returns the spans it read.",
+ "when_to_use": "인원이 필요한 예약, 세트, 인원별 요금 앞 단계로.",
+ "keywords": [
+  "인원",
+  "몇 명",
+  "몇 분",
+  "people count"
+ ],
+ "input_schema": {
+  "required": [
+   "question"
+  ],
+  "properties": {
+   "question": "the customer's whole sentence, unchanged",
+   "people": "optional: the customer's words for how many people"
+  }
+ },
+ "output_keys": [
+  "answer_ready",
+  "asks",
+  "people",
+  "spans"
+ ],
+ "part": true,
+ "output_schema": {
+  "answer_ready": "boolean",
+  "asks": "list",
+  "people": "number?",
+  "spans": "list"
+ }
+}

@@ -261,9 +261,14 @@ def _sealed():
         if not c: continue
         if c["seal"] is None: yield name, c
         elif c["seal"] != seal.OLD: _tamper(name, c["version"], c["seal"], once=True)
-def list_cells():
+def list_cells(parts=False):
+    """The sealed cells a model may be shown. A part cell (contract "part": true: one step of a job, such as reading a time) is left
+    out unless parts=True: until the organ runner puts parts together behind the unread-word step, a model never picks one
+    from find_cell or list_cells (it can still be called by name)."""
     out = []
     for name, c in _sealed():
+        if c["contract"].get("part") and not parts:
+            continue
         out.append({"cell": name, "version": c["lock"]["version"], "description": c["contract"]["description"], "when_to_use": c["contract"].get("when_to_use", ""),
                     "description_en": c["contract"].get("description_en", ""), "when_to_use_en": c["contract"].get("when_to_use_en", ""),
                     "required_inputs": c["contract"]["input_schema"].get("required", []), "gt_cases": c["lock"]["gt_total"], "locked_at": c["lock"]["locked_at"]})
@@ -363,6 +368,9 @@ def _err_for_ledger(err):
     """The exception type and the first characters of its message only."""
     kind, sep, msg = err.partition(": ")
     return (kind + sep + msg[:ERR_TO_LEDGER]) if sep else err[:ERR_TO_LEDGER]
+# A part cell (contract "part": true) is one step of an organ: read on its own it can miss words that change its value, which
+# only the organ's unread-word step catches. Until the organ runner exists, calling one by name is refused (closed by default).
+PART_REFUSED = "this cell is one step of a larger job and cannot be called on its own yet; call find_cell with the customer's question to get the cell for the whole job"
 def call(name, input_data, caller="unknown", version=None, model=None, decorate=None, log=True):
     """status = ok | not_available | invalid_input. A result only ever comes from a locked, untampered cell.
     Every call row carries its token meter (savings.py): what the call cost and, against the cell's baseline, what it saved.
@@ -402,6 +410,7 @@ def call(name, input_data, caller="unknown", version=None, model=None, decorate=
         c = None
         if log: _tamper(name, ver, problem)
         return env("not_available", reason="cell files do not match the lock (%s)" % problem, ver=ver)
+    if c["contract"].get("part"): return env("not_available", reason=PART_REFUSED, ver=ver)   # closed until the organ runner exists
     if not isinstance(input_data, dict): return env("invalid_input", reason="input must be an object", ver=ver)
     missing = [k for k in c["contract"]["input_schema"].get("required", []) if k not in input_data]
     if missing: return env("invalid_input", reason="missing required inputs: %s" % missing, ver=ver)
@@ -451,6 +460,7 @@ def find(need, caller="unknown", k=3, min_score=0.3, words=None, model=None, rec
     is recorded as demand right there (auto=True), so demand gathers even when the model never calls request_cell.
     words: the caller's own short names for the calculation (e.g. "연평균 성장률"). They are searched on their own and the two result lists
     are taken in turn (request, words, request, ...), so a request worded unlike any cell card can still reach its cell (exp8).
+    Part cells (contract "part": true) are never found: see list_cells.
     record=False: an internal probe (e.g. after a guessed cell name), whose caller records the demand itself."""
     need = need if isinstance(need, str) else ("" if need is None else json.dumps(need, ensure_ascii=False))
     a = _rank(need, min_score); b = _rank(" ".join(str(w) for w in words), min_score) if words else []
@@ -687,7 +697,7 @@ def stats():
     demand = {}
     for r in rows:
         if r.get("type") == "demand" and r.get("need"): demand[r["need"]] = demand.get(r["need"], 0) + 1
-    return {"cells_locked": len(list_cells()), "calls": len(calls), "ok": sum(r.get("status") == "ok" for r in calls), "refused": sum(r.get("status") != "ok" for r in calls),
+    return {"cells_locked": len(list_cells(parts=True)), "calls": len(calls), "ok": sum(r.get("status") == "ok" for r in calls), "refused": sum(r.get("status") != "ok" for r in calls),
             "distinct_callers": len({str(r.get("caller")) for r in calls}), "finds": sum(r.get("type") == "find" for r in rows),
             "per_cell": {k: {"calls": v["calls"], "ok": v["ok"], "avg_ms": round(v["ms"] / v["calls"], 1), "callers": sorted(v["callers"])} for k, v in sorted(per.items(), key=lambda x: -x[1]["calls"])},
             "unmet_demand": sorted(demand.items(), key=lambda x: -x[1])[:20]}

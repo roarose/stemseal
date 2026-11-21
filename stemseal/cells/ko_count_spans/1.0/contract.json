@@ -1,0 +1,39 @@
+{
+ "provides": [
+  "read.ko.count"
+ ],
+ "raw_text": true,
+ "description": "손님 문장에서 이름마다 붙은 수량 말을 찾는다(이름 바로 뒤, 없으면 바로 앞: '두 병', '3인분', '하나 주시고'). '씩', '각각'은 앞에 나열한 이름에도 붙인다. 범위('한두 개'), 0이나 100 이상, 사람 수와 곱해야 하는 말('하나씩 두 명'), '모두 두 개'처럼 애매한 말은 값 없이 이유(why)만 준다. 어느 이름의 것인지 모를 수량은 asks로 되묻는다. 읽은 자리(spans)를 돌려준다. 이름과 수량 뒤에 빼기·취소·정정·'반'·'더'·'두 배' 같은 말이 있거나, 수량 없는 이름 뒤에 허용 목록 밖의 말('너이')이 오면 값 없이(why unclear) 되묻는다. 이 부품이 아는 말만 보고 되묻는다. 목록 밖의 말('열 명쯤', '3시 반 지나서' 등)은 놓칠 수 있으므로 혼자서는 쓰지 않고 장기 안에서 '모르는 말 거르기'와 함께 쓴다. 장기 실행기 전까지 이름으로 직접 부르면 거절된다.",
+ "description_en": "Finds the count word said with each name (right after it, else right before it), spreads '씩'/'각각' over the names listed before, and gives no value but a reason for a range, 0 or over 99, a per-person count, or an unclear 'in all'. A count that belongs to no name is asked back. Returns the spans it read. Asks when words after a name and its count change it, or an unknown word follows a name with no count.",
+ "when_to_use": "이름 찾기 다음, 이름 자리(owners)를 받아 수량을 읽을 때.",
+ "keywords": [
+  "수량 읽기",
+  "몇 개",
+  "인분",
+  "count words",
+  "quantity"
+ ],
+ "input_schema": {
+  "required": [
+   "question",
+   "owners"
+  ],
+  "properties": {
+   "question": "the customer's whole sentence, unchanged",
+   "owners": "[{start, end}] where each name stands (the matches of catalog_match can be passed as they are)"
+  }
+ },
+ "output_keys": [
+  "answer_ready",
+  "asks",
+  "counts",
+  "spans"
+ ],
+ "part": true,
+ "output_schema": {
+  "answer_ready": "boolean",
+  "asks": "list",
+  "counts": "list",
+  "spans": "list"
+ }
+}

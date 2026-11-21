@@ -1,0 +1,18 @@
+{
+ "format": 2,
+ "kind": "cell",
+ "cell": "price_items",
+ "version": "1.0",
+ "sha256": "5fe142ea0f4ecf58458ae9cc0c7baf414f88ff8765c55e0a0e871ba2e3cda2a2",
+ "files": {
+  "cell.py": "5fe142ea0f4ecf58458ae9cc0c7baf414f88ff8765c55e0a0e871ba2e3cda2a2",
+  "contract.json": "098a85a9912fbde2c4d6f60a654e966c6eb7f2afc4002a254e2a050b5a8fac55",
+  "gt_cases.json": "ca1da54a819281d2405d2dfbea3d0c848c0eab3ddb5bb9de6db1212dadefa6ca"
+ },
+ "policy": 2,
+ "gt_total": 29,
+ "gt_passed": 29,
+ "deterministic": true,
+ "locked_at": "2026-11-21T09:26:32+00:00",
+ "locked_by": "claude-organ-parts-20261121"
+}

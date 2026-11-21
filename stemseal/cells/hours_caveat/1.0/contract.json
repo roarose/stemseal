@@ -1,0 +1,33 @@
+{
+ "provides": [
+  "guard.hours_caveat"
+ ],
+ "raw_text": true,
+ "description": "손님이 쉬는 시간(브레이크 타임)이나 라스트 오더, 주문 마감을 말하면 직원 안내로 넘긴다. 하루 한 번 열고 닫는 계산으로는 답이 틀릴 수 있어서다. 휴무, 휴식, 준비 시간, 청소, '오늘은/주말은 … 닫아요', 연장, 일찍, 다시 열기처럼 오늘 영업시간이 평소와 다를 수 있는 말도 직원 안내로 넘긴다. 찾은 말의 자리(spans)를 돌려준다.",
+ "description_en": "Hands over to staff when the customer mentions a break or last order, which a single open-close calculation would get wrong. Also hands over on a day off, a break, other hours today or on weekends, extended or earlier hours, a second opening; returns the spans.",
+ "when_to_use": "영업 중인지 계산하기 전.",
+ "keywords": [
+  "브레이크 타임",
+  "라스트 오더",
+  "쉬는 시간"
+ ],
+ "input_schema": {
+  "required": [
+   "question"
+  ],
+  "properties": {
+   "question": "the customer's whole sentence, unchanged"
+  }
+ },
+ "output_keys": [
+  "answer_ready",
+  "asks",
+  "spans"
+ ],
+ "part": true,
+ "output_schema": {
+  "answer_ready": "boolean",
+  "asks": "list",
+  "spans": "list"
+ }
+}

@@ -97,6 +97,29 @@ stemseal savings          # tokens the cells saved on this machine
 | store_hours | 지금 영업 중인지, 마감·오픈까지 남은 분 (자정 넘는 영업, "오후 9시 45분" 같은 한국어 시각 포함, 오전·오후 없는 시각은 짐작하지 않고 되묻게 함, 쉬는 시간·주문 마감 말이 있으면 직원 안내) · built from a store kiosk test | question, now, open, close (7.0: 손님 말 그대로, 모델이 붙인 오전·오후는 손님 말 기준, 여는·닫는 시각 역할 확인, 애매하면 손님께 할 질문을 돌려줌) |
 | vat_supply_price | 부가세 포함 금액을 공급가액과 부가세로 (부가세 원 미만 절사) · first cell built from a request (#4) | total, vat_pct |
 
+### Part cells / 부품 세포
+
+세포는 장기가 아니다: 큰 일을 하던 가게 세포 넷(menu_order_total, order_total, store_hours, party_set)을 한 가지 일만 하는 부품 세포 14개로 나눴습니다. 부품을 차례로 이으면 원래 세포보다 덜 되묻는 일 없이 같은 값을 냅니다(원래 세포의 정답 사례 전부와 무작위 문장으로 확인). 손님 말을 읽는 부품은 읽은 자리(spans)를 돌려주고, 아는 "뜻을 바꾸는 말"(범위, 더하고 빼는 말, 정정, "10분 전")이 있으면 값 없이 되묻습니다. 다만 모르는 말은 놓칠 수 있어서, 부품은 장기 안에서 "모르는 말 거르기"와 함께 써야 합니다. 부품을 잇는 "장기(organ)" 실행기는 다음 단계이고, 그때까지 부품 세포(계약의 `"part": true`)는 `find_cell`과 `list_cells`에 나오지 않고, 이름으로 불러도 거절됩니다.
+
+Cells are not organs: the four store cells above are split into 14 part cells that each do one step. Chained, they never ask less than the original cells and give the same numbers. A part that reads the customer's words returns what it read and asks on the meaning-changing words it knows, but can miss others, so it is meant to run inside an organ behind the unread-word step. Until the organ runner exists, part cells (`"part": true`) are hidden from `find_cell` and `list_cells`, and calling one by name is refused.
+
+| part cell | does | used by |
+|---|---|---|
+| catalog_match | 가게 목록에서 손님이 말한 이름 찾기 (별칭, 크기, 가장 긴 이름 먼저) | menu order |
+| ko_count_spans | 이름마다 붙은 수량 말 찾기 ('씩', '각각', 앞뒤) | menu order |
+| catalog_lines | 가게 목록 가격으로 주문 줄 만들기, 애매하면 되묻기 | menu order |
+| unread_guard | 읽지 못한 말이 남으면 되묻기 또는 거절 | both orders |
+| line_total | 단가×수량 합계와 총 수량 | both orders |
+| price_items | 손님이 말한 가격과 수량 읽기 | priced order |
+| ko_discount | 할인 말 읽기 (%, 원, 반값) | priced order |
+| apply_discount | 할인 적용 | priced order |
+| ko_time | 시각 하나 읽기, 여는·닫는 시각 역할 확인 | store hours |
+| ampm_ask | 오전·오후 되묻기 문장 | store hours |
+| hours_caveat | 쉬는 시간·라스트 오더 말이면 직원 안내 | store hours |
+| time_window | 영업 중인지, 마감·오픈까지 남은 분 | store hours |
+| ko_people | 인원 읽기 | party set |
+| set_for_people | 인원에 맞는 세트 고르기 | party set |
+
 ## Making a cell / 세포 만들기
 
 How to make a cell that small models can trust (refuse when ambiguous, read the customer's own words, measure on fresh questions), learned on a store laptop: [CELL_GUIDE.md](CELL_GUIDE.md). 작은 모델이 믿고 쓸 세포를 만드는 지침은 [CELL_GUIDE.md](CELL_GUIDE.md)에 있습니다.
