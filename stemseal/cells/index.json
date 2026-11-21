@@ -257,6 +257,14 @@
     "description": "손님 문장 전체에서 인원('넷이서', '두 명', '혼자', '세 분')을 세포가 직접 찾아 가게 세트 목록(sets)에서 그 인원에 맞는 세트와 가격을 고른다. 서로 다른 인원이 섞이거나 인원이 없으면 ask_customer를 준다. people은 선택(세포가 못 찾을 때만 쓴다). 손님이 부정한 인원('혼자 온 건 아니고')은 빼고, 인원 후보가 둘 이상 남거나 사람이 더 붙으면('친구 셋이랑 저요', '두 명 더') 되묻는다. '어른 셋 아이 둘'처럼 맨 숫자 말도 인원 후보로 센다.",
     "description_en": "Finds the party size in the customer's whole sentence ('넷이서', '두 명', '혼자') and picks the store's sets for that many people with prices. Mixed or missing sizes give ask_customer. people is optional. A number the customer takes back ('혼자 온 건 아니고') is dropped; two different numbers, or people added on top ('친구 셋이랑 저요'), are asked back. Bare count words ('어른 셋 아이 둘') count as candidates too.",
     "answers": []
+   },
+   "5.0": {
+    "sha256": "d2fc316e2684d1f16cddb5da304f7819ea3621404cbb54c638d2c18ee6e8a505",
+    "gt": 62,
+    "locked_at": "2026-11-21T09:21:12+00:00",
+    "description": "손님 문장 전체에서 인원('넷이서', '두 명', '혼자', '세 분')을 세포가 직접 찾아 가게 세트 목록(sets)에서 그 인원에 맞는 세트와 가격을 고른다. 서로 다른 인원이 섞이거나 인원이 없으면 ask_customer를 준다. people은 선택(세포가 못 찾을 때만 쓴다). 손님이 부정한 인원('혼자 온 건 아니고')은 빼고, 인원 후보가 둘 이상 남거나 사람이 더 붙으면('친구 셋이랑 저요', '두 명 더') 되묻는다. '어른 셋 아이 둘'처럼 맨 숫자 말도 인원 후보로 센다. (5.0) 인원의 뜻을 바꾸는 말이 있으면 계산하지 않고 인원을 되묻는다: 범위('2~3명'), 더하거나 빼는 말('추가', '빠졌', '안 먹어요', '둘만'), 정정('아니고', '말고'), 어른·아이 구분.",
+    "description_en": "Finds the party size in the customer's whole sentence ('넷이서', '두 명', '혼자') and picks the store's sets for that many people with prices. Mixed or missing sizes give ask_customer. people is optional. A number the customer takes back ('혼자 온 건 아니고') is dropped; two different numbers, or people added on top ('친구 셋이랑 저요'), are asked back. Bare count words ('어른 셋 아이 둘') count as candidates too. (5.0) Asks how many instead of computing on a range, people added or taken away, a correction, or adults and children told apart.",
+    "answers": []
    }
   },
   "percentage_point_diff": {
@@ -362,6 +370,14 @@
     "locked_at": "2026-11-20T08:47:46+00:00",
     "description": "손님 문장과, 그 문장에서 그대로 옮긴 시각 말('밤 7시 반', '열 시', '새벽 2시')로 영업 중인지, 마감·오픈까지 남은 분을 낸다. 오전·오후를 알 수 없는 시각, 여는 시각과 닫는 시각이 같을 때, 20시간 넘는 영업은 계산하지 않고 ask_customer에 손님께 할 질문 문장을 준다(answer_ready false). 넘긴 말이 손님 문장에 없으면 거절. 지금 시각을 기기 시계에서 가져오면 now_from_clock true와 '19:30'. 모델이 손님이 말하지 않은 오전·오후를 붙이면 손님 말을 기준으로 읽고, 손님 말에 없으면 되묻는다. '여덟 시'를 '8시'로 넘겨도 같은 시각으로 받는다. 여는 시각 자리에 '~까지/마감' 시각을 넣는 등 역할이 바뀌면 거절. '20:00'과 '20시'처럼 13시 이후의 같은 시각은 모양이 달라도 받는다. 하루 한 번 열고 닫는 시간만 다룬다. 쉬는 시간(브레이크 타임)은 넣을 수 없으니 그런 가게는 쉬는 시간을 따로 안내해야 한다. 손님이 쉬는 시간이나 주문 마감을 말하면 계산하지 않고 직원 안내로 넘긴다.",
     "description_en": "Open now?, minutes to closing or opening, from the customer's sentence and the time words copied from it unchanged ('밤 7시 반', '새벽 2시'). When only the customer can settle it (am or pm unknown, same open and close, open over 20 hours) it does not compute: answer_ready is false and ask_customer holds the question to ask. Words not in the sentence are refused. If the model adds an am/pm word the customer did not say, the customer's words win (and the customer is asked when there is none). Spoken hours may be passed as digits. Open and close passed in each other's place are refused. Handles one opening and one closing a day. A break time cannot be passed; a store with one must tell customers about it separately. If the customer mentions a break or last order, it does not compute and hands over to staff.",
+    "answers": []
+   },
+   "8.0": {
+    "sha256": "d3a114be6e421439d2013de00eb588090f54f9b77cdf494be56ddde255a83217",
+    "gt": 52,
+    "locked_at": "2026-11-21T09:21:12+00:00",
+    "description": "손님 문장과, 그 문장에서 그대로 옮긴 시각 말('밤 7시 반', '열 시', '새벽 2시')로 영업 중인지, 마감·오픈까지 남은 분을 낸다. 오전·오후를 알 수 없는 시각, 여는 시각과 닫는 시각이 같을 때, 20시간 넘는 영업은 계산하지 않고 ask_customer에 손님께 할 질문 문장을 준다(answer_ready false). 넘긴 말이 손님 문장에 없으면 거절. 지금 시각을 기기 시계에서 가져오면 now_from_clock true와 '19:30'. 모델이 손님이 말하지 않은 오전·오후를 붙이면 손님 말을 기준으로 읽고, 손님 말에 없으면 되묻는다. '여덟 시'를 '8시'로 넘겨도 같은 시각으로 받는다. 여는 시각 자리에 '~까지/마감' 시각을 넣는 등 역할이 바뀌면 거절. '20:00'과 '20시'처럼 13시 이후의 같은 시각은 모양이 달라도 받는다. 하루 한 번 열고 닫는 시간만 다룬다. 쉬는 시간(브레이크 타임)은 넣을 수 없으니 그런 가게는 쉬는 시간을 따로 안내해야 한다. 손님이 쉬는 시간이나 주문 마감을 말하면 계산하지 않고 직원 안내로 넘긴다. (8.0) 시각 뒤의 '전', '쯤', '경', '11시나 12시', 앞의 '아마', 문장의 정정('아니고', '말고')이 있으면 계산하지 않고 되묻는다. 휴무, 휴식, 준비 시간, 청소, '오늘은/주말은 … 닫아요', 연장, 일찍, 다시 열기처럼 오늘 영업시간이 평소와 다를 수 있으면 직원 안내로 넘긴다.",
+    "description_en": "Open now?, minutes to closing or opening, from the customer's sentence and the time words copied from it unchanged ('밤 7시 반', '새벽 2시'). When only the customer can settle it (am or pm unknown, same open and close, open over 20 hours) it does not compute: answer_ready is false and ask_customer holds the question to ask. Words not in the sentence are refused. If the model adds an am/pm word the customer did not say, the customer's words win (and the customer is asked when there is none). Spoken hours may be passed as digits. Open and close passed in each other's place are refused. Handles one opening and one closing a day. A break time cannot be passed; a store with one must tell customers about it separately. If the customer mentions a break or last order, it does not compute and hands over to staff. (8.0) Asks instead of computing on '10분 전', '쯤', '11시나 12시', '아마' or a correction; hands over to staff on a day off, a break or other hours today.",
     "answers": []
    }
   },

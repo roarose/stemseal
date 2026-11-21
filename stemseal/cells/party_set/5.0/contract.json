@@ -1,0 +1,41 @@
+{
+ "description": "손님 문장 전체에서 인원('넷이서', '두 명', '혼자', '세 분')을 세포가 직접 찾아 가게 세트 목록(sets)에서 그 인원에 맞는 세트와 가격을 고른다. 서로 다른 인원이 섞이거나 인원이 없으면 ask_customer를 준다. people은 선택(세포가 못 찾을 때만 쓴다). 손님이 부정한 인원('혼자 온 건 아니고')은 빼고, 인원 후보가 둘 이상 남거나 사람이 더 붙으면('친구 셋이랑 저요', '두 명 더') 되묻는다. '어른 셋 아이 둘'처럼 맨 숫자 말도 인원 후보로 센다. (5.0) 인원의 뜻을 바꾸는 말이 있으면 계산하지 않고 인원을 되묻는다: 범위('2~3명'), 더하거나 빼는 말('추가', '빠졌', '안 먹어요', '둘만'), 정정('아니고', '말고'), 어른·아이 구분.",
+ "when_to_use": "'둘이서 뭐 먹어요?', '넷인데 세트 있어요?'처럼 인원으로 메뉴를 물을 때. question에 손님 문장 전체, sets에 가게 자료의 세트 목록.",
+ "keywords": [
+  "인원",
+  "세트",
+  "몇 명",
+  "둘이서",
+  "셋이서",
+  "추천",
+  "세트 메뉴",
+  "party size",
+  "set menu"
+ ],
+ "input_schema": {
+  "required": [
+   "question",
+   "sets"
+  ],
+  "properties": {
+   "question": "the customer's whole sentence, unchanged",
+   "people": "optional: the customer's words for how many people; the cell reads the sentence itself first",
+   "sets": "the store's set list from its data: [{name, people (whole number), price (whole won)}]"
+  }
+ },
+ "output_keys": [
+  "answer_ready",
+  "ask_customer",
+  "people",
+  "sets"
+ ],
+ "output_schema": {
+  "answer_ready": "boolean",
+  "ask_customer": "string?",
+  "people": "number?",
+  "sets": "list"
+ },
+ "raw_text": true,
+ "description_en": "Finds the party size in the customer's whole sentence ('넷이서', '두 명', '혼자') and picks the store's sets for that many people with prices. Mixed or missing sizes give ask_customer. people is optional. A number the customer takes back ('혼자 온 건 아니고') is dropped; two different numbers, or people added on top ('친구 셋이랑 저요'), are asked back. Bare count words ('어른 셋 아이 둘') count as candidates too. (5.0) Asks how many instead of computing on a range, people added or taken away, a correction, or adults and children told apart.",
+ "when_to_use_en": "A customer asks what to order for a number of people. Pass their whole sentence and the store's sets."
+}
