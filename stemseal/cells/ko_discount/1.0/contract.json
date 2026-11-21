@@ -1,0 +1,36 @@
+{
+ "provides": [
+  "read.ko.discount"
+ ],
+ "raw_text": true,
+ "description": "손님 말의 할인을 읽는다: 퍼센트('10%', '반값')와 원('3천원'). 손님이 받는다고 한 할인을 넘기지 않았거나 금액이 없으면 거절하고, '할인 돼요?', '쿠폰 없어요'는 할인으로 보지 않는다. 읽은 자리(spans)를 돌려준다.",
+ "description_en": "Reads a discount the customer said: percent ('10%', '반값') or won ('3천원'). Refuses a claimed discount left out or without an amount; a question or a no is not a discount. Returns the spans read.",
+ "when_to_use": "주문 문장에 할인, 쿠폰 말이 있을 때.",
+ "keywords": [
+  "할인",
+  "쿠폰",
+  "반값",
+  "discount"
+ ],
+ "input_schema": {
+  "required": [
+   "question"
+  ],
+  "properties": {
+   "question": "the customer's whole sentence, unchanged",
+   "discount_pct": "optional: the customer's words for a percent discount",
+   "discount_won": "optional: their words for a won discount"
+  }
+ },
+ "output_keys": [
+  "pct",
+  "won",
+  "spans"
+ ],
+ "part": true,
+ "output_schema": {
+  "pct": "number",
+  "won": "number",
+  "spans": "list"
+ }
+}

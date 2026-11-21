@@ -1,0 +1,37 @@
+{
+ "provides": [
+  "match.catalog_name"
+ ],
+ "raw_text": true,
+ "description": "손님 문장 속 말이 가게 목록(메뉴판, 상품 목록)의 어느 항목인지 찾는다. 정확한 이름, 별칭, 브랜드(콜라→음료), 크기를 붙인 이름('모둠 전 대')을 보고, 더 긴 이름이 있으면 그쪽('치즈 계란찜')으로, 이름이 여럿에 걸리면 후보를 모두 돌려준다. '포장'이 있으면 포장 항목을 고른다. 손님 문장의 어느 자리를 이름으로 읽었는지(spans)를 함께 돌려준다. 넘긴 말이 문장에 없거나, 문장에 다른 항목 이름이 있는데 said에 빠졌으면 거절한다.",
+ "description_en": "Finds which entry of a store's list (menu, product list) each of the customer's words names: exact name, alias, brand, name with size, longest name first; several candidates when ambiguous. Returns where in the sentence each name stands. Refuses words not in the sentence, and a sentence naming an entry left out of said.",
+ "when_to_use": "손님이 이름으로 무언가를 고를 때, 수량 찾기나 가격 붙이기 앞 단계로.",
+ "keywords": [
+  "메뉴 이름 찾기",
+  "상품 찾기",
+  "이름 매칭",
+  "catalog match",
+  "menu name"
+ ],
+ "input_schema": {
+  "required": [
+   "question",
+   "catalog",
+   "said"
+  ],
+  "properties": {
+   "question": "the customer's whole sentence, unchanged",
+   "catalog": "the store's list [{name, price (whole won), unit?, min_people?, variants?, aliases?}] from the store's data",
+   "said": "[{name: the customer's words for each entry, unchanged}]"
+  }
+ },
+ "output_keys": [
+  "matches",
+  "spans"
+ ],
+ "part": true,
+ "output_schema": {
+  "matches": "list",
+  "spans": "list"
+ }
+}

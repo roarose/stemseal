@@ -1,0 +1,34 @@
+{
+ "provides": [
+  "pick.set_for_people"
+ ],
+ "description": "가게 세트 목록에서 인원에 딱 맞는 세트와 가격을 고른다. 맞는 세트가 없으면 직원 안내 질문을 준다.",
+ "description_en": "Picks the sets made for exactly this many people from the store's set list; none fits, it hands over to staff.",
+ "when_to_use": "인원 읽기 다음.",
+ "keywords": [
+  "인원별 세트",
+  "세트 고르기",
+  "set for people"
+ ],
+ "input_schema": {
+  "required": [
+   "sets",
+   "people"
+  ],
+  "properties": {
+   "sets": "the store's list [{name, people (whole number), price (whole won)}]",
+   "people": "whole number"
+  }
+ },
+ "output_keys": [
+  "answer_ready",
+  "asks",
+  "sets"
+ ],
+ "part": true,
+ "output_schema": {
+  "answer_ready": "boolean",
+  "asks": "list",
+  "sets": "list"
+ }
+}

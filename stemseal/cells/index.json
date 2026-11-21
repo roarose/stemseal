@@ -1,6 +1,16 @@
 {
  "format": 1,
  "cells": {
+  "ampm_ask": {
+   "1.0": {
+    "sha256": "09daa6d14a3f748e24f929b3fcc01f9ba59a4c8bcb6a24fda51bfc0220a65cd5",
+    "gt": 20,
+    "locked_at": "2026-11-21T08:36:54+00:00",
+    "description": "오전·오후를 알 수 없는 시각 말들을 모아 손님께 할 질문 하나로 만든다('말씀하신 '10시', '9시', 오전인가요 오후인가요?').",
+    "description_en": "Turns the time words that need AM or PM into one question for the customer.",
+    "answers": []
+   }
+  },
   "annual_leave_days": {
    "1.0": {
     "sha256": "2cf7029ba701c8fb927fd724b57a547e897fca9adb06e66979a5faa5d95d0f46",
@@ -8,6 +18,36 @@
     "locked_at": "2026-11-18T06:59:09+00:00",
     "description": "근속 연수로 연차 일수(1년 이상 15일, 이후 2년마다 1일, 최대 25일).",
     "description_en": "Annual paid leave days from years of service (Korean labor law: 15 days after 1 year, +1 every 2 years, max 25).",
+    "answers": []
+   }
+  },
+  "apply_discount": {
+   "1.0": {
+    "sha256": "20c0a10fec6f2cce55b5e9c0639b53df6fa32fe788b468664957ae1cff1a76d3",
+    "gt": 23,
+    "locked_at": "2026-11-21T08:36:54+00:00",
+    "description": "소계에 퍼센트 할인(원 미만 버림)과 원 할인을 함께 적용한다. 할인이 소계보다 크면 소계까지만 깎고 discount_capped를 참으로.",
+    "description_en": "Applies a percent discount (truncated to whole won) and a won discount to a subtotal; a discount over the subtotal is capped.",
+    "answers": []
+   }
+  },
+  "catalog_lines": {
+   "1.0": {
+    "sha256": "9bb847ed65c204327abcfe9c9c967264b21e390fe8be18e447fd64c141148626",
+    "gt": 26,
+    "locked_at": "2026-11-21T08:36:53+00:00",
+    "description": "이름 찾기와 수량 찾기 결과로 가게 목록의 가격만 써서 줄(이름, 단가, 수량, 줄 금액)을 만든다. 후보가 여럿이거나, 크기가 빠졌거나, 1인분 단위 메뉴에 수량이 없거나 최소 인원보다 적거나, 목록에 없거나, 수량이 애매하면 계산하지 않고 asks에 손님께 할 질문을 준다. 수량 말이 없는 항목은 1개로 치고 qty_assumed에 적는다.",
+    "description_en": "Builds priced lines from the name and count steps, prices from the store's list only. Asks back for several candidates, a missing size, a per-person dish without a count or under its minimum, an entry not on the list, or an unclear count. An entry with no count word is one, listed in qty_assumed.",
+    "answers": []
+   }
+  },
+  "catalog_match": {
+   "1.0": {
+    "sha256": "674f08770b693433277dbf16ca411d8b75777a3fa3b386001157d1b90fbd19ac",
+    "gt": 28,
+    "locked_at": "2026-11-21T08:36:53+00:00",
+    "description": "손님 문장 속 말이 가게 목록(메뉴판, 상품 목록)의 어느 항목인지 찾는다. 정확한 이름, 별칭, 브랜드(콜라→음료), 크기를 붙인 이름('모둠 전 대')을 보고, 더 긴 이름이 있으면 그쪽('치즈 계란찜')으로, 이름이 여럿에 걸리면 후보를 모두 돌려준다. '포장'이 있으면 포장 항목을 고른다. 손님 문장의 어느 자리를 이름으로 읽었는지(spans)를 함께 돌려준다. 넘긴 말이 문장에 없거나, 문장에 다른 항목 이름이 있는데 said에 빠졌으면 거절한다.",
+    "description_en": "Finds which entry of a store's list (menu, product list) each of the customer's words names: exact name, alias, brand, name with size, longest name first; several candidates when ambiguous. Returns where in the sentence each name stands. Refuses words not in the sentence, and a sentence naming an entry left out of said.",
     "answers": []
    }
   },
@@ -49,6 +89,56 @@
     "answers": []
    }
   },
+  "hours_caveat": {
+   "1.0": {
+    "sha256": "645dd4f35d008c7b19969528a6d39449f65f0d2c9d64d26f49bc1258801d7124",
+    "gt": 22,
+    "locked_at": "2026-11-21T08:36:54+00:00",
+    "description": "손님이 쉬는 시간(브레이크 타임)이나 라스트 오더, 주문 마감을 말하면 직원 안내로 넘긴다. 하루 한 번 열고 닫는 계산으로는 답이 틀릴 수 있어서다.",
+    "description_en": "Hands over to staff when the customer mentions a break or last order, which a single open-close calculation would get wrong.",
+    "answers": []
+   }
+  },
+  "ko_count_spans": {
+   "1.0": {
+    "sha256": "c7e3953bff57d7de6dccc57a88ed7afe31192c566cc47d42001a6b39b1fc7dd0",
+    "gt": 27,
+    "locked_at": "2026-11-21T08:36:53+00:00",
+    "description": "손님 문장에서 이름마다 붙은 수량 말을 찾는다(이름 바로 뒤, 없으면 바로 앞: '두 병', '3인분', '하나 주시고'). '씩', '각각'은 앞에 나열한 이름에도 붙인다. 범위('한두 개'), 0이나 100 이상, 사람 수와 곱해야 하는 말('하나씩 두 명'), '모두 두 개'처럼 애매한 말은 값 없이 이유(why)만 준다. 어느 이름의 것인지 모를 수량은 asks로 되묻는다. 읽은 자리(spans)를 돌려준다.",
+    "description_en": "Finds the count word said with each name (right after it, else right before it), spreads '씩'/'각각' over the names listed before, and gives no value but a reason for a range, 0 or over 99, a per-person count, or an unclear 'in all'. A count that belongs to no name is asked back. Returns the spans it read.",
+    "answers": []
+   }
+  },
+  "ko_discount": {
+   "1.0": {
+    "sha256": "7cad3ff3b271236f9c612a45da0862592132fcccd312b4ab9f2fb68e27f327f2",
+    "gt": 23,
+    "locked_at": "2026-11-21T08:36:54+00:00",
+    "description": "손님 말의 할인을 읽는다: 퍼센트('10%', '반값')와 원('3천원'). 손님이 받는다고 한 할인을 넘기지 않았거나 금액이 없으면 거절하고, '할인 돼요?', '쿠폰 없어요'는 할인으로 보지 않는다. 읽은 자리(spans)를 돌려준다.",
+    "description_en": "Reads a discount the customer said: percent ('10%', '반값') or won ('3천원'). Refuses a claimed discount left out or without an amount; a question or a no is not a discount. Returns the spans read.",
+    "answers": []
+   }
+  },
+  "ko_people": {
+   "1.0": {
+    "sha256": "088283553ce7ae143e3ea724453c9ad75a9b10fbdbb20fee841336cd78ce361c",
+    "gt": 22,
+    "locked_at": "2026-11-21T08:36:54+00:00",
+    "description": "손님 문장 전체에서 인원('넷이서', '두 명', '혼자', '세 분', '4인')을 읽는다. 서로 다른 인원이 섞이거나, 사람이 더 붙거나('친구 셋이랑 저요', '두 명 더'), 인원이 없으면 값 없이 되묻는다. 손님이 부정한 인원('혼자 온 건 아니고')은 뺀다. people은 세포가 못 찾을 때만 쓴다.",
+    "description_en": "Reads how many people from the whole sentence; asks back when numbers differ, people are added on top, or none is said. A number taken back does not count.",
+    "answers": []
+   }
+  },
+  "ko_time": {
+   "1.0": {
+    "sha256": "04bb6448b08bbf43a2434801fe99a93e9348c3e424b537a7cfe1440af6f91836",
+    "gt": 24,
+    "locked_at": "2026-11-21T08:36:54+00:00",
+    "description": "손님 문장에서 시각 하나를 읽어 자정부터의 분으로 바꾼다('밤 7시 반' 1170). 역할(now, open, close)을 주변 말('열고/부터', '닫/마감/까지')로 확인해 바뀌었으면 거절한다. 모델이 손님이 말하지 않은 오전·오후를 붙이면 손님 말이 이긴다. 오전·오후를 알 수 없으면 값 없이 ask_word에 그 말을 준다. clock 참이면 기기 시계의 'HH:MM'.",
+    "description_en": "Reads one time from the customer's sentence into minutes after midnight, checks its role (now, open, close) from the words around it, lets the customer's words win over a half-of-day word the model added, and returns the words in ask_word when only the customer can say AM or PM.",
+    "answers": []
+   }
+  },
   "korean_amount": {
    "1.0": {
     "sha256": "745203537b4e401bac9283fc9854350b03bbf97add22d7cd8cf45a1c641f0737",
@@ -72,6 +162,16 @@
     "locked_at": "2026-11-20T08:33:54+00:00",
     "description": "손님이 말한 금액·수량 한 덩어리를 숫자로 읽는다. '만삼천구백원' 13900원, '9천5백원' 9500원, '2만3천원', '두 잔' 2잔, '열두 개', '3인분', '10%'. 숫자와 단위(원, 잔, 개, 인분, %)를 돌려준다. question을 함께 주면 그 말이 손님 문장에 실제로 있는지 확인하고 없으면 거절한다. 고유어 수는 '아흔아홉'까지 읽는다.",
     "description_en": "Reads one amount or count as the customer said it in Korean: '만삼천구백원' 13900 won, '9천5백원', '두 잔' 2 cups, '10%'. Returns the number and its unit. With question, refuses text that is not in the customer's sentence. Native Korean counts read up to 99.",
+    "answers": []
+   }
+  },
+  "line_total": {
+   "1.0": {
+    "sha256": "b1bae723d71b2c6f1593f6cb7a6eff89fef65841b004e90659dffc4a15c8c061",
+    "gt": 26,
+    "locked_at": "2026-11-21T08:36:53+00:00",
+    "description": "줄마다 단가×수량을 계산하고 합계와 총 수량을 낸다. 단가는 0 이상의 원, 수량은 0 이상의 정수. line_total을 함께 주면 맞는지 확인한다.",
+    "description_en": "Unit price times quantity for each line, the total and the item count. Checks a given line_total.",
     "answers": []
    }
   },
@@ -289,6 +389,26 @@
     "answers": []
    }
   },
+  "price_items": {
+   "1.0": {
+    "sha256": "1519a44c1b257d72cb8bce7fc37d172638d73ad3f01f78726f470005320affa8",
+    "gt": 24,
+    "locked_at": "2026-11-21T08:36:53+00:00",
+    "description": "손님이 가격을 직접 말한 주문을 읽는다. 품목마다 손님 말 그대로의 가격('만삼천구백원'), 수량('두 잔', 선택), 음식 이름(선택)을 받아, 수량이 없으면 가격 바로 뒤나 앞의 수량 말을 읽고 없으면 1개로 친다. 한 번 말한 가격을 두 품목에 쓰기, 다른 품목 가격 뒤의 수량, '2개에 만원', '하나씩 두 명', 주인 없는 수량은 거절한다. 읽은 자리(spans)를 돌려준다.",
+    "description_en": "Reads an order where the customer said the prices: each item's price, count and dish name in the customer's words. Reads a missing count next to its price, else one. Refuses a price used twice, a count after another item's price, a price for several, a per-person count, and a count no item uses. Returns the spans read.",
+    "answers": []
+   }
+  },
+  "set_for_people": {
+   "1.0": {
+    "sha256": "02ba4693716ef0738a8ae970b67c9c6ddaeb9cbf1f6936fb12525d03905721ea",
+    "gt": 21,
+    "locked_at": "2026-11-21T08:36:54+00:00",
+    "description": "가게 세트 목록에서 인원에 딱 맞는 세트와 가격을 고른다. 맞는 세트가 없으면 직원 안내 질문을 준다.",
+    "description_en": "Picks the sets made for exactly this many people from the store's set list; none fits, it hands over to staff.",
+    "answers": []
+   }
+  },
   "store_faq": {
    "1.0": {
     "sha256": "f0d56f56e016f3986ab7f02f89bda0918831ff0fc37cff45fe60c97afafe1ad3",
@@ -362,6 +482,26 @@
     "locked_at": "2026-11-20T08:47:46+00:00",
     "description": "손님 문장과, 그 문장에서 그대로 옮긴 시각 말('밤 7시 반', '열 시', '새벽 2시')로 영업 중인지, 마감·오픈까지 남은 분을 낸다. 오전·오후를 알 수 없는 시각, 여는 시각과 닫는 시각이 같을 때, 20시간 넘는 영업은 계산하지 않고 ask_customer에 손님께 할 질문 문장을 준다(answer_ready false). 넘긴 말이 손님 문장에 없으면 거절. 지금 시각을 기기 시계에서 가져오면 now_from_clock true와 '19:30'. 모델이 손님이 말하지 않은 오전·오후를 붙이면 손님 말을 기준으로 읽고, 손님 말에 없으면 되묻는다. '여덟 시'를 '8시'로 넘겨도 같은 시각으로 받는다. 여는 시각 자리에 '~까지/마감' 시각을 넣는 등 역할이 바뀌면 거절. '20:00'과 '20시'처럼 13시 이후의 같은 시각은 모양이 달라도 받는다. 하루 한 번 열고 닫는 시간만 다룬다. 쉬는 시간(브레이크 타임)은 넣을 수 없으니 그런 가게는 쉬는 시간을 따로 안내해야 한다. 손님이 쉬는 시간이나 주문 마감을 말하면 계산하지 않고 직원 안내로 넘긴다.",
     "description_en": "Open now?, minutes to closing or opening, from the customer's sentence and the time words copied from it unchanged ('밤 7시 반', '새벽 2시'). When only the customer can settle it (am or pm unknown, same open and close, open over 20 hours) it does not compute: answer_ready is false and ask_customer holds the question to ask. Words not in the sentence are refused. If the model adds an am/pm word the customer did not say, the customer's words win (and the customer is asked when there is none). Spoken hours may be passed as digits. Open and close passed in each other's place are refused. Handles one opening and one closing a day. A break time cannot be passed; a store with one must tell customers about it separately. If the customer mentions a break or last order, it does not compute and hands over to staff.",
+    "answers": []
+   }
+  },
+  "time_window": {
+   "1.0": {
+    "sha256": "3070925770d7119078fec9cbe851a4bf35b2c3fbb73b2ca0d010256e45314cca",
+    "gt": 22,
+    "locked_at": "2026-11-21T08:36:54+00:00",
+    "description": "지금, 여는, 닫는 시각(자정부터 분)으로 영업 중인지, 마감·오픈까지 남은 분을 낸다. 자정을 넘기는 영업도 다룬다. 여는 시각과 닫는 시각이 같거나 20시간 넘게 열면 계산하지 않고 확인 질문을 준다(0시~24시는 하루 종일).",
+    "description_en": "Whether a place is open now and the minutes to closing or opening, from three times in minutes after midnight, across midnight too. Same open and close, or over 20 hours, is asked back.",
+    "answers": []
+   }
+  },
+  "unread_guard": {
+   "1.0": {
+    "sha256": "7d944fe9c6e4874b41c2706d2955a8471931ad3a1ad2582f804f59f1dfe116b1",
+    "gt": 26,
+    "locked_at": "2026-11-21T08:36:53+00:00",
+    "description": "다른 단계가 읽은 자리(used)를 모두 빼고, 손님 문장에 남은 말이 허용 목록(조사, '주세요', '포장' 같은 주문 말) 밖이면 그 말을 돌려준다. 짐작하지 않는다: 남은 말이 있으면 되묻거나(list 'order') 거절한다(list 'order_refuse'). '더', '추가', '빼', '말고' 같은 말은 허용 목록에 없다. 손님 말을 직접 읽는 장기는 이 세포를 반드시 거친다.",
+    "description_en": "Takes out every span the other steps read and returns any word left that is not on the ignore list (particles, order words). Never guesses: it asks back (list 'order') or refuses (list 'order_refuse'). Every organ that reads a customer's own words must pass through it.",
     "answers": []
    }
   },

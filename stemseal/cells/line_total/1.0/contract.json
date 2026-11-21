@@ -1,0 +1,34 @@
+{
+ "provides": [
+  "compute.line_total"
+ ],
+ "description": "줄마다 단가×수량을 계산하고 합계와 총 수량을 낸다. 단가는 0 이상의 원, 수량은 0 이상의 정수. line_total을 함께 주면 맞는지 확인한다.",
+ "description_en": "Unit price times quantity for each line, the total and the item count. Checks a given line_total.",
+ "when_to_use": "줄 목록의 합계가 필요할 때(주문, 견적, 정산).",
+ "keywords": [
+  "합계",
+  "총액",
+  "단가 곱하기 수량",
+  "line total",
+  "sum"
+ ],
+ "input_schema": {
+  "required": [
+   "lines"
+  ],
+  "properties": {
+   "lines": "[{name?, unit_price (whole won), qty (whole number)}]"
+  }
+ },
+ "output_keys": [
+  "lines",
+  "total",
+  "item_count"
+ ],
+ "part": true,
+ "output_schema": {
+  "lines": "list",
+  "total": "number",
+  "item_count": "number"
+ }
+}

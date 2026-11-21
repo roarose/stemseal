@@ -446,11 +446,14 @@ def _rank(need, min_score):
         s = len(q & doc) / max(1, len(q))
         if s >= min_score: scored.append((round(s, 3), c))
     scored.sort(key=lambda x: -x[0]); return scored
+def _is_part(card):
+    c = load(card["cell"]); return bool(c and c["contract"].get("part"))
 def find(need, caller="unknown", k=3, min_score=0.3, words=None, model=None, record=True):
     """Return up to k locked cells that fit the stated need, best first. An empty list is an honest 'nothing fits', and the need
     is recorded as demand right there (auto=True), so demand gathers even when the model never calls request_cell.
     words: the caller's own short names for the calculation (e.g. "연평균 성장률"). They are searched on their own and the two result lists
     are taken in turn (request, words, request, ...), so a request worded unlike any cell card can still reach its cell (exp8).
+    Part cells (contract "part": true) are listed after the whole-job cells.
     record=False: an internal probe (e.g. after a guessed cell name), whose caller records the demand itself."""
     need = need if isinstance(need, str) else ("" if need is None else json.dumps(need, ensure_ascii=False))
     a = _rank(need, min_score); b = _rank(" ".join(str(w) for w in words), min_score) if words else []
@@ -458,7 +461,9 @@ def find(need, caller="unknown", k=3, min_score=0.3, words=None, model=None, rec
     for i in range(max(len(a), len(b))):
         for lst in (a, b):
             if i < len(lst) and lst[i][1]["cell"] not in seen: seen.add(lst[i][1]["cell"]); hits.append(dict(lst[i][1], score=lst[i][0]))
-    hits = hits[:k]
+    # a part cell (contract "part": true, one step of a job) comes after every whole-job cell that fits, so a small model's first
+    # candidates stay what they were; parts only fill the slots left over
+    hits = sorted(hits, key=_is_part)[:k]
     _log({"type": "find", "need": need[:300], "words": (words or [])[:8], "caller": caller, "hits": [h["cell"] for h in hits]})
     if not hits and record and need.strip(): _log_demand(need, caller, model=model, auto=True)
     return hits

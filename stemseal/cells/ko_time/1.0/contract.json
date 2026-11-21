@@ -1,0 +1,39 @@
+{
+ "provides": [
+  "read.ko.time"
+ ],
+ "raw_text": true,
+ "description": "손님 문장에서 시각 하나를 읽어 자정부터의 분으로 바꾼다('밤 7시 반' 1170). 역할(now, open, close)을 주변 말('열고/부터', '닫/마감/까지')로 확인해 바뀌었으면 거절한다. 모델이 손님이 말하지 않은 오전·오후를 붙이면 손님 말이 이긴다. 오전·오후를 알 수 없으면 값 없이 ask_word에 그 말을 준다. clock 참이면 기기 시계의 'HH:MM'.",
+ "description_en": "Reads one time from the customer's sentence into minutes after midnight, checks its role (now, open, close) from the words around it, lets the customer's words win over a half-of-day word the model added, and returns the words in ask_word when only the customer can say AM or PM.",
+ "when_to_use": "영업시간, 예약, 근무 시간처럼 손님이 말한 시각이 필요할 때.",
+ "keywords": [
+  "시각 읽기",
+  "몇 시",
+  "오전 오후",
+  "time words"
+ ],
+ "input_schema": {
+  "required": [
+   "question",
+   "words",
+   "role"
+  ],
+  "properties": {
+   "question": "the customer's whole sentence, unchanged",
+   "words": "the customer's words for the time",
+   "role": "now, open or close",
+   "clock": "optional true: words is the device clock 'HH:MM' (role now only)"
+  }
+ },
+ "output_keys": [
+  "minutes",
+  "said",
+  "ask_word"
+ ],
+ "part": true,
+ "output_schema": {
+  "minutes": "number?",
+  "said": "string",
+  "ask_word": "string?"
+ }
+}

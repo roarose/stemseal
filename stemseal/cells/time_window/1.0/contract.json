@@ -1,0 +1,53 @@
+{
+ "provides": [
+  "compute.time_window"
+ ],
+ "description": "지금, 여는, 닫는 시각(자정부터 분)으로 영업 중인지, 마감·오픈까지 남은 분을 낸다. 자정을 넘기는 영업도 다룬다. 여는 시각과 닫는 시각이 같거나 20시간 넘게 열면 계산하지 않고 확인 질문을 준다(0시~24시는 하루 종일).",
+ "description_en": "Whether a place is open now and the minutes to closing or opening, from three times in minutes after midnight, across midnight too. Same open and close, or over 20 hours, is asked back.",
+ "when_to_use": "시각 세 개를 읽은 뒤.",
+ "keywords": [
+  "영업 중",
+  "남은 시간",
+  "시간 범위",
+  "open now"
+ ],
+ "input_schema": {
+  "required": [
+   "now",
+   "open",
+   "close",
+   "open_words",
+   "close_words"
+  ],
+  "properties": {
+   "now": "minutes after midnight",
+   "open": "minutes after midnight",
+   "close": "minutes after midnight",
+   "open_words": "the customer's words for open",
+   "close_words": "the customer's words for close"
+  }
+ },
+ "output_keys": [
+  "answer_ready",
+  "asks",
+  "now_24h",
+  "open_24h",
+  "close_24h",
+  "is_open",
+  "minutes_to_close",
+  "minutes_to_open",
+  "long_hours"
+ ],
+ "part": true,
+ "output_schema": {
+  "answer_ready": "boolean",
+  "asks": "list",
+  "now_24h": "string?",
+  "open_24h": "string?",
+  "close_24h": "string?",
+  "is_open": "boolean?",
+  "minutes_to_close": "number?",
+  "minutes_to_open": "number?",
+  "long_hours": "boolean?"
+ }
+}

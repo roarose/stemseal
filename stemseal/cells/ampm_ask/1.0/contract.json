@@ -1,0 +1,29 @@
+{
+ "provides": [
+  "ask.ko.ampm"
+ ],
+ "description": "오전·오후를 알 수 없는 시각 말들을 모아 손님께 할 질문 하나로 만든다('말씀하신 '10시', '9시', 오전인가요 오후인가요?').",
+ "description_en": "Turns the time words that need AM or PM into one question for the customer.",
+ "when_to_use": "시각 읽기 단계 뒤.",
+ "keywords": [
+  "오전 오후 되묻기",
+  "ask am pm"
+ ],
+ "input_schema": {
+  "required": [
+   "words"
+  ],
+  "properties": {
+   "words": "the ask_word of each time step (null when read)"
+  }
+ },
+ "output_keys": [
+  "answer_ready",
+  "asks"
+ ],
+ "part": true,
+ "output_schema": {
+  "answer_ready": "boolean",
+  "asks": "list"
+ }
+}

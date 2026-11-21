@@ -1,0 +1,38 @@
+{
+ "provides": [
+  "read.ko.price_items"
+ ],
+ "raw_text": true,
+ "description": "손님이 가격을 직접 말한 주문을 읽는다. 품목마다 손님 말 그대로의 가격('만삼천구백원'), 수량('두 잔', 선택), 음식 이름(선택)을 받아, 수량이 없으면 가격 바로 뒤나 앞의 수량 말을 읽고 없으면 1개로 친다. 한 번 말한 가격을 두 품목에 쓰기, 다른 품목 가격 뒤의 수량, '2개에 만원', '하나씩 두 명', 주인 없는 수량은 거절한다. 읽은 자리(spans)를 돌려준다.",
+ "description_en": "Reads an order where the customer said the prices: each item's price, count and dish name in the customer's words. Reads a missing count next to its price, else one. Refuses a price used twice, a count after another item's price, a price for several, a per-person count, and a count no item uses. Returns the spans read.",
+ "when_to_use": "손님이 '4500원짜리 두 개'처럼 가격을 말하며 주문할 때.",
+ "keywords": [
+  "가격 말한 주문",
+  "원짜리",
+  "주문 금액",
+  "price order"
+ ],
+ "input_schema": {
+  "required": [
+   "question",
+   "items"
+  ],
+  "properties": {
+   "question": "the customer's whole sentence, unchanged",
+   "items": "[{price: the customer's words, qty?: their words, name?: their words for the dish}]"
+  }
+ },
+ "output_keys": [
+  "items_read",
+  "lines",
+  "qty_assumed",
+  "spans"
+ ],
+ "part": true,
+ "output_schema": {
+  "items_read": "list",
+  "lines": "list",
+  "qty_assumed": "list",
+  "spans": "list"
+ }
+}

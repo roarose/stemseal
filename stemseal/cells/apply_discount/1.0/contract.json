@@ -1,0 +1,36 @@
+{
+ "provides": [
+  "compute.apply_discount"
+ ],
+ "description": "소계에 퍼센트 할인(원 미만 버림)과 원 할인을 함께 적용한다. 할인이 소계보다 크면 소계까지만 깎고 discount_capped를 참으로.",
+ "description_en": "Applies a percent discount (truncated to whole won) and a won discount to a subtotal; a discount over the subtotal is capped.",
+ "when_to_use": "합계에 할인을 적용할 때.",
+ "keywords": [
+  "할인 적용",
+  "결제 금액",
+  "apply discount"
+ ],
+ "input_schema": {
+  "required": [
+   "subtotal"
+  ],
+  "properties": {
+   "subtotal": "whole won",
+   "pct": "whole percent 0..100",
+   "won": "whole won"
+  }
+ },
+ "output_keys": [
+  "subtotal",
+  "discount",
+  "total",
+  "discount_capped"
+ ],
+ "part": true,
+ "output_schema": {
+  "subtotal": "number",
+  "discount": "number",
+  "total": "number",
+  "discount_capped": "boolean"
+ }
+}
