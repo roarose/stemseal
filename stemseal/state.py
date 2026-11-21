@@ -35,10 +35,15 @@ def _form_ok(s):
 
 def read(path):
     """(state, "ok" | "missing" | "unreadable"). An unreadable state is returned as {}."""
-    try:
-        with open(path, "rb") as f: data = f.read()
-    except FileNotFoundError: return {}, "missing"
-    except OSError: return {}, "unreadable"
+    for i in range(20):                     # Windows: the file being replaced answers PermissionError for a moment
+        try:
+            with open(path, "rb") as f: data = f.read()
+            break
+        except FileNotFoundError: return {}, "missing"
+        except PermissionError:
+            if i == 19 or os.path.isdir(path): return {}, "unreadable"
+            time.sleep(0.05)
+        except OSError: return {}, "unreadable"
     try: s = json.loads(data.decode("utf-8"))
     except (UnicodeDecodeError, ValueError): return {}, "unreadable"
     return (s, "ok") if _form_ok(s) else ({}, "unreadable")
@@ -51,17 +56,20 @@ def status(path):
 class _Lock:
     def __init__(self, path): self.path = path + ".lock"; self.fd = None
     def __enter__(self):
-        end = time.time() + LOCK_WAIT
+        end = time.time() + LOCK_WAIT; last = None
         while True:
             try:
                 self.fd = os.open(self.path, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
                 os.write(self.fd, str(os.getpid()).encode()); return self
-            except FileExistsError:
+            except (FileExistsError, PermissionError) as e:   # Windows: a lock file being removed answers PermissionError for a moment
+                last = e
                 try:
                     if time.time() - os.stat(self.path).st_mtime > LOCK_STALE: os.remove(self.path); continue
                 except OSError: pass
             except OSError as e: raise Unavailable("cannot create %s (%s)" % (os.path.basename(self.path), type(e).__name__))
-            if time.time() > end: raise Unavailable("%s is held by another stemseal process" % os.path.basename(self.path))
+            if time.time() > end:
+                raise Unavailable("%s is held by another stemseal process" % os.path.basename(self.path) if isinstance(last, FileExistsError)
+                                  else "cannot create %s (%s)" % (os.path.basename(self.path), type(last).__name__))
             time.sleep(0.02)
     def __exit__(self, *a):
         try: os.close(self.fd)

@@ -350,8 +350,9 @@ class StateRecord(Place):
     def test_changes_at_the_same_time_are_all_kept(self):
         prog = ("import sys; sys.path.insert(0, sys.argv[1]); from stemseal import state\n"
                 "for i in range(150): state.change(sys.argv[2], lambda s, i=i: s.setdefault('sealed', {}).__setitem__('%s_%d/1.0' % (sys.argv[3], i), '0' * 64))\n")
-        procs = [subprocess.Popen([sys.executable, "-c", prog, ROOT, hub.STATE, tag]) for tag in ("a", "b")]
-        self.assertEqual([p.wait(timeout=120) for p in procs], [0, 0])
+        procs = [subprocess.Popen([sys.executable, "-c", prog, ROOT, hub.STATE, tag], stderr=subprocess.PIPE) for tag in ("a", "b")]
+        errs = [p.communicate(timeout=120)[1].decode("utf-8", "replace")[-600:] for p in procs]
+        self.assertEqual([p.returncode for p in procs], [0, 0], errs)
         s = json.loads(open(hub.STATE, encoding="utf-8").read())
         self.assertEqual(len(s["sealed"]), 300)
         self.assertEqual(glob.glob(os.path.join(self.tmp, ".state_*")) + glob.glob(hub.STATE + ".lock"), [])
